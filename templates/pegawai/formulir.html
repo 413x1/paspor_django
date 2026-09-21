@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Formulir Pengajuan{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Formulir Pengajuan</h2>
+    <p class="sub">Perjalanan Luar Negeri Non-Kedinasan</p>
+  </div>
+</div>
+
+{% if form.instance.catatan_unor %}
+  <div class="notification paspor-msg is-warning">
+    <strong>⚠ Dikembalikan oleh Admin Unor untuk diperbaiki:</strong> {{ form.instance.catatan_unor }}
+  </div>
+{% endif %}
+
+{% if profile %}
+<div class="cuti-card">
+  <div>
+    <div class="lbl">SISA CUTI TAHUN BERJALAN</div>
+    <div class="val">{{ profile.sisa_cuti_tahun_berjalan }} hari</div>
+  </div>
+  <span class="ic">🗓️</span>
+</div>
+{% endif %}
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;margin-bottom:14px;">
+    Data Pegawai <span class="badge-auto">Otomatis dari database kepegawaian</span>
+  </div>
+  <div class="field-readonly-grid" style="margin-bottom:4px;">
+    <div class="field">
+      <label class="label">Nama Pegawai <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ profile.nama }}" disabled></div>
+    </div>
+    <div class="field">
+      <label class="label">NIP <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ profile.nip }}" disabled></div>
+    </div>
+    <div class="field">
+      <label class="label">Jabatan <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ profile.jabatan }}" disabled></div>
+    </div>
+    <div class="field">
+      <label class="label">Pangkat/Golongan <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ profile.pangkat_golongan }}" disabled></div>
+    </div>
+    <div class="field">
+      <label class="label">Unit Kerja <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ profile.unit_kerja }}" disabled></div>
+    </div>
+    <div class="field">
+      <label class="label">Unit Organisasi <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ profile.unit_organisasi.name }}" disabled></div>
+    </div>
+  </div>
+  <div class="field">
+    <label class="label">Jenis Perjalanan Luar Negeri <span class="badge-auto">Otomatis</span></label>
+    <div class="control"><input class="input" value="Perjalanan Luar Negeri Non-Kedinasan" disabled></div>
+  </div>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;margin-bottom:14px;">Detail Perjalanan</div>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.kategori.id_for_label }}">Kategori Perjalanan</label>
+          <div class="control"><div class="select is-fullwidth">{{ form.kategori }}</div></div>
+          {% for error in form.kategori.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.tujuan_negara.id_for_label }}">Tujuan Negara</label>
+          <div class="control">{{ form.tujuan_negara }}</div>
+          {% for error in form.tujuan_negara.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="{{ form.maksud.id_for_label }}">Maksud Perjalanan</label>
+      <div class="control">{{ form.maksud }}</div>
+      {% for error in form.maksud.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+    </div>
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.sumber_pembiayaan.id_for_label }}">Sumber Pembiayaan</label>
+          <div class="control"><div class="select is-fullwidth">{{ form.sumber_pembiayaan }}</div></div>
+          {% for error in form.sumber_pembiayaan.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label">Jumlah Hari Kalender <span class="badge-auto">Otomatis</span></label>
+          <div class="control">
+            <input type="text" id="hari_kalender" class="input" value="{{ form.instance.jumlah_hari_kalender|default:'' }}" disabled>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.tgl_berangkat.id_for_label }}">Tanggal Keberangkatan</label>
+          <div class="control">{{ form.tgl_berangkat }}</div>
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.tgl_kembali.id_for_label }}">Tanggal Kembali</label>
+          <div class="control">{{ form.tgl_kembali }}</div>
+        </div>
+      </div>
+    </div>
+    {% if form.non_field_errors %}
+      <p class="help is-danger">{{ form.non_field_errors }}</p>
+    {% endif %}
+
+    <div class="field" style="max-width:260px;">
+      <label class="label" for="{{ form.jumlah_hari_kerja.id_for_label }}">Jumlah Hari Kerja</label>
+      <div class="control">{{ form.jumlah_hari_kerja }}</div>
+      {% if profile %}<p class="helptext">Tidak boleh melebihi sisa cuti tahun berjalan ({{ profile.sisa_cuti_tahun_berjalan }} hari).</p>{% endif %}
+      {% for error in form.jumlah_hari_kerja.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+    </div>
+
+    <button type="submit" class="button is-primary">Simpan &amp; Lanjutkan →</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  $(function () {
+    var $b = $('#{{ form.tgl_berangkat.id_for_label }}');
+    var $k = $('#{{ form.tgl_kembali.id_for_label }}');
+    var $out = $('#hari_kalender');
+    function hitung() {
+      if (!$b.val() || !$k.val()) { return; }
+      var d = (new Date($k.val()) - new Date($b.val())) / 86400000 + 1;
+      $out.val(d > 0 ? d : '');
+    }
+    $b.add($k).on('change', hitung);
+  });
+</script>
+{% endblock %}

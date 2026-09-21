@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Manajemen User{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Manajemen User</h2>
+    <p class="sub">Buat akun baru untuk Pegawai atau Admin Unor.</p>
+  </div>
+  <a href="{% url 'pakln:dashboard' %}" class="button is-small">← Kembali ke Dasbor</a>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;margin-bottom:14px;">Tambah User Baru</div>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="id_role">Peran</label>
+          <div class="control"><div class="select is-fullwidth">{{ form.role }}</div></div>
+          {% for e in form.role.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.username.id_for_label }}">Username</label>
+          <div class="control">{{ form.username }}</div>
+          {% for e in form.username.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="{{ form.nama.id_for_label }}">Nama Lengkap</label>
+      <div class="control">{{ form.nama }}</div>
+      {% for e in form.nama.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.password.id_for_label }}">Password</label>
+          <div class="control">{{ form.password }}</div>
+          {% for e in form.password.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.password_konfirmasi.id_for_label }}">Konfirmasi Password</label>
+          <div class="control">{{ form.password_konfirmasi }}</div>
+          {% for e in form.password_konfirmasi.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.unit_organisasi.id_for_label }}">
+            Unit Organisasi
+            <span class="badge-auto" id="unorHint" hidden>Cakupan pengajuan yang diproses Admin Unor</span>
+          </label>
+          <div class="control"><div class="select is-fullwidth">{{ form.unit_organisasi }}</div></div>
+          {% for e in form.unit_organisasi.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.unit_kerja.id_for_label }}">Unit Kerja</label>
+          <div class="control">{{ form.unit_kerja }}</div>
+          {% for e in form.unit_kerja.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div id="pegawaiFields">
+      <div class="section-title" style="font-size:13px;margin:6px 0 12px;">
+        Data Kepegawaian <span class="badge-auto">Khusus role Pegawai</span>
+      </div>
+      <div class="columns">
+        <div class="column">
+          <div class="field">
+            <label class="label" for="{{ form.nip.id_for_label }}">NIP</label>
+            <div class="control">{{ form.nip }}</div>
+            {% for e in form.nip.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+          </div>
+        </div>
+        <div class="column">
+          <div class="field">
+            <label class="label" for="{{ form.pangkat_golongan.id_for_label }}">Pangkat/Golongan</label>
+            <div class="control">{{ form.pangkat_golongan }}</div>
+            {% for e in form.pangkat_golongan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="columns">
+        <div class="column">
+          <div class="field">
+            <label class="label" for="{{ form.jabatan.id_for_label }}">Jabatan</label>
+            <div class="control">{{ form.jabatan }}</div>
+            {% for e in form.jabatan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+          </div>
+        </div>
+        <div class="column">
+          <div class="field">
+            <label class="label" for="{{ form.sisa_cuti_tahun_berjalan.id_for_label }}">Sisa Cuti Tahun Berjalan (hari)</label>
+            <div class="control">{{ form.sisa_cuti_tahun_berjalan }}</div>
+            {% for e in form.sisa_cuti_tahun_berjalan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if form.non_field_errors %}<p class="help is-danger">{{ form.non_field_errors }}</p>{% endif %}
+
+    <button type="submit" class="button is-primary">Simpan User</button>
+  </form>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;">
+    Daftar User <span class="badge-auto" id="usersCount">{{ users_count }}</span>
+  </div>
+  <div class="table-wrap">
+    <table id="usersTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
+      <thead>
+        <tr><th>Username</th><th>Nama</th><th>Peran</th><th>NIP</th><th>Unit Organisasi</th><th>Status</th><th>Aksi</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
+<script>
+  $(function () {
+    function toggleByRole() {
+      var isPegawai = $('#id_role').val() === 'pegawai';
+      $('#pegawaiFields').toggle(isPegawai);
+      $('#unorHint').prop('hidden', isPegawai);
+    }
+    $('#id_role').on('change', toggleByRole);
+    toggleByRole();
+
+    $('#usersTable').DataTable({
+      serverSide: true,
+      processing: true,
+      ajax: { url: '{% url "pakln:users_data" %}', type: 'GET' },
+      columns: [
+        { data: 0 },
+        { data: 1 },
+        { data: 2 },
+        { data: 3 },
+        { data: 4 },
+        { data: 5 },
+        { data: 6, orderable: false, searchable: false },
+      ],
+      order: [[0, 'asc']],
+      pageLength: 10,
+      lengthMenu: [10, 25, 50, 100],
+      dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
+      language: {
+        search: '',
+        searchPlaceholder: 'Cari user...',
+        lengthMenu: 'Tampilkan _MENU_ user',
+        info: 'Menampilkan _START_–_END_ dari _TOTAL_ user',
+        infoEmpty: 'Tidak ada user',
+        infoFiltered: '(disaring dari _MAX_ total user)',
+        zeroRecords: 'Tidak ada user yang cocok.',
+        processing: 'Memuat…',
+        paginate: { previous: '‹ Sebelumnya', next: 'Berikutnya ›' },
+      },
+    }).on('xhr.dt', function (e, settings, json) {
+      if (json) { $('#usersCount').text(json.recordsTotal); }
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Manajemen Template{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Manajemen Template</h2>
+    <p class="sub">Unggah template dokumen (PDF/DOCX) yang dapat diunduh Pegawai dan/atau Admin Unor.</p>
+  </div>
+  <a href="{% url 'pakln:dashboard' %}" class="button is-small">← Kembali ke Dasbor</a>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;margin-bottom:14px;">Tambah Template Baru</div>
+
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.nama.id_for_label }}">Nama Template</label>
+          <div class="control">{{ form.nama }}</div>
+          {% for e in form.nama.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.keterangan.id_for_label }}">Keterangan</label>
+          <div class="control">{{ form.keterangan }}</div>
+          {% for e in form.keterangan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="{{ form.file.id_for_label }}">Berkas (PDF atau DOCX)</label>
+      <div class="control">{{ form.file }}</div>
+      {% for e in form.file.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div class="section-title" style="font-size:13px;margin:14px 0 10px;">Penargetan</div>
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="checkbox" for="{{ form.untuk_pegawai.id_for_label }}">
+            {{ form.untuk_pegawai }} {{ form.fields.untuk_pegawai.label }}
+          </label>
+        </div>
+        <div class="field">
+          <label class="checkbox" for="{{ form.untuk_admin_unor.id_for_label }}">
+            {{ form.untuk_admin_unor }} {{ form.fields.untuk_admin_unor.label }}
+          </label>
+        </div>
+        {% if form.non_field_errors %}<p class="help is-danger">{{ form.non_field_errors }}</p>{% endif %}
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.kategori.id_for_label }}">{{ form.fields.kategori.label }}</label>
+          <div class="control"><div class="select is-fullwidth">{{ form.kategori }}</div></div>
+          {% for e in form.kategori.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label">{{ form.fields.unit_organisasi.label }}</label>
+      <div class="control unit-checkbox-grid">{{ form.unit_organisasi }}</div>
+      <p class="helptext">{{ form.fields.unit_organisasi.help_text }}</p>
+      {% for e in form.unit_organisasi.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div class="field">
+      <label class="checkbox" for="{{ form.aktif.id_for_label }}">
+        {{ form.aktif }} {{ form.fields.aktif.label }}
+      </label>
+    </div>
+
+    <button type="submit" class="button is-primary">Simpan Template</button>
+  </form>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;">
+    Daftar Template <span class="badge-auto">{{ templates|length }}</span>
+  </div>
+  <div class="table-wrap">
+    <table class="table data-table is-fullwidth is-hoverable">
+      <thead>
+        <tr><th>Nama</th><th>Target</th><th>Unit Organisasi</th><th>Kategori</th><th>Status</th><th>Aksi</th></tr>
+      </thead>
+      <tbody>
+        {% for t in templates %}
+          <tr>
+            <td>
+              <strong>{{ t.nama }}</strong>
+              {% if t.keterangan %}<br><span class="cell-muted">{{ t.keterangan }}</span>{% endif %}
+            </td>
+            <td>
+              {% if t.untuk_pegawai %}<span class="badge-auto">Pegawai</span>{% endif %}
+              {% if t.untuk_admin_unor %}<span class="badge-auto">Admin Unor</span>{% endif %}
+            </td>
+            <td>
+              {% with units=t.unit_organisasi.all %}
+                {% if units %}
+                  {% for u in units %}<span class="badge-auto">{{ u.alias }}</span>{% endfor %}
+                {% else %}
+                  <span class="cell-muted">Semua unit</span>
+                {% endif %}
+              {% endwith %}
+            </td>
+            <td>
+              {% if t.kategori %}{{ t.get_kategori_display }}{% else %}<span class="cell-muted">Semua kategori</span>{% endif %}
+            </td>
+            <td>
+              {% if t.aktif %}
+                <span class="tag paspor-status is-selesai"><span class="dot"></span>Aktif</span>
+              {% else %}
+                <span class="tag paspor-status is-belum"><span class="dot"></span>Disembunyikan</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="actions" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                <a href="{{ t.file.url }}" target="_blank" rel="noopener" class="button is-small">⬇ Unduh</a>
+                <a href="{% url 'pakln:edit_template' template_id=t.pk %}" class="button is-small">✎ Edit</a>
+                <form method="post" action="{% url 'pakln:toggle_template' template_id=t.pk %}" style="margin:0;">
+                  {% csrf_token %}
+                  <button type="submit" class="button is-small">{% if t.aktif %}🙈 Sembunyikan{% else %}👁 Tampilkan{% endif %}</button>
+                </form>
+                <form method="post" action="{% url 'pakln:hapus_template' template_id=t.pk %}" style="margin:0;" onsubmit="return confirm('Hapus template ini?');">
+                  {% csrf_token %}
+                  <button type="submit" class="button is-small is-danger">🗑 Hapus</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="cell-muted" style="text-align:center;">Belum ada template.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

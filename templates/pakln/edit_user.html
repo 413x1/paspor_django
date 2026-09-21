@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Edit User{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Edit User</h2>
+    <p class="sub">{{ user_obj.username }} · {{ user_obj.get_role_display }}</p>
+  </div>
+  <a href="{% url 'pakln:kelola_user' %}" class="button is-small">← Kembali ke Manajemen User</a>
+</div>
+
+<div class="box">
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label">Peran</label>
+          <div class="control"><input class="input" value="{{ user_obj.get_role_display }}" disabled></div>
+          <p class="helptext">Peran tidak dapat diubah di sini.</p>
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.username.id_for_label }}">Username</label>
+          <div class="control">{{ form.username }}</div>
+          {% for e in form.username.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="{{ form.nama.id_for_label }}">Nama Lengkap</label>
+      <div class="control">{{ form.nama }}</div>
+      {% for e in form.nama.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div class="field">
+      <label class="checkbox" for="{{ form.is_active.id_for_label }}">
+        {{ form.is_active }} Akun aktif
+      </label>
+      <p class="helptext">Nonaktifkan untuk mencegah user ini masuk (login) tanpa menghapus datanya.</p>
+    </div>
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.unit_organisasi.id_for_label }}">Unit Organisasi</label>
+          <div class="control"><div class="select is-fullwidth">{{ form.unit_organisasi }}</div></div>
+          {% for e in form.unit_organisasi.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.unit_kerja.id_for_label }}">Unit Kerja</label>
+          <div class="control">{{ form.unit_kerja }}</div>
+          {% for e in form.unit_kerja.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {% if user_obj.role == "pegawai" %}
+      <div class="section-title" style="font-size:13px;margin:6px 0 12px;">
+        Data Kepegawaian <span class="badge-auto">Khusus role Pegawai</span>
+      </div>
+      <div class="columns">
+        <div class="column">
+          <div class="field">
+            <label class="label" for="{{ form.nip.id_for_label }}">NIP</label>
+            <div class="control">{{ form.nip }}</div>
+            {% for e in form.nip.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+          </div>
+        </div>
+        <div class="column">
+          <div class="field">
+            <label class="label" for="{{ form.pangkat_golongan.id_for_label }}">Pangkat/Golongan</label>
+            <div class="control">{{ form.pangkat_golongan }}</div>
+            {% for e in form.pangkat_golongan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="columns">
+        <div class="column">
+          <div class="field">
+            <label class="label" for="{{ form.jabatan.id_for_label }}">Jabatan</label>
+            <div class="control">{{ form.jabatan }}</div>
+            {% for e in form.jabatan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+          </div>
+        </div>
+        <div class="column">
+          <div class="field">
+            <label class="label" for="{{ form.sisa_cuti_tahun_berjalan.id_for_label }}">Sisa Cuti Tahun Berjalan (hari)</label>
+            <div class="control">{{ form.sisa_cuti_tahun_berjalan }}</div>
+            {% for e in form.sisa_cuti_tahun_berjalan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="section-title" style="font-size:13px;margin:6px 0 12px;">
+      Ganti Password <span class="badge-auto">Opsional</span>
+    </div>
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.password_baru.id_for_label }}">Password Baru</label>
+          <div class="control">{{ form.password_baru }}</div>
+          {% for e in form.password_baru.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.password_baru_konfirmasi.id_for_label }}">Konfirmasi Password Baru</label>
+          <div class="control">{{ form.password_baru_konfirmasi }}</div>
+          {% for e in form.password_baru_konfirmasi.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {% if form.non_field_errors %}<p class="help is-danger">{{ form.non_field_errors }}</p>{% endif %}
+
+    <div class="actions-bar">
+      <a href="{% url 'pakln:kelola_user' %}" class="button">Batal</a>
+      <button type="submit" class="button is-primary">Simpan Perubahan</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

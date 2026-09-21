@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Edit Template{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Edit Template</h2>
+    <p class="sub">{{ template.nama }}</p>
+  </div>
+  <a href="{% url 'pakln:kelola_template' %}" class="button is-small">← Kembali ke Manajemen Template</a>
+</div>
+
+<div class="box">
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.nama.id_for_label }}">Nama Template</label>
+          <div class="control">{{ form.nama }}</div>
+          {% for e in form.nama.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.keterangan.id_for_label }}">Keterangan</label>
+          <div class="control">{{ form.keterangan }}</div>
+          {% for e in form.keterangan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="{{ form.file.id_for_label }}">Berkas (PDF atau DOCX)</label>
+      <p class="helptext">Berkas saat ini: <a href="{{ template.file.url }}" target="_blank" rel="noopener">{{ template.file.name }}</a>. Kosongkan untuk mempertahankan berkas ini.</p>
+      <div class="control">{{ form.file }}</div>
+      {% for e in form.file.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div class="section-title" style="font-size:13px;margin:14px 0 10px;">Penargetan</div>
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="checkbox" for="{{ form.untuk_pegawai.id_for_label }}">
+            {{ form.untuk_pegawai }} {{ form.fields.untuk_pegawai.label }}
+          </label>
+        </div>
+        <div class="field">
+          <label class="checkbox" for="{{ form.untuk_admin_unor.id_for_label }}">
+            {{ form.untuk_admin_unor }} {{ form.fields.untuk_admin_unor.label }}
+          </label>
+        </div>
+        {% if form.non_field_errors %}<p class="help is-danger">{{ form.non_field_errors }}</p>{% endif %}
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.kategori.id_for_label }}">{{ form.fields.kategori.label }}</label>
+          <div class="control"><div class="select is-fullwidth">{{ form.kategori }}</div></div>
+          {% for e in form.kategori.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label">{{ form.fields.unit_organisasi.label }}</label>
+      <div class="control unit-checkbox-grid">{{ form.unit_organisasi }}</div>
+      <p class="helptext">{{ form.fields.unit_organisasi.help_text }}</p>
+      {% for e in form.unit_organisasi.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div class="field">
+      <label class="checkbox" for="{{ form.aktif.id_for_label }}">
+        {{ form.aktif }} {{ form.fields.aktif.label }}
+      </label>
+    </div>
+
+    <div class="actions-bar">
+      <a href="{% url 'pakln:kelola_template' %}" class="button">Batal</a>
+      <button type="submit" class="button is-primary">Simpan Perubahan</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

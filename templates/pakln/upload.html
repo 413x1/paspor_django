@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load pengajuan_extras %}
+{% block title %}Unggah Dokumen Administrasi Biro PAKLN{% endblock %}
+{% block wrap_extra_class %} narrow{% endblock %}
+
+{% block content %}
+<div class="box">
+  <div class="section-title">Unggah Dokumen Administrasi Biro PAKLN — {{ pengajuan.kode }}</div>
+
+  {% for value, label in jenis_choices %}
+    {% with dok=dokumen_map|get_item:value %}
+    <div class="doc-row {% if dok %}uploaded{% endif %}">
+      <div class="info">
+        <h4>{{ label }}</h4>
+        {% if dok %}
+          <p style="color:var(--green);">✓ Sudah diunggah — {{ dok.uploaded_at|date:"d M Y H:i" }}</p>
+        {% else %}
+          <p>Belum diunggah.</p>
+        {% endif %}
+      </div>
+      <div class="actions">
+        {% if dok %}
+          <button type="button" class="button is-small" data-doc-preview="{{ dok.file.url }}" data-doc-title="{{ label }}">👁 Pratinjau</button>
+          <form method="post" action="{% url 'pakln:hapus_dokumen' kode=pengajuan.kode jenis=value %}" style="margin:0;" onsubmit="return confirm('Hapus dokumen ini?');">
+            {% csrf_token %}
+            <button type="submit" class="button is-small is-danger">🗑 Hapus</button>
+          </form>
+        {% endif %}
+        <form method="post" enctype="multipart/form-data" class="actions doc-upload-form" style="margin:0;">
+          {% csrf_token %}
+          <input type="hidden" name="jenis" value="{{ value }}">
+          <input type="file" name="file" required class="doc-file-input" style="font-size:12.5px;max-width:160px;">
+          <button type="submit" class="button is-small doc-upload-submit">⬆ Unggah</button>
+        </form>
+      </div>
+    </div>
+    {% endwith %}
+  {% endfor %}
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="agree-box">
+      <input type="checkbox" id="agree" name="agree" required>
+      <label for="agree">
+        Seluruh dokumen administrasi Biro PAKLN telah lengkap, untuk selanjutnya menyelesaikan proses perizinan.
+      </label>
+    </div>
+    <button type="submit" name="selesaikan" class="button is-warning is-fullwidth" {% if not lengkap %}disabled{% endif %}>
+      Selesaikan Proses ✓
+    </button>
+    {% if not lengkap %}
+      <p class="helptext">Lengkapi seluruh direktori dokumen untuk melanjutkan.</p>
+    {% endif %}
+  </form>
+</div>
+
+<div style="display:flex; gap:10px;">
+  <a href="{% url 'pakln:preview' kode=pengajuan.kode %}" class="button" style="flex:1;">← Kembali ke Pratinjau</a>
+  <a href="{% url 'pakln:dashboard' %}" class="button" style="flex:1;">Kembali ke Dasbor</a>
+</div>
+{% endblock %}

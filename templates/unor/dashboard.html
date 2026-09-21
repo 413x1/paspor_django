@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Dasbor Admin Unor{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Dasbor Admin Unor</h2>
+    <p class="sub">Unit Organisasi: <strong>{{ user.unit_organisasi.name|default:"— belum ditetapkan —" }}</strong></p>
+  </div>
+</div>
+
+<div class="section-title">Ringkasan Progres</div>
+<div class="summary-grid">
+  <div class="summary-card"><div class="num">{{ summary.total }}</div><div class="label">Total Pengajuan dari Pegawai</div></div>
+  <div class="summary-card active"><div class="num">{{ summary.proses }}</div><div class="label">Dalam Proses Unor</div></div>
+  <div class="summary-card"><div class="num">{{ summary.proses_pakln }}</div><div class="label">Dalam Proses Biro PAKLN</div></div>
+  <div class="summary-card"><div class="num">{{ summary.selesai }}</div><div class="label">Selesai</div></div>
+</div>
+
+<div class="box">
+  <div class="section-title">Tabel Rincian per Pengajuan Pegawai</div>
+  <div class="table-wrap">
+    <table class="table data-table is-fullwidth is-hoverable">
+      <thead>
+        <tr>
+          <th>Pegawai</th><th>Unit Kerja</th><th>Jenis</th><th>Kategori</th><th>Tujuan</th>
+          <th>Berangkat</th><th>Kembali</th><th>Tgl Pengajuan</th><th>Kanal</th><th>Status</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in pengajuan_list %}
+          <tr>
+            <td>
+              <strong>{{ p.pegawai.profile.nama }}</strong><br>
+              <span class="cell-muted">{{ p.pegawai.profile.nip }}</span>
+            </td>
+            <td>{{ p.pegawai.profile.unit_kerja }}</td>
+            <td>Non-Kedinasan</td>
+            <td>{{ p.kategori|default:"—" }}</td>
+            <td>{{ p.tujuan_negara|default:"—" }}</td>
+            <td>{{ p.tgl_berangkat|date:"d M Y"|default:"—" }}</td>
+            <td>{{ p.tgl_kembali|date:"d M Y"|default:"—" }}</td>
+            <td>{{ p.tgl_pengajuan|date:"d M Y"|default:"—" }}</td>
+            <td>{{ p.get_kanal_display }}</td>
+            <td><span class="tag paspor-status is-{{ p.status }}"><span class="dot"></span>{{ p.get_status_display }}</span></td>
+            <td>
+              {% if p.status == "proses" and not p.preview_unor_agree %}
+                <a href="{% url 'unor:preview' kode=p.kode %}" class="button is-warning is-small">TL →</a>
+              {% elif p.status == "proses" %}
+                <a href="{% url 'unor:upload_dokumen' kode=p.kode %}" class="button is-warning is-small">TL →</a>
+              {% else %}
+                <a href="{% url 'unor:preview' kode=p.kode %}" class="button is-small">Lihat</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="11" class="cell-muted" style="text-align:center;">Belum ada pengajuan yang masuk.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

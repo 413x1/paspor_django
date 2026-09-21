@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Unggah Berkas PDF{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Unggah Berkas PDF</h2>
+    <p class="sub">Demo penyimpanan objek MinIO — dapat diakses tanpa login, lihat wiki/UPLOAD_FILE.MD</p>
+  </div>
+</div>
+
+<div class="box">
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="field">
+      <label class="label" for="{{ form.file.id_for_label }}">Berkas PDF (maks. 10MB)</label>
+      <div class="control">
+        {{ form.file }}
+      </div>
+      {% if form.file.errors %}
+        <p class="helptext" style="color:var(--red, #d33);">{{ form.file.errors.0 }}</p>
+      {% endif %}
+    </div>
+    <button type="submit" class="button is-primary">⬆ Unggah ke MinIO</button>
+  </form>
+</div>
+
+<div class="box">
+  <h4>Berkas Terunggah</h4>
+  {% if not files %}
+    <p>Belum ada berkas yang diunggah.</p>
+  {% else %}
+    {% for f in files %}
+    <div class="doc-row uploaded">
+      <div class="info">
+        <h4>{{ f.original_filename }}</h4>
+        <p>{{ f.size|filesizeformat }} · {{ f.uploaded_at|date:"d M Y H:i" }}</p>
+      </div>
+      <div class="actions">
+        <button type="button" class="button is-small" data-doc-preview="{% url 'fileupload:view' f.pk %}" data-doc-title="{{ f.original_filename }}">👁 Pratinjau</button>
+        <a class="button is-small" href="{% url 'fileupload:view' f.pk %}" target="_blank" rel="noopener">⬇ Buka</a>
+        <form method="post" action="{% url 'fileupload:delete' f.pk %}" style="margin:0;" onsubmit="return confirm('Hapus berkas ini?');">
+          {% csrf_token %}
+          <button type="submit" class="button is-small is-danger">🗑 Hapus</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}

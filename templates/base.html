@@ -1,0 +1,155 @@
+{% load static pengajuan_extras %}<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}PASPOR{% endblock %} — Kementerian PU</title>
+  <link rel="stylesheet" href="{% static 'vendors/bulma/css/versions/bulma-no-dark-mode.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260918b">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<nav class="navbar paspor-topbar" role="navigation" aria-label="main navigation">
+  <div class="navbar-brand">
+    <span class="navbar-item brand">
+      <img class="logo" src="{% static 'images/logopu.png' %}" alt="Logo Kementerian PU">
+      <span class="brand-text">
+        <strong>PASPOR</strong>
+        <small>Platform Administrasi Surat Perjalanan Overseas Request</small>
+      </span>
+    </span>
+    <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="pasporNav">
+      <span aria-hidden="true"></span><span aria-hidden="true"></span>
+      <span aria-hidden="true"></span><span aria-hidden="true"></span>
+    </a>
+  </div>
+  <div id="pasporNav" class="navbar-menu">
+    <div class="navbar-start">
+      {% if user.is_authenticated %}
+        {% with vn=request.resolver_match.view_name %}
+        {% if user.role == 'pegawai' %}
+          <a class="navbar-item {% if vn == 'pegawai:beranda' %}is-active{% endif %}" href="{% url 'pegawai:beranda' %}">Beranda</a>
+        {% elif user.role == 'admin_unor' %}
+          <a class="navbar-item {% if vn == 'unor:dashboard' %}is-active{% endif %}" href="{% url 'unor:dashboard' %}">Dasbor</a>
+          <a class="navbar-item {% if vn == 'unor:export' %}is-active{% endif %}" href="{% url 'unor:export' %}">Export</a>
+        {% elif user.role == 'admin_pakln' %}
+          <a class="navbar-item {% if vn == 'pakln:dashboard' %}is-active{% endif %}" href="{% url 'pakln:dashboard' %}">Dasbor</a>
+          <a class="navbar-item {% if vn == 'pakln:kelola_user' %}is-active{% endif %}" href="{% url 'pakln:kelola_user' %}">Manajemen User</a>
+          <a class="navbar-item {% if vn == 'pakln:kelola_template' or vn == 'pakln:edit_template' %}is-active{% endif %}" href="{% url 'pakln:kelola_template' %}">Manajemen Template</a>
+          <a class="navbar-item {% if vn == 'pakln:export' %}is-active{% endif %}" href="{% url 'pakln:export' %}">Export</a>
+        {% endif %}
+        {% endwith %}
+      {% endif %}
+    </div>
+    <div class="navbar-end">
+      {% if user.is_authenticated %}
+        <span class="navbar-item">
+          <span class="tag paspor-role">{{ user.get_role_display }}</span>
+        </span>
+        <span class="navbar-item is-hidden-touch">{{ user.get_full_name|default:user.username }}</span>
+        <span class="navbar-item">
+          <span class="avatar-chip">{{ user.get_full_name|default:user.username|initials }}</span>
+        </span>
+        <span class="navbar-item">
+          <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="button is-small is-logout">Keluar</button>
+          </form>
+        </span>
+      {% endif %}
+    </div>
+  </div>
+</nav>
+
+<main class="page-wrap{% block wrap_extra_class %}{% endblock %}">
+  {% if messages %}
+    {% for message in messages %}
+      <div class="notification paspor-msg {% if message.tags == 'error' %}is-danger{% elif message.tags == 'success' %}is-success{% elif message.tags == 'warning' %}is-warning{% else %}is-info{% endif %}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  {% block content %}{% endblock %}
+</main>
+
+{# Modal pratinjau dokumen — dipakai bersama oleh semua halaman #}
+<div id="docPreviewModal" class="modal">
+  <div class="modal-background"></div>
+  <div class="modal-card doc-preview-card">
+    <header class="modal-card-head">
+      <p class="modal-card-title" id="docPreviewTitle">Pratinjau Dokumen</p>
+      <button class="delete" aria-label="close" data-modal-close></button>
+    </header>
+    <section class="modal-card-body" style="padding:0;">
+      <iframe id="docPreviewFrame" title="Pratinjau dokumen" src="about:blank"></iframe>
+    </section>
+    <footer class="modal-card-foot" style="justify-content:flex-end;">
+      <a id="docPreviewOpen" href="#" target="_blank" rel="noopener" class="button is-small">Buka di tab baru</a>
+      <button class="button is-small" data-modal-close>Tutup</button>
+    </footer>
+  </div>
+</div>
+
+<script src="{% static 'vendors/JQuery/jquery-4.0.0.min.js' %}"></script>
+<script>
+  $(function () {
+    // Navbar burger (mobile)
+    $('.navbar-burger').on('click', function () {
+      var $t = $('#' + $(this).data('target'));
+      $(this).toggleClass('is-active');
+      $t.toggleClass('is-active');
+    });
+
+    function closeModals() {
+      $('.modal').removeClass('is-active');
+      $('#docPreviewFrame').attr('src', 'about:blank');
+    }
+
+    // Generic modal open/close (Bulma)
+    $(document).on('click', '[data-modal-open]', function () {
+      $('#' + $(this).data('modal-open')).addClass('is-active');
+    });
+    $(document).on('click', '.modal-background, [data-modal-close]', closeModals);
+    $(document).on('keydown', function (e) {
+      if (e.key === 'Escape') { closeModals(); }
+    });
+
+    // Pratinjau dokumen di dalam modal (tanpa membuka tab baru)
+    $(document).on('click', '[data-doc-preview]', function (e) {
+      e.preventDefault();
+      var url = $(this).data('doc-preview');
+      // Untuk PDF: sembunyikan panel thumbnail/bookmark bawaan viewer.
+      var frameUrl = /\.pdf($|\?)/i.test(url)
+        ? url + (url.indexOf('#') === -1 ? '#' : '&') + 'toolbar=1&navpanes=0&statusbar=0&view=FitH'
+        : url;
+      $('#docPreviewTitle').text($(this).data('doc-title') || 'Pratinjau Dokumen');
+      $('#docPreviewFrame').attr('src', frameUrl);
+      $('#docPreviewOpen').attr('href', url);
+      $('#docPreviewModal').addClass('is-active');
+    });
+
+    // Unggah dokumen otomatis begitu berkas dipilih (halaman Unggah Dokumen
+    // Pegawai/Unor/Biro PAKLN) — tombol submit disembunyikan sebagai
+    // fallback bila JS nonaktif.
+    $('.doc-upload-submit').hide();
+    $(document).on('change', '.doc-file-input', function () {
+      var $form = $(this).closest('form');
+      // Jangan disable input file sebelum submit — browser tidak akan
+      // menyertakan field yang disabled ke body POST, sehingga upload
+      // gagal validasi (field "file" kosong).
+      $form.find('.doc-upload-submit').text('Mengunggah…').prop('disabled', true);
+      $(this).prop('readonly', true);
+      $form.trigger('submit');
+    });
+
+    // Checkbox yang langsung submit form-nya sendiri begitu dicentang atau
+    // dilepas centangnya (mis. checklist Dokumen Pendukung Unor) — proses
+    // berdiri sendiri, terpisah dari unggah berkas.
+    $(document).on('change', '.auto-toggle', function () {
+      $(this).closest('form').trigger('submit');
+    });
+  });
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

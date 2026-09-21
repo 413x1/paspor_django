@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Pratinjau Pengajuan{% endblock %}
+{% block wrap_extra_class %} narrow{% endblock %}
+
+{% block content %}
+<div class="box">
+  <div class="section-title">Pratinjau Pengajuan dari Pegawai — {{ pengajuan.kode }}</div>
+
+  <div class="field-readonly-grid">
+    <div class="field">
+      <label class="label">Nama Pegawai <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.pegawai.profile.nama }}" readonly></div>
+    </div>
+    <div class="field">
+      <label class="label">NIP <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.pegawai.profile.nip }}" readonly></div>
+    </div>
+    <div class="field">
+      <label class="label">Jabatan <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.pegawai.profile.jabatan }}" readonly></div>
+    </div>
+    <div class="field">
+      <label class="label">Pangkat/Golongan <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.pegawai.profile.pangkat_golongan }}" readonly></div>
+    </div>
+    <div class="field">
+      <label class="label">Unit Kerja <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.pegawai.profile.unit_kerja }}" readonly></div>
+    </div>
+    <div class="field">
+      <label class="label">Unit Organisasi <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.pegawai.profile.unit_organisasi.name }}" readonly></div>
+    </div>
+    <div class="field">
+      <label class="label">Kategori Perjalanan <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.kategori }}" readonly></div>
+    </div>
+    <div class="field">
+      <label class="label">Tujuan Negara <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.tujuan_negara }}" readonly></div>
+    </div>
+    <div class="field" style="grid-column:1/-1;">
+      <label class="label">Maksud Perjalanan <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.maksud }}" readonly></div>
+    </div>
+    <div class="field">
+      <label class="label">Tanggal Keberangkatan <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.tgl_berangkat|date:'d M Y' }}" readonly></div>
+    </div>
+    <div class="field">
+      <label class="label">Tanggal Kembali <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.tgl_kembali|date:'d M Y' }}" readonly></div>
+    </div>
+    <div class="field">
+      <label class="label">Jumlah Hari Kerja <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.jumlah_hari_kerja }}" readonly></div>
+    </div>
+    <div class="field">
+      <label class="label">Sumber Pembiayaan <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.sumber_pembiayaan }}" readonly></div>
+    </div>
+  </div>
+
+  <div class="section-title" style="font-size:15px;margin-top:10px;">Direktori Unggahan Pegawai</div>
+  {% for dok in pengajuan.dokumen_pegawai.all %}
+    <div class="doc-row uploaded" style="padding:10px 14px;">
+      <div class="info"><h4 style="font-size:13.5px;">{{ dok.get_jenis_display }}</h4></div>
+      <div class="actions">
+        <button type="button" class="button is-small" data-doc-preview="{{ dok.file.url }}" data-doc-title="{{ dok.get_jenis_display }}">👁 Lihat</button>
+      </div>
+    </div>
+  {% empty %}
+    <p class="cell-muted">Belum ada dokumen yang diunggah pegawai.</p>
+  {% endfor %}
+
+  {% if pengajuan.preview_unor_agree %}
+    <a href="{% url 'unor:upload_dokumen' kode=pengajuan.kode %}" class="button is-primary is-fullwidth" style="margin-top:16px;">
+      Lanjut ke Administrasi Unor →
+    </a>
+  {% else %}
+    <form method="post" style="margin-top:16px;">
+      {% csrf_token %}
+      <div class="agree-box">
+        <input type="checkbox" id="confirm" name="confirm" required>
+        <label for="confirm">
+          Dokumen dan formulir telah <strong>ditinjau dan sesuai</strong>, untuk selanjutnya diproses administrasi oleh Admin Unor.
+        </label>
+      </div>
+      <button type="submit" name="lanjutkan" class="button is-primary is-fullwidth">Lanjutkan ke Administrasi Unor →</button>
+    </form>
+  {% endif %}
+</div>
+
+<div class="box" style="background:#fdecea; border-color:#f3c6c2;">
+  <div class="section-title" style="font-size:14px;">↩ Kembalikan ke Pegawai</div>
+  <p class="cell-muted" style="margin:-8px 0 14px;">
+    Gunakan ini jika formulir atau dokumen pengajuan perlu diperbaiki pegawai sebelum dapat diproses lebih lanjut.
+    Pengajuan akan berstatus <strong>Belum Diajukan</strong> kembali sampai pegawai mengirim ulang.
+  </p>
+  <form method="post" onsubmit="return confirm('Kembalikan pengajuan ini ke pegawai beserta catatan?');">
+    {% csrf_token %}
+    <div class="field">
+      <label class="label" for="catatan">Catatan untuk Pegawai</label>
+      <div class="control">
+        <textarea class="textarea" id="catatan" name="catatan" rows="3" required placeholder="cth. Dokumen Formulir Izin Luar Negeri belum ditandatangani, mohon diunggah ulang."></textarea>
+      </div>
+    </div>
+    <button type="submit" name="kembalikan" class="button is-danger is-fullwidth">↩ Kembalikan ke Pegawai</button>
+  </form>
+</div>
+
+<a href="{% url 'unor:dashboard' %}" class="button is-fullwidth">← Kembali ke Dasbor</a>
+{% endblock %}

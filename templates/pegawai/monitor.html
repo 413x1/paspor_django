@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Monitor Progres{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Monitor Progres</h2>
+    <p class="sub">{{ pengajuan.kode }}</p>
+  </div>
+  <a href="{% url 'pegawai:beranda' %}" class="button is-small">← Kembali ke Beranda</a>
+</div>
+
+<div class="box">
+  <div class="monitor-summary">
+    <div>
+      <div class="dest">🌏 {{ pengajuan.tujuan_negara|default:"—" }}</div>
+      <div class="meta">
+        {{ pengajuan.kategori|default:"—" }} · Diajukan {{ pengajuan.tgl_pengajuan|date:"d M Y"|default:"—" }} via {{ pengajuan.get_kanal_display }}
+      </div>
+    </div>
+    <span class="tag paspor-status is-{{ pengajuan.status }}"><span class="dot"></span>{{ pengajuan.get_status_display }}</span>
+  </div>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;">Timeline Proses</div>
+  <ul class="timeline">
+    {% for step in pengajuan.timeline %}
+      <li>
+        <div class="dot-wrap {{ step.state }}">
+          {% if step.state == "done" %}✓{% elif step.state == "current" %}●{% else %}○{% endif %}
+        </div>
+        <div>
+          <h4>{{ step.title }}</h4>
+          <p>{{ step.desc }}</p>
+          {% if step.tanggal %}<div class="tgl">{{ step.tanggal|date:"d M Y" }}</div>{% endif %}
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

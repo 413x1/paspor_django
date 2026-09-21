@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Export Database{% endblock %}
+
+{% block content %}
+<div class="box">
+  <div class="page-head" style="margin-bottom:0;">
+    <div>
+      <div class="section-title" style="margin:0;">Export Database — Admin Biro PAKLN</div>
+      <p class="section-sub" style="margin:4px 0 0;">Unduh data rincian pengajuan untuk kebutuhan pelaporan tingkat pusat.</p>
+    </div>
+    <a href="?format=csv" class="button is-primary">⬇ Export CSV</a>
+  </div>
+</div>
+
+<div class="box">
+  <div class="table-wrap">
+    <table class="table data-table is-fullwidth is-hoverable">
+      <thead>
+        <tr><th>Pegawai</th><th>Kategori</th><th>Tujuan</th><th>Tgl Masuk PAKLN</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for p in pengajuan_list %}
+          <tr>
+            <td><strong>{{ p.pegawai.profile.nama }}</strong></td>
+            <td>{{ p.kategori|default:"—" }}</td>
+            <td>{{ p.tujuan_negara|default:"—" }}</td>
+            <td>{{ p.tgl_masuk_pakln|date:"d M Y"|default:"—" }}</td>
+            <td><span class="tag paspor-status is-{{ p.status }}"><span class="dot"></span>{{ p.get_status_display }}</span></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="cell-muted" style="text-align:center;">Belum ada data.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

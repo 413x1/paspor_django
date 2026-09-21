@@ -1,0 +1,395 @@
+/* ===========================================================================
+   PASPOR — lapisan tema di atas Bulma 1.x
+   Bulma menyediakan struktur (navbar, box, button, table, form, modal,
+   notification, columns). File ini menyetel palet & komponen khas PASPOR
+   sehingga tampilan tetap sama seperti sebelum migrasi.
+   =========================================================================== */
+
+:root {
+  /* ---- Palet PASPOR ---- */
+  --navy-900: #1d3557;
+  --navy-800: #27406b;
+  --navy-700: #374774;
+  --teal: #24819b;
+  --gold: #ffbd12;       /* mockup --gold-500 */
+  --gold-600: #e8a400;   /* mockup --gold-600 (hover) */
+  --gold-dark: #8a5a00;
+  --slate-900: #1f2430;
+  --slate-600: #4a5163;
+  --slate-400: #7a8194;
+  --line: #d7dbe3;
+  --bg: #f4f6fb;
+  --white: #ffffff;
+  --green: #2f9e64;
+  --green-bg: #e5f6ec;
+  --gold-bg: #fff4d6;
+  --blue-bg: #e6f1fb;
+  --shadow: 0 10px 30px rgba(29, 53, 87, 0.12);
+  --radius: 14px;
+
+  /* ---- Override variabel Bulma agar mengikuti brand ---- */
+  --bulma-family-primary: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --bulma-body-background-color: var(--bg);
+  --bulma-body-color: var(--slate-900);
+  --bulma-radius-small: 8px;
+  --bulma-radius: 10px;
+  --bulma-radius-large: 14px;
+  --bulma-link: var(--teal);
+
+  /* primary = navy */
+  --bulma-primary-h: 215deg;
+  --bulma-primary-s: 50%;
+  --bulma-primary-l: 23%;
+  --bulma-primary-invert-l: 100%;
+  /* warning = gold (mockup --gold-500 #FFBD12) */
+  --bulma-warning-h: 43deg;
+  --bulma-warning-s: 100%;
+  --bulma-warning-l: 54%;
+  --bulma-warning-invert-l: 15%;
+  /* success = hijau PASPOR */
+  --bulma-success-h: 147deg;
+  --bulma-success-s: 55%;
+  --bulma-success-l: 40%;
+}
+
+body { background: var(--bg); color: var(--slate-900); }
+
+/* ---------- Topbar (navbar) — mengikuti warna web app pada mockup ---------- */
+:root {
+  --topbar-bg: #374774;      /* mockup --navy-800 */
+  --topbar-role-bg: #465a8c; /* mockup --navy-700 */
+  --topbar-avatar-bg: #ffbd12; /* mockup --gold-500 */
+}
+.navbar.paspor-topbar {
+  background: var(--topbar-bg);
+  color: var(--white);
+  box-shadow: none;
+  padding: 6px 16px;
+  min-height: 68px;
+}
+.paspor-topbar .navbar-item,
+.paspor-topbar .navbar-link { color: rgba(255, 255, 255, .92); background: transparent; }
+.paspor-topbar a.navbar-item:hover,
+.paspor-topbar .navbar-item.has-dropdown:hover .navbar-link { background: rgba(255, 255, 255, .08); color: var(--white); }
+.paspor-topbar .navbar-start a.navbar-item {
+  font-weight: 600; font-size: 13.5px; border-radius: 8px; margin: 0 2px;
+}
+.paspor-topbar .navbar-start a.navbar-item.is-active,
+.paspor-topbar .navbar-start a.navbar-item.is-active:hover {
+  background: rgba(255, 255, 255, .16); color: var(--white);
+}
+.paspor-topbar .brand { display: flex; align-items: center; gap: 12px; }
+.paspor-topbar .brand .logo {
+  width: 40px; height: 40px; flex-shrink: 0;
+  object-fit: contain;
+}
+.paspor-topbar .brand-text { display: flex; flex-direction: column; line-height: 1.2; }
+.paspor-topbar .brand-text strong { color: var(--white); font-size: 18px; }
+.paspor-topbar .brand-text small {
+  font-size: 11px; color: rgba(255, 255, 255, .72);
+  white-space: normal; max-width: 230px; line-height: 1.3; margin-top: 2px;
+}
+.paspor-topbar .navbar-burger { color: var(--white); height: 3.5rem; }
+.paspor-role {
+  background: var(--topbar-role-bg); color: var(--white);
+  font-size: 10px; font-weight: 700; border-radius: 6px; padding: 2px 8px;
+}
+.avatar-chip {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--topbar-avatar-bg); color: var(--navy-900);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 12px; flex-shrink: 0;
+}
+.button.is-logout {
+  background: transparent; border: 1px solid rgba(255, 255, 255, .4); color: var(--white);
+}
+.button.is-logout:hover { background: rgba(255, 255, 255, .1); color: var(--white); }
+
+@media (max-width: 1023px) {
+  .paspor-topbar .navbar-menu {
+    background: var(--topbar-bg);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, .2);
+  }
+  .paspor-topbar .navbar-menu .navbar-item { color: rgba(255, 255, 255, .92); }
+}
+
+/* ---------- Layout ---------- */
+.page-wrap { max-width: 1200px; margin: 0 auto; padding: 24px 28px 60px; }
+.page-wrap.narrow { max-width: 760px; }
+.page-wrap.medium { max-width: 960px; }
+
+/* ---------- Notifikasi / messages ---------- */
+.notification.paspor-msg {
+  padding: 12px 16px; border-radius: 10px; font-size: 14px; margin-bottom: 12px;
+}
+.notification.paspor-msg.is-success { background: var(--green-bg); color: #1e6b41; }
+.notification.paspor-msg.is-danger { background: #fdecea; color: #c0392b; }
+.notification.paspor-msg.is-warning,
+.notification.paspor-msg.is-info { background: var(--gold-bg); color: var(--gold-dark); }
+
+/* ---------- Box (pengganti .card lama) ---------- */
+.box {
+  background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: none; padding: 22px; margin-bottom: 20px;
+}
+
+/* ---------- Tombol ---------- */
+.button { border-radius: 10px; font-weight: 700; }
+.button.is-primary { background: var(--navy-900); color: var(--white); }
+.button.is-primary:hover { background: var(--navy-800); color: var(--white); }
+.button.is-warning { background: var(--gold); color: var(--navy-900); }
+.button.is-warning:hover { background: var(--gold-600); color: var(--navy-900); }
+.button:not(.is-primary):not(.is-warning):not(.is-logout):not(.is-text):not(.is-ghost) {
+  background: var(--white); color: var(--slate-600); border: 1px solid var(--line);
+}
+.button:not(.is-primary):not(.is-warning):not(.is-logout):not(.is-text):not(.is-ghost):hover {
+  background: var(--bg); color: var(--slate-900);
+}
+
+/* ---------- Judul bagian ---------- */
+.section-title { font-size: 18px; font-weight: 800; color: var(--navy-900); margin: 0 0 16px; }
+.section-sub { color: var(--slate-400); font-size: 13px; margin: -10px 0 20px; }
+
+/* ---------- Kepala halaman (judul + aksi) ---------- */
+.page-head {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 16px; margin-bottom: 22px; flex-wrap: wrap;
+}
+.page-head > div:first-child { flex: 1 1 260px; min-width: 0; }
+.page-head > .button { flex-shrink: 0; }
+.page-head h2 { margin: 0 0 4px; font-size: 20px; font-weight: 800; color: var(--navy-900); }
+.page-head .sub { margin: 0; color: var(--slate-400); font-size: 13px; }
+
+/* ---------- Baris aksi form (mis. Batal / Simpan) ---------- */
+.actions-bar { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+
+/* ---------- Form ---------- */
+.label { font-size: 13px; font-weight: 700; color: var(--slate-900); margin-bottom: 6px; }
+.input, .textarea, .select select {
+  border: 1px solid var(--line); border-radius: 8px;
+  font-size: 14px; color: var(--slate-900); box-shadow: none;
+}
+.input, .select select { height: auto; padding: 10px 12px; }
+.textarea { padding: 10px 12px; }
+.input:focus, .textarea:focus, .select select:focus {
+  border-color: var(--teal); box-shadow: 0 0 0 2px rgba(36, 129, 155, .25);
+}
+.select:not(.is-multiple):not(.is-loading)::after { border-color: var(--teal); }
+.field:not(:last-child) { margin-bottom: 16px; }
+.field .help.is-danger, .errorlist { color: #c0392b; font-size: 13px; margin: 4px 0 0; padding: 0; list-style: none; }
+.readonly-field, .input[readonly], .input[disabled] { background: var(--bg); color: var(--slate-600); }
+.helptext { font-size: 12px; color: var(--slate-400); margin-top: 4px; }
+
+.badge-auto, .readonly-badge {
+  display: inline-block; font-size: 10px; font-weight: 700; color: var(--teal);
+  background: var(--blue-bg); border-radius: 999px; padding: 2px 8px; margin-left: 6px;
+}
+
+.field-readonly-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 700px) { .field-readonly-grid { grid-template-columns: 1fr; } }
+
+/* ---------- Checkbox / pernyataan ---------- */
+.checkbox-row {
+  display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px;
+  color: var(--slate-600); margin: 18px 0;
+}
+.checkbox-row input { margin-top: 3px; }
+.agree-box {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: var(--blue-bg); border: 1px solid #cfe0f2;
+  border-radius: 11px; padding: 14px 16px; margin: 18px 0;
+}
+.agree-box input { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--navy-900); flex-shrink: 0; }
+.agree-box label { font-size: 13px; font-weight: 400; color: var(--slate-600); line-height: 1.5; margin: 0; }
+
+/* ---------- Grid checkbox multi-pilih (mis. Unit Organisasi Template) ---------- */
+.unit-checkbox-grid ul {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 6px 14px; list-style: none; padding: 10px 12px; margin: 0;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--bg);
+}
+.unit-checkbox-grid li { font-size: 13px; color: var(--slate-900); }
+.unit-checkbox-grid input { margin-right: 6px; accent-color: var(--navy-900); vertical-align: middle; }
+
+/* ---------- Status badge (Bulma .tag + modifier) ---------- */
+.tag.paspor-status {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700;
+  padding: 4px 12px; border-radius: 999px; height: auto;
+}
+.tag.paspor-status .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.tag.paspor-status.is-belum { background: #eceff3; color: var(--slate-600); }
+.tag.paspor-status.is-proses { background: var(--gold-bg); color: var(--gold-dark); }
+.tag.paspor-status.is-proses_pakln { background: var(--blue-bg); color: var(--teal); }
+.tag.paspor-status.is-selesai { background: var(--green-bg); color: var(--green); }
+
+/* ---------- Kartu ringkasan dasbor ---------- */
+.summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.summary-card {
+  background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 18px 20px;
+}
+.summary-card.active { background: var(--gold-bg); border-color: var(--gold); }
+.summary-card .num { font-size: 30px; font-weight: 800; color: var(--navy-900); }
+.summary-card .label { font-size: 13px; color: var(--slate-600); margin-top: 2px; }
+@media (max-width: 800px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---------- Kartu sisa cuti ---------- */
+.cuti-card {
+  border: 1px solid var(--gold); background: var(--gold-bg);
+  border-radius: 12px; padding: 14px 18px; margin-bottom: 22px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; max-width: 360px;
+}
+.cuti-card .lbl { font-size: 11px; font-weight: 700; color: var(--gold-dark); letter-spacing: .03em; }
+.cuti-card .val { font-size: 20px; font-weight: 800; color: var(--gold-dark); margin-top: 2px; }
+.cuti-card .ic { font-size: 22px; }
+
+/* ---------- Tabel ---------- */
+.table-wrap {
+  overflow-x: auto; border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--white);
+}
+.table.data-table { width: 100%; font-size: 13.5px; background: transparent; }
+.table.data-table th {
+  text-align: left; padding: 10px 12px; background: var(--bg); color: var(--slate-600);
+  font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em;
+  border: none; border-bottom: 1px solid var(--line);
+}
+.table.data-table td { padding: 12px; border: none; border-bottom: 1px solid var(--line); vertical-align: top; }
+.table.data-table tr:last-child td { border-bottom: none; }
+.table.data-table.is-hoverable tbody tr:hover { background: var(--bg); }
+.cell-muted { color: var(--slate-400); font-size: 12px; }
+
+/* ---------- DataTables (server-side) ---------- */
+.dt-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; padding: 4px 0 14px;
+}
+.dt-toolbar .dt-length { font-size: 13px; color: var(--slate-600); }
+.dt-toolbar .dt-length select.dt-input {
+  border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px;
+  font-size: 13px; color: var(--slate-900); margin: 0 4px;
+}
+.dt-toolbar .dt-search { font-size: 13px; color: var(--slate-600); }
+.dt-toolbar .dt-search input.dt-input {
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px;
+  font-size: 13.5px; color: var(--slate-900); min-width: 220px; margin-left: 6px;
+}
+.dt-toolbar .dt-input:focus {
+  outline: none; border-color: var(--teal); box-shadow: 0 0 0 2px rgba(36, 129, 155, .25);
+}
+.table.data-table th.dt-orderable-asc, .table.data-table th.dt-orderable-desc { cursor: pointer; }
+.table.data-table th .dt-column-order { margin-left: 6px; opacity: .5; }
+.table.data-table th.dt-ordering-asc .dt-column-order,
+.table.data-table th.dt-ordering-desc .dt-column-order { opacity: 1; }
+.dt-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; padding: 14px 0 4px; border-top: 1px solid var(--line);
+}
+.dt-footer .dt-info { font-size: 12.5px; color: var(--slate-400); }
+.dt-footer .dt-paging-button {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 32px; height: 32px; padding: 0 10px; margin-left: 4px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--white);
+  color: var(--slate-600); font-size: 12.5px; font-weight: 700; cursor: pointer;
+}
+.dt-footer .dt-paging-button:hover:not(.disabled):not(.current) { background: var(--bg); color: var(--slate-900); }
+.dt-footer .dt-paging-button.current { background: var(--navy-900); border-color: var(--navy-900); color: var(--white); }
+.dt-footer .dt-paging-button.disabled { color: var(--slate-400); cursor: default; opacity: .5; }
+.dt-processing { color: var(--slate-600); font-size: 13px; }
+@media (max-width: 640px) {
+  .dt-toolbar, .dt-footer { flex-direction: column; align-items: stretch; }
+  .dt-toolbar .dt-search input.dt-input { min-width: 0; width: 100%; }
+}
+
+/* ---------- Baris dokumen ---------- */
+.doc-row {
+  border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 14px;
+  display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.doc-row .info h4 { margin: 0 0 4px; font-size: 14.5px; font-weight: 700; }
+.doc-row .info p { margin: 0; font-size: 12.5px; color: var(--slate-400); max-width: 480px; }
+.doc-row .actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+.doc-row.uploaded { border-color: var(--green); background: #f4fbf6; }
+
+/* ---------- Timeline (monitor progres) ---------- */
+.timeline { list-style: none; margin: 0; padding: 0; }
+.timeline li { display: flex; gap: 14px; padding-bottom: 26px; position: relative; }
+.timeline li:last-child { padding-bottom: 0; }
+.timeline li::before {
+  content: ""; position: absolute; left: 10px; top: 24px; bottom: 0; width: 2px; background: var(--line);
+}
+.timeline li:last-child::before { display: none; }
+.timeline .dot-wrap {
+  width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0; z-index: 1; font-size: 12px;
+}
+.timeline .dot-wrap.done { background: var(--green); color: var(--white); }
+.timeline .dot-wrap.current { background: var(--gold); color: var(--navy-900); }
+.timeline .dot-wrap.upcoming { background: var(--line); color: var(--slate-400); }
+.timeline h4 { margin: 0 0 3px; font-size: 14.5px; font-weight: 700; }
+.timeline p { margin: 0; font-size: 12.5px; color: var(--slate-400); }
+.timeline .tgl { font-size: 11.5px; color: var(--slate-400); margin-top: 4px; }
+
+.monitor-summary {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 16px; flex-wrap: wrap;
+}
+.monitor-summary .dest { font-weight: 700; font-size: 14px; }
+.monitor-summary .meta { font-size: 12px; color: var(--slate-400); margin-top: 2px; }
+
+/* ---------- Modal — Pilih Jenis Perjalanan ---------- */
+.modal.paspor-modal .modal-card { max-width: 400px; width: 100%; border-radius: 16px; overflow: hidden; }
+.modal.paspor-modal .modal-card-body { padding: 24px; }
+.modal.paspor-modal h3 { margin: 0 0 4px; font-size: 16px; font-weight: 800; color: var(--navy-900); }
+.modal.paspor-modal .modal-intro { margin: 0 0 16px; font-size: 13px; color: var(--slate-400); }
+.jenis-option {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; text-align: left; font: inherit; color: inherit;
+  border: 1.5px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 10px;
+  background: var(--white);
+}
+.jenis-option.active { border-color: var(--navy-900); background: var(--blue-bg); cursor: pointer; }
+.jenis-option.active:hover { background: #dcebfa; text-decoration: none; }
+.jenis-option.disabled { opacity: .55; cursor: not-allowed; }
+.jenis-option .name { font-weight: 700; font-size: 14px; }
+.jenis-option .desc { font-size: 12px; color: var(--slate-400); margin-top: 2px; }
+.soon-tag {
+  font-size: 9.5px; font-weight: 700; background: #eceff3; color: var(--slate-400);
+  padding: 2px 7px; border-radius: 6px; white-space: nowrap;
+}
+
+/* ---------- Modal pratinjau dokumen ---------- */
+.modal-background { background-color: rgba(29, 53, 87, .45); }
+.doc-preview-card { width: 960px; max-width: calc(100vw - 40px); }
+.doc-preview-card .modal-card-head { background: var(--white); border-bottom: 1px solid var(--line); }
+.doc-preview-card .modal-card-title { font-size: 14px; font-weight: 800; color: var(--navy-900); }
+.doc-preview-card .modal-card-foot { background: var(--bg); border-top: 1px solid var(--line); }
+#docPreviewFrame {
+  width: 100%; height: 72vh; border: 0; display: block; background: var(--bg);
+}
+
+/* ---------- Login ---------- */
+.login-wrap {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(180deg, var(--navy-900) 0%, var(--navy-900) 45%, var(--bg) 45%);
+  padding: 20px;
+}
+.login-card {
+  background: var(--white); border-radius: 18px; box-shadow: var(--shadow);
+  padding: 40px 36px; width: 100%; max-width: 380px; text-align: center;
+}
+.login-card .logo {
+  width: 64px; height: 64px; object-fit: contain;
+  display: block; margin: 0 auto 18px;
+}
+.login-card h2 { margin: 0 0 4px; font-size: 20px; font-weight: 800; color: var(--navy-900); }
+.login-card .role-pill { margin: 6px 0 22px; }
+.login-card .role-pill .tag { background: var(--bg); color: var(--slate-600); font-weight: 600; }
+.login-card form { text-align: left; }
+.login-card .field:not(:last-child) { margin-bottom: 16px; }
+.login-card .helptext { text-align: center; margin-top: 14px; }
+.login-error {
+  background: #fdecea; color: #c0392b; border-radius: 8px; padding: 10px 14px; font-size: 13px;
+  margin-bottom: 16px;
+}

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% load pengajuan_extras %}
+{% block title %}Unggah Dokumen Administrasi Unor{% endblock %}
+{% block wrap_extra_class %} narrow{% endblock %}
+
+{% block content %}
+{% if templates %}
+<div class="box" style="background:var(--blue-bg); border-color:#cfe0f2;">
+  <div class="section-title" style="font-size:14px;margin-bottom:10px;">📄 Template Dokumen Tersedia</div>
+  {% for t in templates %}
+    <div class="doc-row" style="padding:10px 14px;background:var(--white);">
+      <div class="info">
+        <h4 style="font-size:13.5px;">{{ t.nama }}</h4>
+        {% if t.keterangan %}<p>{{ t.keterangan }}</p>{% endif %}
+      </div>
+      <div class="actions">
+        <a href="{{ t.file.url }}" target="_blank" rel="noopener" class="button is-small">⬇ Unduh</a>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="box">
+  <div class="section-title">Unggah Dokumen Administrasi Unor — {{ pengajuan.kode }}</div>
+
+  {% for value, label in jenis_choices %}
+    {% with dok=dokumen_map|get_item:value %}
+    <div class="doc-row {% if dok %}uploaded{% endif %}">
+      <div class="info">
+        <h4>{{ label }}</h4>
+        {% if dok %}
+          <p style="color:var(--green);">✓ Sudah diunggah — {{ dok.uploaded_at|date:"d M Y H:i" }}</p>
+        {% else %}
+          <p>Belum diunggah.</p>
+        {% endif %}
+      </div>
+      <div class="actions">
+        {% if dok %}
+          <button type="button" class="button is-small" data-doc-preview="{{ dok.file.url }}" data-doc-title="{{ label }}">👁 Pratinjau</button>
+          <form method="post" action="{% url 'unor:hapus_dokumen' kode=pengajuan.kode jenis=value %}" style="margin:0;" onsubmit="return confirm('Hapus dokumen ini?');">
+            {% csrf_token %}
+            <button type="submit" class="button is-small is-danger">🗑 Hapus</button>
+          </form>
+        {% endif %}
+        <form method="post" enctype="multipart/form-data" class="actions doc-upload-form" style="margin:0;">
+          {% csrf_token %}
+          <input type="hidden" name="jenis" value="{{ value }}">
+          <input type="file" name="file" required class="doc-file-input" style="font-size:12.5px;max-width:160px;">
+          <button type="submit" class="button is-small doc-upload-submit">⬆ Unggah</button>
+        </form>
+      </div>
+    </div>
+    {% endwith %}
+  {% endfor %}
+
+  <div class="section-title" style="font-size:14px;margin:20px 0 4px;">Dokumen Pendukung Lainnya</div>
+  <p class="helptext" style="margin:0 0 12px;">
+    Unggah berkas dan centang jenis dokumen yang tercakup di dalamnya (boleh lebih dari satu) — dua proses yang berdiri sendiri, tidak perlu berurutan.
+  </p>
+
+  <div class="doc-row {% if pendukung.file %}uploaded{% endif %}">
+    <div class="info">
+      <h4>Berkas Dokumen Pendukung</h4>
+      {% if pendukung.file %}
+        <p style="color:var(--green);">✓ Sudah diunggah — {{ pendukung.uploaded_at|date:"d M Y H:i" }}</p>
+      {% else %}
+        <p>Belum diunggah.</p>
+      {% endif %}
+    </div>
+    <div class="actions">
+      {% if pendukung.file %}
+        <button type="button" class="button is-small" data-doc-preview="{{ pendukung.file.url }}" data-doc-title="Dokumen Pendukung">👁 Pratinjau</button>
+        <form method="post" style="margin:0;" onsubmit="return confirm('Hapus berkas dokumen pendukung ini?');">
+          {% csrf_token %}
+          <button type="submit" name="pendukung_hapus" class="button is-small is-danger">🗑 Hapus</button>
+        </form>
+      {% endif %}
+      <form method="post" enctype="multipart/form-data" class="actions doc-upload-form" style="margin:0;">
+        {% csrf_token %}
+        <input type="hidden" name="pendukung_upload" value="1">
+        <input type="file" name="file" required class="doc-file-input" style="font-size:12.5px;max-width:160px;">
+        <button type="submit" class="button is-small doc-upload-submit">⬆ {% if pendukung.file %}Ganti{% else %}Unggah{% endif %}</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="field" style="margin-top:10px;">
+    <label class="label" style="font-size:12.5px;">Jenis dokumen pada berkas ini</label>
+    {% for field, label in pendukung_kategori %}
+      <form method="post" style="margin:0 0 4px;">
+        {% csrf_token %}
+        <input type="hidden" name="kategori" value="{{ field }}">
+        <input type="hidden" name="toggle_pendukung" value="1">
+        <label class="checkbox" style="display:block;font-weight:400;">
+          <input type="checkbox" class="auto-toggle" {% if pendukung|get_attr:field %}checked{% endif %}> {{ label }}
+        </label>
+      </form>
+    {% endfor %}
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="agree-box">
+      <input type="checkbox" id="agree" name="agree" required>
+      <label for="agree">
+        Seluruh dokumen administrasi Unor telah lengkap, untuk selanjutnya diteruskan ke Admin Biro PAKLN.
+      </label>
+    </div>
+    <button type="submit" name="teruskan" class="button is-warning is-fullwidth" {% if not lengkap %}disabled{% endif %}>
+      Teruskan ke Biro PAKLN →
+    </button>
+    {% if not lengkap %}
+      <p class="helptext">Lengkapi seluruh direktori dokumen untuk melanjutkan.</p>
+    {% endif %}
+  </form>
+</div>
+
+<div style="display:flex; gap:10px;">
+  <a href="{% url 'unor:preview' kode=pengajuan.kode %}" class="button" style="flex:1;">← Kembali ke Pratinjau</a>
+  <a href="{% url 'unor:dashboard' %}" class="button" style="flex:1;">Kembali ke Dasbor</a>
+</div>
+{% endblock %}

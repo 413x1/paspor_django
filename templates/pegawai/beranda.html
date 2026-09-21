@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Beranda{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Beranda</h2>
+    <p class="sub">Halo, {{ profile.nama|default:user.get_full_name }} 👋 — kelola pengajuan perjalanan luar negeri Anda di sini.</p>
+  </div>
+  {% if not aktif %}
+    <button type="button" class="button is-warning" data-modal-open="jenisModal">✚ Tambah Usulan Baru</button>
+  {% endif %}
+</div>
+
+{% if aktif.catatan_unor %}
+  <div class="notification paspor-msg is-warning">
+    <strong>⚠ Dikembalikan oleh Admin Unor untuk diperbaiki:</strong> {{ aktif.catatan_unor }}
+  </div>
+{% endif %}
+
+<div class="table-wrap">
+  <table class="table data-table is-fullwidth is-hoverable">
+    <thead>
+      <tr>
+        <th>Tujuan</th><th>Kategori</th><th>Tgl Pengajuan</th><th>Kanal</th><th>Status</th><th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if aktif %}
+        <tr>
+          <td><strong>🌏 {{ aktif.tujuan_negara|default:"Belum diisi" }}</strong></td>
+          <td>{{ aktif.kategori|default:"—" }}</td>
+          <td>{{ aktif.tgl_pengajuan|date:"d M Y"|default:"—" }}</td>
+          <td>{{ aktif.get_kanal_display }}</td>
+          <td><span class="tag paspor-status is-{{ aktif.status }}"><span class="dot"></span>{{ aktif.get_status_display }}</span></td>
+          <td>
+            {% if aktif.status == "belum" %}
+              <a href="{% url 'pegawai:formulir_pengajuan' %}" class="button is-small">Lanjutkan Formulir</a>
+            {% elif not aktif.submitted %}
+              <a href="{% url 'pegawai:upload_dokumen' kode=aktif.kode %}" class="button is-small">Lanjutkan Unggah</a>
+            {% else %}
+              <a href="{% url 'pegawai:monitor_progres' kode=aktif.kode %}" class="button is-small">Lihat Progres</a>
+            {% endif %}
+          </td>
+        </tr>
+      {% endif %}
+      {% for p in riwayat %}
+        <tr>
+          <td><strong>🌏 {{ p.tujuan_negara|default:"—" }}</strong></td>
+          <td>{{ p.kategori|default:"—" }}</td>
+          <td>{{ p.tgl_pengajuan|date:"d M Y"|default:"—" }}</td>
+          <td>—</td>
+          <td><span class="tag paspor-status is-{{ p.status }}"><span class="dot"></span>{{ p.get_status_display }}</span></td>
+          <td>
+            {% if p.submitted %}
+              <a href="{% url 'pegawai:monitor_progres' kode=p.kode %}" class="button is-small">Lihat</a>
+            {% else %}
+              <a href="{% url 'pegawai:formulir_pengajuan' %}" class="button is-small">Lanjutkan</a>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      {% if not aktif and not riwayat %}
+        <tr><td colspan="6" class="cell-muted">Belum ada riwayat pengajuan.</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+{% if not aktif %}
+<div id="jenisModal" class="modal paspor-modal">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <div class="modal-card-body">
+      <h3>Pilih Jenis Perjalanan</h3>
+      <p class="modal-intro">Tentukan kategori perjalanan luar negeri yang akan diajukan.</p>
+      <div class="jenis-option disabled">
+        <div>
+          <div class="name">Perjalanan Dinas Luar Negeri (PDLN)</div>
+          <div class="desc">Melibatkan Admin BPSDM · Dibangun pada tahap berikutnya</div>
+        </div>
+        <span class="soon-tag">Segera</span>
+      </div>
+      <a href="{% url 'pegawai:formulir_pengajuan' %}" class="jenis-option active">
+        <div>
+          <div class="name">Perjalanan Luar Negeri Non-Kedinasan</div>
+          <div class="desc">Ibadah, wisata, atau keperluan pribadi lainnya</div>
+        </div>
+        <span style="color:var(--navy-900);font-weight:800;">→</span>
+      </a>
+      <button type="button" class="button is-fullwidth" data-modal-close>Batal</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

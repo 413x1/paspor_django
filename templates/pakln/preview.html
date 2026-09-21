@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Pratinjau Pengajuan{% endblock %}
+{% block wrap_extra_class %} narrow{% endblock %}
+
+{% block content %}
+<div class="box">
+  <div class="section-title">Pratinjau Pengajuan dari Unor — {{ pengajuan.kode }}</div>
+
+  <div class="field-readonly-grid">
+    <div class="field">
+      <label class="label">Nama Pegawai <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.pegawai.profile.nama }}" readonly></div>
+    </div>
+    <div class="field">
+      <label class="label">NIP <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.pegawai.profile.nip }}" readonly></div>
+    </div>
+    <div class="field">
+      <label class="label">Unit Organisasi <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.pegawai.profile.unit_organisasi.name }}" readonly></div>
+    </div>
+    <div class="field">
+      <label class="label">Kategori Perjalanan <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.kategori }}" readonly></div>
+    </div>
+    <div class="field">
+      <label class="label">Tujuan Negara <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.tujuan_negara }}" readonly></div>
+    </div>
+    <div class="field">
+      <label class="label">Sumber Pembiayaan <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.sumber_pembiayaan }}" readonly></div>
+    </div>
+    <div class="field">
+      <label class="label">Tanggal Keberangkatan <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.tgl_berangkat|date:'d M Y' }}" readonly></div>
+    </div>
+    <div class="field">
+      <label class="label">Tanggal Kembali <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ pengajuan.tgl_kembali|date:'d M Y' }}" readonly></div>
+    </div>
+  </div>
+
+  <div class="section-title" style="font-size:15px;margin-top:10px;">Direktori Dokumen dari Unor</div>
+  {% for dok in pengajuan.dokumen_unor.all %}
+    <div class="doc-row uploaded" style="padding:10px 14px;">
+      <div class="info"><h4 style="font-size:13.5px;">{{ dok.get_jenis_display }}</h4></div>
+      <div class="actions">
+        <button type="button" class="button is-small" data-doc-preview="{{ dok.file.url }}" data-doc-title="{{ dok.get_jenis_display }}">👁 Lihat</button>
+      </div>
+    </div>
+  {% empty %}
+    <p class="cell-muted">Belum ada dokumen dari Admin Unor.</p>
+  {% endfor %}
+  {% with pendukung=pengajuan.dokumen_unor_pendukung %}
+    {% if pendukung.file %}
+      <div class="doc-row uploaded" style="padding:10px 14px;display:block;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+          <div class="info">
+            <h4 style="font-size:13.5px;">Dokumen Pendukung Lainnya</h4>
+            <p>Checklist jenis dokumen oleh Admin Unor:</p>
+          </div>
+          <div class="actions">
+            <button type="button" class="button is-small" data-doc-preview="{{ pendukung.file.url }}" data-doc-title="Dokumen Pendukung Lainnya">👁 Lihat</button>
+          </div>
+        </div>
+        <ul style="list-style:none;padding:0;margin:8px 0 0;font-size:13px;">
+          <li style="{% if pendukung.nd_sekunor %}color:var(--green);font-weight:700;{% else %}color:var(--slate-400);{% endif %}">
+            {% if pendukung.nd_sekunor %}☑{% else %}☐{% endif %} Nota Dinas Sekretaris Unor
+          </li>
+          <li style="{% if pendukung.nd_menteri %}color:var(--green);font-weight:700;{% else %}color:var(--slate-400);{% endif %}">
+            {% if pendukung.nd_menteri %}☑{% else %}☐{% endif %} Nota Dinas Permohonan Persetujuan Menteri
+          </li>
+          <li style="{% if pendukung.lainnya %}color:var(--green);font-weight:700;{% else %}color:var(--slate-400);{% endif %}">
+            {% if pendukung.lainnya %}☑{% else %}☐{% endif %} Dokumen Lainnya
+          </li>
+        </ul>
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% if pengajuan.preview_pakln_agree %}
+    <a href="{% url 'pakln:upload_dokumen' kode=pengajuan.kode %}" class="button is-primary is-fullwidth" style="margin-top:16px;">
+      Lanjut ke Administrasi Biro PAKLN →
+    </a>
+  {% else %}
+    <form method="post" style="margin-top:16px;">
+      {% csrf_token %}
+      <div class="agree-box">
+        <input type="checkbox" id="confirm" name="confirm" required>
+        <label for="confirm">
+          Dokumen dan formulir telah <strong>ditinjau dan sesuai</strong>, untuk selanjutnya diproses administrasi oleh Biro PAKLN.
+        </label>
+      </div>
+      <button type="submit" name="lanjutkan" class="button is-primary is-fullwidth">Lanjutkan ke Administrasi Biro PAKLN →</button>
+    </form>
+  {% endif %}
+</div>
+
+<a href="{% url 'pakln:dashboard' %}" class="button is-fullwidth">← Kembali ke Dasbor</a>
+{% endblock %}

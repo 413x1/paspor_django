@@ -1,0 +1,49 @@
+{% load static %}<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — PASPOR</title>
+  <link rel="stylesheet" href="{% static 'vendors/bulma/css/versions/bulma-no-dark-mode.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260911a">
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <img class="logo" src="{% static 'images/logopu.png' %}" alt="Logo Kementerian PU">
+      <h2>PASPOR</h2>
+      <div class="role-pill"><span class="tag">Kementerian Pekerjaan Umum</span></div>
+
+      {% if error %}
+        <div class="login-error">{{ error }}</div>
+      {% endif %}
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="field">
+          <label class="label" for="username">Username</label>
+          <div class="control">
+            <input class="input" type="text" id="username" name="username" placeholder="username.pegawai" required autofocus>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label" for="password">Password</label>
+          <div class="control">
+            <input class="input" type="password" id="password" name="password" placeholder="••••••••" required>
+          </div>
+        </div>
+        <div class="field">
+          <label class="checkbox">
+            <input type="checkbox" name="remember_me"> Ingat saya
+          </label>
+        </div>
+        <button type="submit" class="button is-primary is-fullwidth">Masuk</button>
+      </form>
+      <button type="button" class="button is-fullwidth mt-3">Login dengan SSO</button>
+      <p class="helptext">Akses menggunakan akun resmi Kementerian PU</p>
+    </div>
+  </div>
+
+  <script src="{% static 'vendors/JQuery/jquery-4.0.0.min.js' %}"></script>
+</body>
+</html>
