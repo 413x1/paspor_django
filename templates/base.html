@@ -37,6 +37,8 @@
           <a class="navbar-item {% if vn == 'pakln:dashboard' %}is-active{% endif %}" href="{% url 'pakln:dashboard' %}">Dasbor</a>
           <a class="navbar-item {% if vn == 'pakln:kelola_user' %}is-active{% endif %}" href="{% url 'pakln:kelola_user' %}">Manajemen User</a>
           <a class="navbar-item {% if vn == 'pakln:kelola_template' or vn == 'pakln:edit_template' %}is-active{% endif %}" href="{% url 'pakln:kelola_template' %}">Manajemen Template</a>
+          <a class="navbar-item {% if vn == 'pakln:kelola_negara' or vn == 'pakln:edit_negara' %}is-active{% endif %}" href="{% url 'pakln:kelola_negara' %}">Manajemen Negara</a>
+          <a class="navbar-item {% if vn == 'pakln:kelola_sumber_pembiayaan' or vn == 'pakln:edit_sumber_pembiayaan' %}is-active{% endif %}" href="{% url 'pakln:kelola_sumber_pembiayaan' %}">Manajemen Sumber Pembiayaan</a>
           <a class="navbar-item {% if vn == 'pakln:export' %}is-active{% endif %}" href="{% url 'pakln:export' %}">Export</a>
         {% endif %}
         {% endwith %}
@@ -194,6 +196,93 @@
     $(document).on('change', '.auto-toggle', function () {
       $(this).closest('form').trigger('submit');
     });
+
+    // Multi-Select Dropdown generik: ubah <select multiple data-multiselect="…">
+    // manapun (mis. Tujuan Negara pada Formulir Pengajuan) jadi panel
+    // chip + checklist yang bisa dicari, tanpa library eksternal. <select>
+    // aslinya tetap ada (disembunyikan via CSS) sehingga submit form normal.
+    function initMultiselect($select) {
+      if ($select.data('multiselect-init')) { return; }
+      $select.data('multiselect-init', true);
+
+      var placeholder = $select.attr('data-multiselect') || 'Pilih…';
+      var $wrap = $('<div class="multiselect"></div>');
+      $select.before($wrap);
+      $wrap.append($select.addClass('multiselect-native'));
+      var $control = $('<button type="button" class="multiselect-control"></button>').appendTo($wrap);
+      var $chips = $('<div class="multiselect-chips"></div>').appendTo($control);
+      $('<span class="multiselect-caret"></span>').appendTo($control);
+      var $panel = $('<div class="multiselect-panel"></div>').appendTo($wrap);
+      var $search = $('<input type="text" class="input multiselect-search" placeholder="Cari…">').appendTo($panel);
+      var $list = $('<div class="multiselect-options"></div>').appendTo($panel);
+
+      function buildOptions() {
+        $list.empty();
+        $select.find('option').each(function () {
+          var $opt = $(this);
+          var $row = $('<label class="multiselect-option"></label>').attr('data-label', $opt.text().toLowerCase());
+          var $cb = $('<input type="checkbox">').prop('checked', $opt.prop('selected'));
+          $cb.data('option', $opt);
+          $row.append($cb).append($('<span></span>').text($opt.text()));
+          $list.append($row);
+        });
+      }
+      function renderChips() {
+        $chips.empty();
+        var selected = $select.find('option:selected');
+        if (selected.length === 0) {
+          $chips.append($('<span class="multiselect-placeholder"></span>').text(placeholder));
+          return;
+        }
+        selected.each(function () {
+          var $opt = $(this);
+          var $chip = $('<span class="multiselect-chip"></span>').text($opt.text());
+          var $rm = $('<button type="button" class="multiselect-chip-remove" aria-label="Hapus">&times;</button>');
+          $rm.on('click', function (e) {
+            e.stopPropagation();
+            $opt.prop('selected', false);
+            $select.trigger('change');
+            renderChips();
+            syncCheckboxes();
+          });
+          $chip.append($rm);
+          $chips.append($chip);
+        });
+      }
+      function syncCheckboxes() {
+        $list.find('input[type=checkbox]').each(function () {
+          var $cb = $(this);
+          $cb.prop('checked', $cb.data('option').prop('selected'));
+        });
+      }
+
+      buildOptions();
+      renderChips();
+
+      $list.on('change', 'input[type=checkbox]', function () {
+        var $cb = $(this);
+        $cb.data('option').prop('selected', $cb.prop('checked'));
+        $select.trigger('change');
+        renderChips();
+      });
+
+      $search.on('input', function () {
+        var q = $(this).val().toLowerCase();
+        $list.find('.multiselect-option').each(function () {
+          $(this).toggle($(this).attr('data-label').indexOf(q) !== -1);
+        });
+      });
+
+      $control.on('click', function (e) {
+        e.stopPropagation();
+        $('.multiselect-panel.is-active').not($panel).removeClass('is-active');
+        $panel.toggleClass('is-active');
+        if ($panel.hasClass('is-active')) { $search.val('').trigger('input').focus(); }
+      });
+      $panel.on('click', function (e) { e.stopPropagation(); });
+    }
+    $('select[data-multiselect]').each(function () { initMultiselect($(this)); });
+    $(document).on('click', function () { $('.multiselect-panel.is-active').removeClass('is-active'); });
 
     // Notification Center: dropdown bell di navbar.
     $('#notifBellBtn').on('click', function (e) {

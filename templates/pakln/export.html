@@ -23,7 +23,7 @@
           <tr>
             <td><strong>{{ p.pegawai.profile.nama }}</strong></td>
             <td>{{ p.kategori|default:"—" }}</td>
-            <td>{{ p.tujuan_negara|default:"—" }}</td>
+            <td>{{ p.tujuan_negara_display|default:"—" }}</td>
             <td>{{ p.tgl_masuk_pakln|date:"d M Y"|default:"—" }}</td>
             <td><span class="tag paspor-status is-{{ p.status }}"><span class="dot"></span>{{ p.get_status_display }}</span></td>
           </tr>
