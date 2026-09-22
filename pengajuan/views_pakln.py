@@ -12,6 +12,7 @@ from django.utils.safestring import mark_safe
 
 from accounts.forms import EditUserForm, TambahUserForm
 from accounts.models import User
+from notifications.services import notify_complete_pkln
 
 from .decorators import role_required
 from .forms import DokumenPaklnForm, DokumenTemplateForm
@@ -297,6 +298,7 @@ def upload_dokumen(request, kode):
                     pengajuan.status = Pengajuan.Status.SELESAI
                     pengajuan.tgl_selesai = timezone.now().date()
                     pengajuan.save()
+                notify_complete_pkln(pengajuan)
                 messages.success(
                     request,
                     f"Pengajuan {pengajuan.kode} telah diselesaikan. "
