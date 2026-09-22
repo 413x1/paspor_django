@@ -1,0 +1,14 @@
+{# Satu baris notifikasi, dipakai dropdown Notification Center & halaman "Lihat Semua" #}
+<div class="notif-item{% if not notif.is_read %} is-unread{% endif %}" data-notif-id="{{ notif.pk }}">
+  <a href="{% url 'notifications:go' notif.pk %}" class="notif-item-link">
+    <span class="notif-avatar is-{{ notif.level }}">{% include "notifications/_icon.html" with level=notif.level %}</span>
+    <span class="notif-item-main">
+      <span class="notif-item-title">{{ notif.title }}</span>
+      <span class="notif-item-body">{{ notif.body }}</span>
+      <span class="notif-item-time">{{ notif.created_at|timesince }} lalu</span>
+    </span>
+  </a>
+  {% if dismissible %}
+    <button type="button" class="notif-item-dismiss" data-dismiss-url="{% url 'notifications:dismiss' notif.pk %}" aria-label="Tutup notifikasi">&times;</button>
+  {% endif %}
+</div>

@@ -5,6 +5,8 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from notifications.services import notify_approve_unor, notify_reject_unor
+
 from .decorators import role_required
 from .forms import DokumenUnorForm
 from .models import DokumenTemplate, DokumenUnor, DokumenUnorPendukung, Pengajuan
@@ -61,6 +63,7 @@ def preview(request, kode):
             pengajuan.preview_unor_agree = False
             pengajuan.catatan_unor = catatan
             pengajuan.save()
+            notify_reject_unor(pengajuan, catatan)
             messages.success(
                 request,
                 f"Pengajuan {pengajuan.kode} dikembalikan ke pegawai beserta catatan.",
@@ -100,6 +103,7 @@ def upload_dokumen(request, kode):
                 pengajuan.status = Pengajuan.Status.PROSES_PAKLN
                 pengajuan.tgl_masuk_pakln = timezone.now().date()
                 pengajuan.save()
+                notify_approve_unor(pengajuan)
                 messages.success(request, f"Pengajuan {pengajuan.kode} diteruskan ke Admin Biro PAKLN.")
                 return redirect("unor:dashboard")
         elif "pendukung_upload" in request.POST:

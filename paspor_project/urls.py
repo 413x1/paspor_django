@@ -17,6 +17,7 @@ urlpatterns = [
     path("pegawai/", include(("pengajuan.urls_pegawai", "pegawai"), namespace="pegawai")),
     path("admin-unor/", include(("pengajuan.urls_unor", "unor"), namespace="unor")),
     path("admin-biropakln/", include(("pengajuan.urls_pakln", "pakln"), namespace="pakln")),
+    path("notifikasi/", include(("notifications.urls", "notifications"), namespace="notifications")),
 
     # Demo unggah berkas PDF ke MinIO — publik, tanpa login (lihat wiki/UPLOAD_FILE.MD)
     path("upload/", include(("fileupload.urls", "fileupload"), namespace="fileupload")),
