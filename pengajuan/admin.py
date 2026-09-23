@@ -6,7 +6,9 @@ from .models import (
     DokumenTemplate,
     DokumenUnor,
     DokumenUnorPendukung,
+    NotaDinas,
     Pengajuan,
+    PengaturanND,
 )
 
 
@@ -51,3 +53,20 @@ class DokumenTemplateAdmin(admin.ModelAdmin):
     search_fields = ("nama", "keterangan")
     filter_horizontal = ("unit_organisasi",)
     readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(PengaturanND)
+class PengaturanNDAdmin(admin.ModelAdmin):
+    readonly_fields = ("updated_at",)
+
+    def has_add_permission(self, request):
+        return not PengaturanND.objects.exists()
+
+
+@admin.register(NotaDinas)
+class NotaDinasAdmin(admin.ModelAdmin):
+    list_display = ("nama_ringkas", "unit_organisasi", "generated_by", "created_at")
+    list_filter = ("unit_organisasi",)
+    search_fields = ("nama_ringkas", "maksud")
+    filter_horizontal = ("pengajuan_list", "negara_tujuan")
+    readonly_fields = ("created_at",)

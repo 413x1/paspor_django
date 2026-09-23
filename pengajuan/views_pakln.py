@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import escape, format_html
 from django.utils.safestring import mark_safe
+from django.utils.text import slugify
 
 from accounts.forms import EditUserForm, TambahUserForm
 from accounts.models import User
@@ -16,8 +17,9 @@ from notifications.services import notify_complete_pkln
 from paspor.models import Negara, SumberPembiayaan
 
 from .decorators import role_required
-from .forms import DokumenPaklnForm, DokumenTemplateForm, NegaraForm, SumberPembiayaanForm
-from .models import DokumenPakln, DokumenTemplate, Pengajuan
+from .forms import DokumenPaklnForm, DokumenTemplateForm, NegaraForm, PengaturanNDForm, SumberPembiayaanForm
+from .models import DokumenPakln, DokumenTemplate, NotaDinas, Pengajuan, PengaturanND
+from .nota_dinas import build_nota_dinas_file, nama_ringkas_pengajuan
 
 
 @role_required("admin_pakln")
@@ -491,6 +493,109 @@ def hapus_dokumen(request, kode, jenis):
             dok.delete()
             messages.success(request, "Dokumen berhasil dihapus.")
     return redirect("pakln:upload_dokumen", kode=pengajuan.kode)
+
+
+def _validasi_kesamaan_nd(selected):
+    """Pastikan seluruh `selected` (list Pengajuan) berasal dari 1 unit
+    organisasi, tujuan negara, dan maksud perjalanan yang sama — syarat
+    generate ND untuk lebih dari satu pegawai sekaligus."""
+    first = selected[0]
+    unit_id = first.pegawai.profile.unit_organisasi_id
+    if not unit_id:
+        return "Pegawai belum memiliki unit organisasi pada profil."
+    negara_ids = set(first.tujuan_negara.values_list("id", flat=True))
+    if not negara_ids:
+        return "Pengajuan belum memiliki tujuan negara."
+    maksud = first.maksud.strip()
+
+    for p in selected[1:]:
+        if p.pegawai.profile.unit_organisasi_id != unit_id:
+            return "Seluruh pegawai yang dipilih harus berasal dari unit organisasi yang sama."
+        if set(p.tujuan_negara.values_list("id", flat=True)) != negara_ids:
+            return "Seluruh pegawai yang dipilih harus memiliki tujuan negara yang sama."
+        if p.maksud.strip() != maksud:
+            return "Seluruh pegawai yang dipilih harus memiliki maksud/tujuan perjalanan yang sama."
+    return None
+
+
+@role_required("admin_pakln")
+def generate_nd(request):
+    """Generate Nota Dinas (ND) — Admin Biro PAKLN memilih satu atau lebih
+    pengajuan (yang sudah diteruskan Admin Unor) untuk digenerate jadi
+    satu dokumen ND (PDF), disertai riwayat generate ND sebelumnya."""
+    eligible = list(
+        Pengajuan.objects.filter(status__in=[Pengajuan.Status.PROSES_PAKLN, Pengajuan.Status.SELESAI])
+        .select_related("pegawai__profile__unit_organisasi", "sumber_pembiayaan")
+        .prefetch_related("tujuan_negara", "nota_dinas_list")
+        .order_by("pegawai__profile__unit_organisasi__name", "pegawai__profile__nama")
+    )
+    for p in eligible:
+        p.negara_key = "-".join(str(i) for i in sorted(p.tujuan_negara.values_list("id", flat=True)))
+        p.maksud_key = p.maksud.strip().lower()
+        p.sudah_ada_nd = bool(p.nota_dinas_list.all())
+
+    if request.method == "POST":
+        ids = request.POST.getlist("pengajuan_ids")
+        selected = [p for p in eligible if str(p.pk) in ids]
+        if not selected:
+            messages.error(request, "Pilih minimal satu pegawai untuk digenerate ND.")
+        else:
+            error = _validasi_kesamaan_nd(selected)
+            if error:
+                messages.error(request, error)
+            else:
+                pengaturan = PengaturanND.get_solo()
+                nama_ringkas = nama_ringkas_pengajuan(selected)
+                filename = f"ND_{slugify(nama_ringkas)}_{timezone.now():%Y%m%d%H%M%S}.pdf"
+                try:
+                    file_obj = build_nota_dinas_file(selected, pengaturan, filename)
+                except Exception:
+                    messages.error(
+                        request,
+                        "Gagal membuat dokumen ND. Pastikan Microsoft Word terpasang pada server "
+                        "dan template ND tersedia di static/templateND/.",
+                    )
+                else:
+                    with transaction.atomic():
+                        nota = NotaDinas.objects.create(
+                            unit_organisasi=selected[0].pegawai.profile.unit_organisasi,
+                            maksud=selected[0].maksud,
+                            nama_ringkas=nama_ringkas,
+                            generated_by=request.user,
+                        )
+                        nota.file.save(filename, file_obj, save=True)
+                        nota.pengajuan_list.set(selected)
+                        nota.negara_tujuan.set(selected[0].tujuan_negara.all())
+                    messages.success(request, f"Dokumen ND untuk {nama_ringkas} berhasil digenerate.")
+                    return redirect("pakln:generate_nd")
+
+    riwayat = (
+        NotaDinas.objects.select_related("unit_organisasi", "generated_by")
+        .prefetch_related("negara_tujuan", "pengajuan_list__pegawai__profile")
+    )
+
+    return render(
+        request,
+        "pakln/generate_nd.html",
+        {"pengajuan_list": eligible, "riwayat": riwayat},
+    )
+
+
+@role_required("admin_pakln")
+def pengaturan_nd(request):
+    """Pengaturan Nota Dinas — nilai pejabat penandatangan/paraf yang
+    dipakai saat mengisi template ND (lihat `PengaturanND`)."""
+    pengaturan = PengaturanND.get_solo()
+    if request.method == "POST":
+        form = PengaturanNDForm(request.POST, instance=pengaturan)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Pengaturan Nota Dinas berhasil disimpan.")
+            return redirect("pakln:pengaturan_nd")
+        messages.error(request, "Periksa kembali isian formulir.")
+    else:
+        form = PengaturanNDForm(instance=pengaturan)
+    return render(request, "pakln/pengaturan_nd.html", {"form": form})
 
 
 @role_required("admin_pakln")

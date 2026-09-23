@@ -3,7 +3,7 @@ from django.db import models
 
 from paspor.models import Negara, SumberPembiayaan
 
-from .models import DokumenPakln, DokumenPegawai, DokumenTemplate, DokumenUnor, Pengajuan
+from .models import DokumenPakln, DokumenPegawai, DokumenTemplate, DokumenUnor, Pengajuan, PengaturanND
 
 
 class PengajuanForm(forms.ModelForm):
@@ -181,3 +181,31 @@ class SumberPembiayaanForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["keterangan"].required = False
+
+
+class PengaturanNDForm(forms.ModelForm):
+    """Form Pengaturan Nota Dinas (Admin Biro PAKLN) — nilai pejabat
+    penandatangan/paraf yang dipakai saat mengisi template ND."""
+
+    class Meta:
+        model = PengaturanND
+        fields = [
+            "jabatan_plt_kabag_kln",
+            "nama_pejabat_plt_kabag_kln",
+            "paraf_ketua_tim_aki",
+            "nama_karo_pakln",
+            "paraf_katim_aki_nd2",
+            "paraf_plt_kabag_kln_nd2",
+        ]
+        widgets = {
+            "jabatan_plt_kabag_kln": forms.TextInput(attrs={"class": "input"}),
+            "nama_pejabat_plt_kabag_kln": forms.TextInput(attrs={"class": "input", "placeholder": "cth. Budi Santoso"}),
+            "paraf_ketua_tim_aki": forms.TextInput(attrs={"class": "input"}),
+            "nama_karo_pakln": forms.TextInput(attrs={"class": "input"}),
+            "paraf_katim_aki_nd2": forms.TextInput(attrs={"class": "input"}),
+            "paraf_plt_kabag_kln_nd2": forms.TextInput(attrs={"class": "input"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["nama_pejabat_plt_kabag_kln"].required = False

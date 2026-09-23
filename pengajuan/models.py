@@ -340,3 +340,94 @@ class DokumenTemplate(models.Model):
             return False
 
         return True
+
+
+# ---------------------------------------------------------------------------
+# Generate Nota Dinas (ND) — Admin Biro PAKLN membuat dokumen ND (PDF) dari
+# template docx untuk satu atau lebih pegawai (harus 1 unit organisasi,
+# tujuan negara, dan maksud perjalanan yang sama). Lihat
+# wiki/instructions/GENERATE_ND.MD.
+# ---------------------------------------------------------------------------
+
+class PengaturanND(models.Model):
+    """Nilai-nilai pejabat penandatangan/paraf pada template ND yang dapat
+    diatur Admin Biro PAKLN, dengan nilai default mengikuti isi asli
+    template. Singleton — selalu diakses lewat `get_solo()`."""
+
+    jabatan_plt_kabag_kln = models.CharField(
+        "Jabatan Plt. Kepala Bagian KLN", max_length=150,
+        default="Plt. Kepala Bagian Kerja Sama Luar Negeri",
+        help_text='Diisi pada baris "Dari:" Nota Dinas Kabag KLN ke Karo PAKLN.',
+    )
+    nama_pejabat_plt_kabag_kln = models.CharField(
+        "Nama Pejabat Plt. Kepala Bagian KLN", max_length=150, blank=True,
+        help_text="Nama pejabat yang menandatangani sebagai Plt. Kepala Bagian KLN.",
+    )
+    paraf_ketua_tim_aki = models.CharField(
+        "Kotak Paraf — Ketua Tim AKI (ND Kabag KLN)", max_length=150,
+        default="Ketua Tim AKI",
+    )
+    nama_karo_pakln = models.CharField(
+        "Nama Kepala Biro PAKLN", max_length=150, default="Reiza Setiawan",
+        help_text="Penandatangan Nota Dinas Karo PAKLN ke Sekretaris Jenderal.",
+    )
+    paraf_katim_aki_nd2 = models.CharField(
+        "Kotak Paraf 1 — Katim AKI (ND Karo PAKLN)", max_length=150,
+        default="Katim AKI",
+    )
+    paraf_plt_kabag_kln_nd2 = models.CharField(
+        "Kotak Paraf 2 — Plt. Kabag KLN (ND Karo PAKLN)", max_length=150,
+        default="Plt. Kabag KLN",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Pengaturan Nota Dinas"
+        verbose_name_plural = "Pengaturan Nota Dinas"
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return "Pengaturan Nota Dinas"
+
+
+def nota_dinas_path(instance, filename):
+    return f"nota_dinas/{instance.created_at:%Y/%m}/{filename}"
+
+
+class NotaDinas(models.Model):
+    """Satu riwayat generate ND, mencakup satu atau lebih `Pengajuan` yang
+    berasal dari unit organisasi, tujuan negara, dan maksud perjalanan yang
+    sama (lihat validasi pada `views_pakln.generate_nd`)."""
+
+    pengajuan_list = models.ManyToManyField(
+        Pengajuan, related_name="nota_dinas_list", verbose_name="Pengajuan",
+    )
+    unit_organisasi = models.ForeignKey(
+        "paspor.UnitOrganisasi", on_delete=models.PROTECT, related_name="+",
+        verbose_name="Unit Organisasi",
+    )
+    negara_tujuan = models.ManyToManyField(
+        "paspor.Negara", related_name="+", verbose_name="Tujuan Negara",
+    )
+    maksud = models.TextField("Maksud Perjalanan")
+    nama_ringkas = models.CharField(
+        "Nama (a.n.)", max_length=150,
+        help_text="Nama pegawai pertama + 'dkk' bila lebih dari satu pegawai.",
+    )
+    file = models.FileField("Berkas PDF", upload_to=nota_dinas_path)
+    generated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Riwayat Generate ND"
+        verbose_name_plural = "Riwayat Generate ND"
+
+    def __str__(self):
+        return f"ND {self.nama_ringkas} — {self.created_at:%d-%m-%Y}"

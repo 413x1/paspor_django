@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Pengaturan Nota Dinas{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Pengaturan Nota Dinas</h2>
+    <p class="sub">Nilai pejabat penandatangan dan kotak paraf yang dipakai saat mengisi template ND. Kosongkan/gunakan nilai default bila belum ada perubahan pejabat.</p>
+  </div>
+  <a href="{% url 'pakln:generate_nd' %}" class="button is-small">← Kembali ke Generate ND</a>
+</div>
+
+<div class="box">
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="section-title" style="font-size:14px;margin-bottom:10px;">Nota Dinas Kabag KLN ke Karo PAKLN</div>
+    <div class="field">
+      <label class="label" for="{{ form.jabatan_plt_kabag_kln.id_for_label }}">Jabatan pada baris "Dari:"</label>
+      <div class="control">{{ form.jabatan_plt_kabag_kln }}</div>
+      {% for e in form.jabatan_plt_kabag_kln.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+    </div>
+    <div class="field">
+      <label class="label" for="{{ form.nama_pejabat_plt_kabag_kln.id_for_label }}">Nama Pejabat (Plt. Kepala Bagian KLN)</label>
+      <div class="control">{{ form.nama_pejabat_plt_kabag_kln }}</div>
+      {% for e in form.nama_pejabat_plt_kabag_kln.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+    </div>
+    <div class="field">
+      <label class="label" for="{{ form.paraf_ketua_tim_aki.id_for_label }}">Kotak Paraf — Ketua Tim AKI</label>
+      <div class="control">{{ form.paraf_ketua_tim_aki }}</div>
+      {% for e in form.paraf_ketua_tim_aki.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div class="section-title" style="font-size:14px;margin:20px 0 10px;">Nota Dinas Karo PAKLN ke Sekretaris Jenderal</div>
+    <div class="field">
+      <label class="label" for="{{ form.nama_karo_pakln.id_for_label }}">Nama Kepala Biro PAKLN</label>
+      <div class="control">{{ form.nama_karo_pakln }}</div>
+      {% for e in form.nama_karo_pakln.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+    </div>
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.paraf_katim_aki_nd2.id_for_label }}">Kotak Paraf 1 — Katim AKI</label>
+          <div class="control">{{ form.paraf_katim_aki_nd2 }}</div>
+          {% for e in form.paraf_katim_aki_nd2.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.paraf_plt_kabag_kln_nd2.id_for_label }}">Kotak Paraf 2 — Plt. Kabag KLN</label>
+          <div class="control">{{ form.paraf_plt_kabag_kln_nd2 }}</div>
+          {% for e in form.paraf_plt_kabag_kln_nd2.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="actions-bar">
+      <a href="{% url 'pakln:generate_nd' %}" class="button">Batal</a>
+      <button type="submit" class="button is-primary">Simpan Pengaturan</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

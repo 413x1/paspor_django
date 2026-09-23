@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Generate ND{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Generate Nota Dinas (ND)</h2>
+    <p class="sub">Pilih satu atau lebih pegawai dari unit organisasi, tujuan negara, dan maksud perjalanan yang sama untuk digenerate menjadi satu dokumen ND (PDF).</p>
+  </div>
+  <a href="{% url 'pakln:pengaturan_nd' %}" class="button is-small">⚙ Pengaturan ND</a>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;margin-bottom:14px;">Pilih Pegawai</div>
+
+  <form method="post" id="formGenerateND">
+    {% csrf_token %}
+    <div class="table-wrap">
+      <table class="table data-table is-fullwidth is-hoverable">
+        <thead>
+          <tr>
+            <th></th><th>Pegawai</th><th>Unit Organisasi</th><th>Tujuan Negara</th>
+            <th>Maksud Perjalanan</th><th>Status</th><th>Riwayat ND</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pengajuan_list %}
+            <tr>
+              <td>
+                <input
+                  type="checkbox"
+                  class="nd-check"
+                  name="pengajuan_ids"
+                  value="{{ p.pk }}"
+                  data-unor="{{ p.pegawai.profile.unit_organisasi_id|default:'' }}"
+                  data-negara="{{ p.negara_key }}"
+                  data-maksud="{{ p.maksud_key }}"
+                  data-has-nd="{{ p.sudah_ada_nd|yesno:'1,0' }}"
+                >
+              </td>
+              <td>
+                <strong>{{ p.pegawai.profile.nama }}</strong><br>
+                <span class="cell-muted">{{ p.pegawai.profile.nip }}</span>
+              </td>
+              <td>{{ p.pegawai.profile.unit_organisasi.name|default:"—" }}</td>
+              <td>{{ p.tujuan_negara_display|default:"—" }}</td>
+              <td>{{ p.maksud|default:"—" }}</td>
+              <td><span class="tag paspor-status is-{{ p.status }}"><span class="dot"></span>{{ p.get_status_display }}</span></td>
+              <td>
+                {% if p.sudah_ada_nd %}
+                  <span class="tag is-warning">Sudah pernah digenerate</span>
+                {% else %}
+                  <span class="cell-muted">Belum ada</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7" class="cell-muted" style="text-align:center;">Belum ada pengajuan yang bisa digenerate ND-nya.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <button type="submit" id="btnGenerateND" class="button is-primary" disabled>Generate ND</button>
+    <p class="helptext">Checkbox pegawai lain akan otomatis terkunci bila unit organisasi, tujuan negara, atau maksud perjalanannya berbeda dari pilihan pertama.</p>
+  </form>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;">
+    Riwayat Generate ND <span class="badge-auto">{{ riwayat|length }}</span>
+  </div>
+  <div class="table-wrap">
+    <table class="table data-table is-fullwidth is-hoverable">
+      <thead>
+        <tr>
+          <th>Nama (a.n.)</th><th>Unit Organisasi</th><th>Tujuan Negara</th>
+          <th>Jumlah Pegawai</th><th>Digenerate Oleh</th><th>Tanggal</th><th>Berkas</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for nd in riwayat %}
+          <tr>
+            <td>{{ nd.nama_ringkas }}</td>
+            <td>{{ nd.unit_organisasi.name }}</td>
+            <td>{% for n in nd.negara_tujuan.all %}{{ n.nama_negara }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+            <td>{{ nd.pengajuan_list.all|length }}</td>
+            <td>{{ nd.generated_by.get_full_name|default:nd.generated_by.username }}</td>
+            <td>{{ nd.created_at|date:"d M Y H:i" }}</td>
+            <td>
+              {% if nd.file %}
+                <a href="{{ nd.file.url }}" target="_blank" rel="noopener" class="button is-small">📄 Unduh PDF</a>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="cell-muted" style="text-align:center;">Belum ada riwayat generate ND.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<a href="{% url 'pakln:dashboard' %}" class="button is-fullwidth">← Kembali ke Dasbor</a>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  $(function () {
+    var $checks = $('.nd-check');
+
+    function selected() { return $checks.filter(':checked'); }
+
+    function refreshLocks() {
+      var $sel = selected();
+      if ($sel.length === 0) {
+        $checks.prop('disabled', false).closest('tr').removeClass('is-locked');
+        return;
+      }
+      var unor = $sel.first().data('unor');
+      var negara = $sel.first().data('negara');
+      var maksud = $sel.first().data('maksud');
+      $checks.each(function () {
+        var $c = $(this);
+        if ($c.is(':checked')) { return; }
+        var match = String($c.data('unor')) === String(unor)
+          && String($c.data('negara')) === String(negara)
+          && String($c.data('maksud')) === String(maksud);
+        $c.prop('disabled', !match).closest('tr').toggleClass('is-locked', !match);
+      });
+    }
+
+    function updateSubmitState() {
+      $('#btnGenerateND').prop('disabled', selected().length === 0);
+    }
+
+    $checks.on('change', function () {
+      var $c = $(this);
+      if ($c.is(':checked') && $c.data('has-nd') == '1') {
+        var ok = confirm(
+          'Pegawai ini sudah memiliki dokumen ND yang pernah digenerate sebelumnya.\n' +
+          'Lanjutkan generate ND baru untuk pegawai ini?'
+        );
+        if (!ok) {
+          $c.prop('checked', false);
+          return;
+        }
+      }
+      refreshLocks();
+      updateSubmitState();
+    });
+
+    $('#formGenerateND').on('submit', function () {
+      $('#btnGenerateND').prop('disabled', true).text('Membuat dokumen ND…');
+    });
+  });
+</script>
+{% endblock %}
