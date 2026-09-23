@@ -20,3 +20,8 @@ Kerja Sama Luar Negeri
 12. Kotak paraf seperti kasus kotak paraf sebelumnya dengan dua kotak antara Katim Aki dan Plt. Kabag KLN dimana dua data tersebut harus bisa dinamis dan diatur oleh admin pakln dengan nilai default.
 
 Pegawai dipilih dengan menggunakan checklist lalu ada button generate ND, ND yang telah di generate untuk pegawai akan tersimpan dalam riwayat generate ND dan jika pegawai yang telah memiliki hasil generate ND maka akan muncul notif konfirmasi jika dipilih kembali untuk di generate ND
+
+Flow:
+PAda dashboard admin pakln, terdapat list pegawai yang telah diajukan oleh admin unor, proses pilih pegawai mulai dari situ, admin pakln memilih pegawai lalu mengklik generate ND, lalu akan muncuk ke preview edit pdf dengan template pada static/templateND/ND Kabag KLN ke Karo PAKLN_Non Dinas.pdf denang beberapa nilai value bisa di edit.
+
+gunakan library JsPDF untuk melakukan generate pdf sesuai dengan template

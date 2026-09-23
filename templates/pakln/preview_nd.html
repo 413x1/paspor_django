@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Pratinjau Nota Dinas{% endblock %}
+
+{% block content %}
+<a href="{% url 'pakln:dashboard' %}" class="button is-small is-rounded" style="margin-bottom:18px;">← Kembali</a>
+
+<div class="doc-layout">
+  <div class="doc-panel">
+    <div class="doc-panel-head">
+      <h3>📄 Pratinjau Nota Dinas</h3>
+      <button type="button" id="btnSimpanND" class="button is-primary is-rounded">⬇ Generate &amp; Simpan ND</button>
+    </div>
+    <div class="doc-paper">
+      <iframe id="ndPreviewFrame" title="Pratinjau ND" style="width:100%;height:85vh;min-height:750px;border:0;display:block;"></iframe>
+    </div>
+    <p class="helptext" id="simpanNDStatus" style="margin-top:10px;"></p>
+  </div>
+
+  <div>
+    <div class="doc-sidebar-title">📄 Data Nota Dinas</div>
+
+    <div class="data-card">
+      <div class="data-card-head is-blue">📄 Informasi Utama</div>
+      <div class="data-card-body">
+        <div>
+          <div class="field-label">📄 Nama (a.n.)</div>
+          <div class="data-card-readonly" id="d_nama_display"></div>
+        </div>
+        <div>
+          <div class="field-label">📍 Tujuan Negara</div>
+          <div class="data-card-readonly" id="d_negara_display"></div>
+        </div>
+        <div>
+          <div class="field-label">📝 Maksud Perjalanan</div>
+          <div class="data-card-readonly" id="d_keperluan"></div>
+        </div>
+        <div>
+          <div class="field-label">🏢 Unit Organisasi</div>
+          <div class="data-card-readonly" id="d_nama_unor"></div>
+        </div>
+        <div>
+          <div class="field-label">💳 Sumber Pembiayaan</div>
+          <div class="data-card-readonly" id="d_sumber_biaya_display"></div>
+        </div>
+        <div>
+          <div class="field-label">👥 Jumlah Pegawai</div>
+          <div class="data-card-readonly" id="d_jumlah_pegawai"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="data-card">
+      <div class="data-card-head is-purple">🖊 Nilai Pejabat &amp; Paraf</div>
+      <div class="data-card-body">
+        <div>
+          <div class="field-label">🏷 Jabatan pada baris "Dari:" (ND Kabag KLN)</div>
+          <input type="text" class="input" id="f_jabatan_dari">
+        </div>
+        <div>
+          <div class="field-label">🖊 Nama Pejabat (Plt. Kepala Bagian KLN)</div>
+          <input type="text" class="input" id="f_nama_pejabat">
+        </div>
+        <div>
+          <div class="field-label">🗳 Kotak Paraf — Ketua Tim AKI</div>
+          <input type="text" class="input" id="f_paraf_ketua_tim_aki">
+        </div>
+        <div>
+          <div class="field-label">🖊 Nama Kepala Biro PAKLN</div>
+          <input type="text" class="input" id="f_nama_karo_pakln">
+        </div>
+        <div>
+          <div class="field-label">🗳 Kotak Paraf 1 — Katim AKI</div>
+          <input type="text" class="input" id="f_paraf_katim_aki_nd2">
+        </div>
+        <div>
+          <div class="field-label">🗳 Kotak Paraf 2 — Plt. Kabag KLN</div>
+          <input type="text" class="input" id="f_paraf_plt_kabag_kln_nd2">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{ nd_data_json|json_script:"nd-data" }}
+<script>window.NDPengajuanIds = {{ pengajuan_ids|safe }};</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendors/jsPDF/jspdf.umd.min.js' %}"></script>
+<script src="{% static 'vendors/jsPDF/jspdf.plugin.autotable.min.js' %}"></script>
+<script src="{% static 'js/nota_dinas_pdf.js' %}"></script>
+<script>
+  $(function () {
+    var ndData = JSON.parse(document.getElementById('nd-data').textContent);
+    var $fields = {
+      jabatan_dari: $('#f_jabatan_dari'),
+      nama_pejabat: $('#f_nama_pejabat'),
+      paraf_ketua_tim_aki: $('#f_paraf_ketua_tim_aki'),
+      nama_karo_pakln: $('#f_nama_karo_pakln'),
+      paraf_katim_aki_nd2: $('#f_paraf_katim_aki_nd2'),
+      paraf_plt_kabag_kln_nd2: $('#f_paraf_plt_kabag_kln_nd2'),
+    };
+    Object.keys($fields).forEach(function (key) { $fields[key].val(ndData[key] || ''); });
+
+    $('#d_nama_display').text(ndData.nama_display || '—');
+    $('#d_negara_display').text(ndData.negara_display || '—');
+    $('#d_keperluan').text(ndData.keperluan || '—');
+    $('#d_nama_unor').text(ndData.nama_unor || '—');
+    $('#d_sumber_biaya_display').text(ndData.sumber_biaya_display || '—');
+    $('#d_jumlah_pegawai').text((ndData.employees || []).length);
+
+    var currentBlobUrl = null;
+
+    function currentData() {
+      var data = $.extend({}, ndData);
+      Object.keys($fields).forEach(function (key) { data[key] = $fields[key].val(); });
+      return data;
+    }
+
+    function buildDoc() {
+      return NotaDinasPDF.generate(currentData());
+    }
+
+    function refreshPreview() {
+      var doc = buildDoc();
+      var blob = doc.output('blob');
+      var url = URL.createObjectURL(blob);
+      $('#ndPreviewFrame').attr('src', url);
+      if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); }
+      currentBlobUrl = url;
+    }
+
+    var debounceTimer = null;
+    Object.keys($fields).forEach(function (key) {
+      $fields[key].on('input', function () {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(refreshPreview, 350);
+      });
+    });
+    refreshPreview();
+
+    function csrfToken() {
+      var match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+      return match ? decodeURIComponent(match[1]) : '';
+    }
+
+    $('#btnSimpanND').on('click', function () {
+      var $btn = $(this).prop('disabled', true).text('Membuat dokumen ND…');
+      $('#simpanNDStatus').text('').removeClass('help is-danger');
+
+      var doc = buildDoc();
+      var blob = doc.output('blob');
+      var formData = new FormData();
+      formData.append('file', blob, 'nota_dinas.pdf');
+      (window.NDPengajuanIds || []).forEach(function (id) {
+        formData.append('pengajuan_ids', id);
+      });
+
+      fetch('{% url "pakln:simpan_nd" %}', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken() },
+        body: formData,
+      })
+        .then(function (res) { return res.json().then(function (data) { return { status: res.status, data: data }; }); })
+        .then(function (result) {
+          if (result.data.ok) {
+            window.location.href = result.data.redirect_url;
+          } else {
+            $btn.prop('disabled', false).text('⬇ Generate & Simpan ND');
+            $('#simpanNDStatus').addClass('help is-danger').text(result.data.error || 'Gagal menyimpan dokumen ND.');
+          }
+        })
+        .catch(function () {
+          $btn.prop('disabled', false).text('⬇ Generate & Simpan ND');
+          $('#simpanNDStatus').addClass('help is-danger').text('Gagal menghubungi server. Coba lagi.');
+        });
+    });
+  });
+</script>
+{% endblock %}

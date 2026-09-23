@@ -39,7 +39,7 @@
           <a class="navbar-item {% if vn == 'pakln:kelola_template' or vn == 'pakln:edit_template' %}is-active{% endif %}" href="{% url 'pakln:kelola_template' %}">Manajemen Template</a>
           <a class="navbar-item {% if vn == 'pakln:kelola_negara' or vn == 'pakln:edit_negara' %}is-active{% endif %}" href="{% url 'pakln:kelola_negara' %}">Manajemen Negara</a>
           <a class="navbar-item {% if vn == 'pakln:kelola_sumber_pembiayaan' or vn == 'pakln:edit_sumber_pembiayaan' %}is-active{% endif %}" href="{% url 'pakln:kelola_sumber_pembiayaan' %}">Manajemen Sumber Pembiayaan</a>
-          <a class="navbar-item {% if vn == 'pakln:generate_nd' or vn == 'pakln:pengaturan_nd' %}is-active{% endif %}" href="{% url 'pakln:generate_nd' %}">Generate ND</a>
+          <a class="navbar-item {% if vn == 'pakln:riwayat_nd' or vn == 'pakln:pengaturan_nd' %}is-active{% endif %}" href="{% url 'pakln:riwayat_nd' %}">Riwayat ND</a>
           <a class="navbar-item {% if vn == 'pakln:export' %}is-active{% endif %}" href="{% url 'pakln:export' %}">Export</a>
         {% endif %}
         {% endwith %}

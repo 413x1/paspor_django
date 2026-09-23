@@ -343,9 +343,10 @@ class DokumenTemplate(models.Model):
 
 
 # ---------------------------------------------------------------------------
-# Generate Nota Dinas (ND) — Admin Biro PAKLN membuat dokumen ND (PDF) dari
-# template docx untuk satu atau lebih pegawai (harus 1 unit organisasi,
-# tujuan negara, dan maksud perjalanan yang sama). Lihat
+# Generate Nota Dinas (ND) — Admin Biro PAKLN membuat dokumen ND (PDF,
+# dibangun di browser dengan jsPDF mengikuti tata letak template docx pada
+# static/templateND/) untuk satu atau lebih pegawai (harus 1 unit
+# organisasi, tujuan negara, dan maksud perjalanan yang sama). Lihat
 # wiki/instructions/GENERATE_ND.MD.
 # ---------------------------------------------------------------------------
 
@@ -401,7 +402,7 @@ def nota_dinas_path(instance, filename):
 class NotaDinas(models.Model):
     """Satu riwayat generate ND, mencakup satu atau lebih `Pengajuan` yang
     berasal dari unit organisasi, tujuan negara, dan maksud perjalanan yang
-    sama (lihat validasi pada `views_pakln.generate_nd`)."""
+    sama (lihat validasi pada `views_pakln._validasi_kesamaan_nd`)."""
 
     pengajuan_list = models.ManyToManyField(
         Pengajuan, related_name="nota_dinas_list", verbose_name="Pengajuan",

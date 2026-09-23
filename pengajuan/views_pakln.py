@@ -1,4 +1,5 @@
 import csv
+import json
 
 from django.contrib import messages
 from django.db import transaction
@@ -19,7 +20,11 @@ from paspor.models import Negara, SumberPembiayaan
 from .decorators import role_required
 from .forms import DokumenPaklnForm, DokumenTemplateForm, NegaraForm, PengaturanNDForm, SumberPembiayaanForm
 from .models import DokumenPakln, DokumenTemplate, NotaDinas, Pengajuan, PengaturanND
-from .nota_dinas import build_nota_dinas_file, nama_ringkas_pengajuan
+from .nota_dinas import build_nd_context, nama_ringkas_pengajuan
+
+# Status Pengajuan yang bisa ditindaklanjuti Admin Biro PAKLN (termasuk
+# digenerate ND-nya) — sudah diteruskan Admin Unor.
+_ND_ELIGIBLE_STATUS = [Pengajuan.Status.PROSES_PAKLN, Pengajuan.Status.SELESAI]
 
 
 @role_required("admin_pakln")
@@ -28,16 +33,24 @@ def dashboard(request):
     pegawai (status != belum), termasuk yang masih diproses Admin Unor,
     supaya Admin Biro PAKLN dapat memantau progres lebih awal. Hanya
     pengajuan berstatus proses_pakln/selesai yang dapat ditindaklanjuti
-    (lihat template — link TL hanya muncul untuk status tersebut)."""
-    pengajuan_list = (
+    (link TL, checklist pemilihan pegawai untuk Generate ND) — lihat
+    template untuk kondisi tampil masing-masing."""
+    pengajuan_list = list(
         Pengajuan.objects.exclude(status=Pengajuan.Status.BELUM)
-        .select_related("pegawai__profile")
+        .select_related("pegawai__profile__unit_organisasi")
+        .prefetch_related("tujuan_negara", "nota_dinas_list")
     )
+    for p in pengajuan_list:
+        p.nd_checkable = p.status in _ND_ELIGIBLE_STATUS
+        p.negara_key = "-".join(str(i) for i in sorted(p.tujuan_negara.values_list("id", flat=True)))
+        p.maksud_key = p.maksud.strip().lower()
+        p.sudah_ada_nd = bool(p.nota_dinas_list.all())
+
     summary = {
-        "total": pengajuan_list.count(),
-        "proses_unor": pengajuan_list.filter(status=Pengajuan.Status.PROSES).count(),
-        "proses_pakln": pengajuan_list.filter(status=Pengajuan.Status.PROSES_PAKLN).count(),
-        "selesai": pengajuan_list.filter(status=Pengajuan.Status.SELESAI).count(),
+        "total": len(pengajuan_list),
+        "proses_unor": sum(1 for p in pengajuan_list if p.status == Pengajuan.Status.PROSES),
+        "proses_pakln": sum(1 for p in pengajuan_list if p.status == Pengajuan.Status.PROSES_PAKLN),
+        "selesai": sum(1 for p in pengajuan_list if p.status == Pengajuan.Status.SELESAI),
     }
     return render(request, "pakln/dashboard.html", {"pengajuan_list": pengajuan_list, "summary": summary})
 
@@ -518,67 +531,100 @@ def _validasi_kesamaan_nd(selected):
     return None
 
 
-@role_required("admin_pakln")
-def generate_nd(request):
-    """Generate Nota Dinas (ND) — Admin Biro PAKLN memilih satu atau lebih
-    pengajuan (yang sudah diteruskan Admin Unor) untuk digenerate jadi
-    satu dokumen ND (PDF), disertai riwayat generate ND sebelumnya."""
-    eligible = list(
-        Pengajuan.objects.filter(status__in=[Pengajuan.Status.PROSES_PAKLN, Pengajuan.Status.SELESAI])
+def _get_selected_pengajuan(request):
+    ids = request.POST.getlist("pengajuan_ids")
+    return list(
+        Pengajuan.objects.filter(pk__in=ids, status__in=_ND_ELIGIBLE_STATUS)
         .select_related("pegawai__profile__unit_organisasi", "sumber_pembiayaan")
-        .prefetch_related("tujuan_negara", "nota_dinas_list")
-        .order_by("pegawai__profile__unit_organisasi__name", "pegawai__profile__nama")
+        .prefetch_related("tujuan_negara")
     )
-    for p in eligible:
-        p.negara_key = "-".join(str(i) for i in sorted(p.tujuan_negara.values_list("id", flat=True)))
-        p.maksud_key = p.maksud.strip().lower()
-        p.sudah_ada_nd = bool(p.nota_dinas_list.all())
 
-    if request.method == "POST":
-        ids = request.POST.getlist("pengajuan_ids")
-        selected = [p for p in eligible if str(p.pk) in ids]
-        if not selected:
-            messages.error(request, "Pilih minimal satu pegawai untuk digenerate ND.")
-        else:
-            error = _validasi_kesamaan_nd(selected)
-            if error:
-                messages.error(request, error)
-            else:
-                pengaturan = PengaturanND.get_solo()
-                nama_ringkas = nama_ringkas_pengajuan(selected)
-                filename = f"ND_{slugify(nama_ringkas)}_{timezone.now():%Y%m%d%H%M%S}.pdf"
-                try:
-                    file_obj = build_nota_dinas_file(selected, pengaturan, filename)
-                except Exception:
-                    messages.error(
-                        request,
-                        "Gagal membuat dokumen ND. Pastikan Microsoft Word terpasang pada server "
-                        "dan template ND tersedia di static/templateND/.",
-                    )
-                else:
-                    with transaction.atomic():
-                        nota = NotaDinas.objects.create(
-                            unit_organisasi=selected[0].pegawai.profile.unit_organisasi,
-                            maksud=selected[0].maksud,
-                            nama_ringkas=nama_ringkas,
-                            generated_by=request.user,
-                        )
-                        nota.file.save(filename, file_obj, save=True)
-                        nota.pengajuan_list.set(selected)
-                        nota.negara_tujuan.set(selected[0].tujuan_negara.all())
-                    messages.success(request, f"Dokumen ND untuk {nama_ringkas} berhasil digenerate.")
-                    return redirect("pakln:generate_nd")
 
+@role_required("admin_pakln")
+def preview_nd(request):
+    """Setelah pegawai dicentang pada Dasbor lalu tombol "Generate ND"
+    diklik, tampilkan pratinjau ND (nilai pejabat/paraf bisa diedit)
+    sebelum PDF-nya benar-benar dibangun (di browser, lihat
+    `simpan_nd`)."""
+    if request.method != "POST":
+        return redirect("pakln:dashboard")
+
+    selected = _get_selected_pengajuan(request)
+    if not selected:
+        messages.error(request, "Pilih minimal satu pegawai untuk digenerate ND.")
+        return redirect("pakln:dashboard")
+
+    error = _validasi_kesamaan_nd(selected)
+    if error:
+        messages.error(request, error)
+        return redirect("pakln:dashboard")
+
+    pengaturan = PengaturanND.get_solo()
+    nd_data = build_nd_context(selected)
+    nd_data.update({
+        "jabatan_dari": pengaturan.jabatan_plt_kabag_kln,
+        "nama_pejabat": pengaturan.nama_pejabat_plt_kabag_kln,
+        "paraf_ketua_tim_aki": pengaturan.paraf_ketua_tim_aki,
+        "nama_karo_pakln": pengaturan.nama_karo_pakln,
+        "paraf_katim_aki_nd2": pengaturan.paraf_katim_aki_nd2,
+        "paraf_plt_kabag_kln_nd2": pengaturan.paraf_plt_kabag_kln_nd2,
+    })
+
+    context = {
+        "pengajuan_ids": [p.pk for p in selected],
+        "nd_data_json": json.dumps(nd_data),
+        "nama_ringkas": nd_data["nama_display"],
+    }
+    return render(request, "pakln/preview_nd.html", context)
+
+
+@role_required("admin_pakln")
+def simpan_nd(request):
+    """Endpoint AJAX yang dipanggil dari `preview_nd.html` setelah PDF
+    ND dibangun jsPDF di browser — validasi ulang pemilihan pegawai di
+    server, lalu simpan berkasnya sebagai riwayat generate ND."""
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "error": "Metode tidak diizinkan."}, status=405)
+
+    selected = _get_selected_pengajuan(request)
+    if not selected:
+        return JsonResponse({"ok": False, "error": "Pilih minimal satu pegawai untuk digenerate ND."}, status=400)
+
+    error = _validasi_kesamaan_nd(selected)
+    if error:
+        return JsonResponse({"ok": False, "error": error}, status=400)
+
+    file_obj = request.FILES.get("file")
+    if not file_obj:
+        return JsonResponse({"ok": False, "error": "Berkas PDF hasil generate tidak diterima."}, status=400)
+
+    nama_ringkas = nama_ringkas_pengajuan(selected)
+    filename = f"ND_{slugify(nama_ringkas)}_{timezone.now():%Y%m%d%H%M%S}.pdf"
+
+    with transaction.atomic():
+        nota = NotaDinas.objects.create(
+            unit_organisasi=selected[0].pegawai.profile.unit_organisasi,
+            maksud=selected[0].maksud,
+            nama_ringkas=nama_ringkas,
+            generated_by=request.user,
+        )
+        nota.file.save(filename, file_obj, save=True)
+        nota.pengajuan_list.set(selected)
+        nota.negara_tujuan.set(selected[0].tujuan_negara.all())
+
+    messages.success(request, f"Dokumen ND untuk {nama_ringkas} berhasil digenerate.")
+    return JsonResponse({"ok": True, "redirect_url": reverse("pakln:riwayat_nd")})
+
+
+@role_required("admin_pakln")
+def riwayat_nd(request):
+    """Riwayat Generate ND — seluruh dokumen ND yang pernah digenerate
+    Admin Biro PAKLN."""
     riwayat = (
         NotaDinas.objects.select_related("unit_organisasi", "generated_by")
         .prefetch_related("negara_tujuan", "pengajuan_list__pegawai__profile")
     )
-
-    return render(
-        request,
-        "pakln/generate_nd.html",
-        {"pengajuan_list": eligible, "riwayat": riwayat},
-    )
+    return render(request, "pakln/riwayat_nd.html", {"riwayat": riwayat})
 
 
 @role_required("admin_pakln")
