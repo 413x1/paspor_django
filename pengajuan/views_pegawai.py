@@ -2,6 +2,8 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from notifications.services import notify_resubmit_unor, notify_submit_unor
+
 from .decorators import role_required
 from .forms import DokumenPegawaiForm, PengajuanForm
 from .models import DokumenPegawai, DokumenTemplate, Pengajuan
@@ -53,6 +55,7 @@ def formulir_pengajuan(request):
             pengajuan.kanal = Pengajuan.Kanal.WEB
             pengajuan.form_saved = True
             pengajuan.save()
+            form.save_m2m()
             messages.success(request, "Formulir pengajuan berhasil disimpan.")
             return redirect("pegawai:upload_dokumen", kode=pengajuan.kode)
     else:
@@ -89,11 +92,21 @@ def upload_dokumen(request, kode):
             elif not request.POST.get("agree"):
                 messages.error(request, "Centang pernyataan kelengkapan dokumen terlebih dahulu.")
             else:
+                # Sudah ada catatan revisi Unor sebelumnya -> ini pengiriman
+                # ulang (Event 2C), bukan pengajuan baru (Event 1).
+                is_resubmit = bool(pengajuan.catatan_unor)
+
                 pengajuan.status = Pengajuan.Status.PROSES
                 pengajuan.submitted = True
                 pengajuan.tgl_pengajuan = timezone.now().date()
                 pengajuan.catatan_unor = ""
                 pengajuan.save()
+
+                if is_resubmit:
+                    notify_resubmit_unor(pengajuan)
+                else:
+                    notify_submit_unor(pengajuan)
+
                 messages.success(request, f"Pengajuan {pengajuan.kode} berhasil dikirim ke Admin Unor.")
                 return redirect("pegawai:monitor_progres", kode=pengajuan.kode)
         else:

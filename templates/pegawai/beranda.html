@@ -29,7 +29,7 @@
     <tbody>
       {% if aktif %}
         <tr>
-          <td><strong>🌏 {{ aktif.tujuan_negara|default:"Belum diisi" }}</strong></td>
+          <td><strong>🌏 {{ aktif.tujuan_negara_display|default:"Belum diisi" }}</strong></td>
           <td>{{ aktif.kategori|default:"—" }}</td>
           <td>{{ aktif.tgl_pengajuan|date:"d M Y"|default:"—" }}</td>
           <td>{{ aktif.get_kanal_display }}</td>
@@ -47,7 +47,7 @@
       {% endif %}
       {% for p in riwayat %}
         <tr>
-          <td><strong>🌏 {{ p.tujuan_negara|default:"—" }}</strong></td>
+          <td><strong>🌏 {{ p.tujuan_negara_display|default:"—" }}</strong></td>
           <td>{{ p.kategori|default:"—" }}</td>
           <td>{{ p.tgl_pengajuan|date:"d M Y"|default:"—" }}</td>
           <td>—</td>

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Manajemen Negara{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Manajemen Negara</h2>
+    <p class="sub">Kelola daftar negara yang menjadi pilihan pada field "Tujuan Negara" di Formulir Pengajuan.</p>
+  </div>
+  <a href="{% url 'pakln:dashboard' %}" class="button is-small">← Kembali ke Dasbor</a>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;margin-bottom:14px;">Tambah Negara Baru</div>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.nama_negara.id_for_label }}">Nama Negara</label>
+          <div class="control">{{ form.nama_negara }}</div>
+          {% for e in form.nama_negara.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.kode_negara.id_for_label }}">Kode Negara</label>
+          <div class="control">{{ form.kode_negara }}</div>
+          <p class="helptext">{{ form.fields.kode_negara.help_text }}</p>
+          {% for e in form.kode_negara.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="checkbox" for="{{ form.is_active.id_for_label }}">
+        {{ form.is_active }} {{ form.fields.is_active.label }}
+      </label>
+    </div>
+
+    <button type="submit" class="button is-primary">Simpan Negara</button>
+  </form>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;">
+    Daftar Negara <span class="badge-auto">{{ negara_list|length }}</span>
+  </div>
+  <div class="table-wrap">
+    <table class="table data-table is-fullwidth is-hoverable">
+      <thead>
+        <tr><th>Nama Negara</th><th>Kode</th><th>Status</th><th>Aksi</th></tr>
+      </thead>
+      <tbody>
+        {% for n in negara_list %}
+          <tr>
+            <td><strong>{{ n.nama_negara }}</strong></td>
+            <td>{{ n.kode_negara|default:"—" }}</td>
+            <td>
+              {% if n.is_active %}
+                <span class="tag paspor-status is-selesai"><span class="dot"></span>Aktif</span>
+              {% else %}
+                <span class="tag paspor-status is-belum"><span class="dot"></span>Nonaktif</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="actions" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                <a href="{% url 'pakln:edit_negara' negara_id=n.pk %}" class="button is-small">✎ Edit</a>
+                <form method="post" action="{% url 'pakln:toggle_negara' negara_id=n.pk %}" style="margin:0;">
+                  {% csrf_token %}
+                  <button type="submit" class="button is-small">{% if n.is_active %}🙈 Nonaktifkan{% else %}👁 Aktifkan{% endif %}</button>
+                </form>
+                <form method="post" action="{% url 'pakln:hapus_negara' negara_id=n.pk %}" style="margin:0;" onsubmit="return confirm('Hapus negara ini?');">
+                  {% csrf_token %}
+                  <button type="submit" class="button is-small is-danger">🗑 Hapus</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="cell-muted" style="text-align:center;">Belum ada data negara.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

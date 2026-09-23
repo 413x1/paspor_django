@@ -4,7 +4,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from accounts.models import PegawaiProfile, User
-from paspor.models import UnitOrganisasi
+from paspor.models import Negara, SumberPembiayaan, UnitOrganisasi
 from pengajuan.models import Pengajuan
 
 # Data awal unit organisasi eselon I Kementerian PU (tabel org_units).
@@ -95,14 +95,26 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS("User 'admin.pakln' dibuat."))
 
         # --- Contoh riwayat pengajuan (status selesai) -------------------
-        Pengajuan.objects.get_or_create(
+        # `tujuan_negara` adalah ManyToManyField — tidak bisa masuk
+        # `defaults` pada get_or_create(), jadi diisi lewat `.set()` setelah
+        # baris Pengajuan ada.
+        arab_saudi, _ = Negara.objects.get_or_create(
+            nama_negara="Arab Saudi", defaults={"kode_negara": "SA"}
+        )
+        singapura, _ = Negara.objects.get_or_create(
+            nama_negara="Singapura", defaults={"kode_negara": "SG"}
+        )
+        biaya_sendiri, _ = SumberPembiayaan.objects.get_or_create(
+            nama="Biaya Sendiri", tipe_perjalanan=SumberPembiayaan.TipePerjalanan.NON_DINAS,
+        )
+
+        pengajuan_umrah, _ = Pengajuan.objects.get_or_create(
             kode="PSP-2026-0091",
             defaults={
                 "pegawai": pegawai,
                 "kategori": Pengajuan.Kategori.IBADAH,
                 "maksud": "Menunaikan ibadah umrah bersama keluarga",
-                "tujuan_negara": "Arab Saudi",
-                "sumber_pembiayaan": Pengajuan.SumberPembiayaan.BIAYA_SENDIRI,
+                "sumber_pembiayaan": biaya_sendiri,
                 "tgl_berangkat": datetime.date(2026, 6, 1),
                 "tgl_kembali": datetime.date(2026, 6, 8),
                 "jumlah_hari_kerja": 5,
@@ -117,14 +129,15 @@ class Command(BaseCommand):
                 "tgl_selesai": datetime.date(2026, 6, 2),
             },
         )
-        Pengajuan.objects.get_or_create(
+        pengajuan_umrah.tujuan_negara.set([arab_saudi])
+
+        pengajuan_keluarga, _ = Pengajuan.objects.get_or_create(
             kode="PSP-2026-0114",
             defaults={
                 "pegawai": pegawai,
                 "kategori": Pengajuan.Kategori.KEPERLUAN_PRIBADI,
                 "maksud": "Menghadiri acara keluarga",
-                "tujuan_negara": "Singapura",
-                "sumber_pembiayaan": Pengajuan.SumberPembiayaan.BIAYA_SENDIRI,
+                "sumber_pembiayaan": biaya_sendiri,
                 "tgl_berangkat": datetime.date(2026, 7, 12),
                 "tgl_kembali": datetime.date(2026, 7, 19),
                 "jumlah_hari_kerja": 5,
@@ -139,6 +152,7 @@ class Command(BaseCommand):
                 "tgl_selesai": datetime.date(2026, 7, 19),
             },
         )
+        pengajuan_keluarga.tujuan_negara.set([singapura])
 
         self.stdout.write(self.style.SUCCESS(
             "\nSelesai. Akun demo (password sama untuk semua: 'paspor123'):\n"
