@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Manajemen Kategori Perjalanan{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Manajemen Kategori Perjalanan</h2>
+    <p class="sub">Kelola daftar kategori yang menjadi pilihan pada field "Kategori Perjalanan" di Formulir Pengajuan.</p>
+  </div>
+  <a href="{% url 'pakln:dashboard' %}" class="button is-small">← Kembali ke Dasbor</a>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;margin-bottom:14px;">Tambah Kategori Baru</div>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.nama_kategori.id_for_label }}">Nama Kategori</label>
+          <div class="control">{{ form.nama_kategori }}</div>
+          {% for e in form.nama_kategori.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.jenis_perjalanan.id_for_label }}">Jenis Perjalanan</label>
+          <div class="control"><div class="select is-fullwidth">{{ form.jenis_perjalanan }}</div></div>
+          {% for e in form.jenis_perjalanan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="checkbox" for="{{ form.is_active.id_for_label }}">
+        {{ form.is_active }} {{ form.fields.is_active.label }}
+      </label>
+    </div>
+
+    <button type="submit" class="button is-primary">Simpan Kategori</button>
+  </form>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;">
+    Daftar Kategori Perjalanan <span class="badge-auto" id="kategoriCount">{{ kategori_count }}</span>
+  </div>
+  <div class="table-wrap">
+    <table id="kategoriTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
+      <thead>
+        <tr><th>Nama Kategori</th><th>Jenis Perjalanan</th><th>Status</th><th>Aksi</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
+<script>
+  $(function () {
+    function csrfToken() {
+      var match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+      return match ? decodeURIComponent(match[1]) : '';
+    }
+
+    var $table = $('#kategoriTable').DataTable({
+      serverSide: true,
+      processing: true,
+      autoWidth: false,
+      ajax: { url: '{% url "pakln:kategori_data" %}', type: 'GET', cache: false },
+      columns: [
+        { data: 0, width: '26%' },
+        { data: 1, width: '20%' },
+        { data: 2, width: '14%' },
+        { data: 3, width: '40%', orderable: false, searchable: false },
+      ],
+      order: [[1, 'asc'], [0, 'asc']],
+      pageLength: 10,
+      lengthMenu: [10, 25, 50, 100],
+      dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
+      language: {
+        search: '',
+        searchPlaceholder: 'Cari kategori...',
+        lengthMenu: 'Tampilkan _MENU_ kategori',
+        info: 'Menampilkan _START_–_END_ dari _TOTAL_ kategori',
+        infoEmpty: 'Tidak ada kategori',
+        infoFiltered: '(disaring dari _MAX_ total kategori)',
+        zeroRecords: 'Tidak ada kategori yang cocok.',
+        processing: 'Memuat…',
+        paginate: { previous: '‹ Sebelumnya', next: 'Berikutnya ›' },
+      },
+    }).on('xhr.dt', function (e, settings, json) {
+      if (json) { $('#kategoriCount').text(json.recordsTotal); }
+    });
+
+    $('#kategoriTable tbody').on('click', '[data-kategori-toggle]', function () {
+      var url = $(this).data('kategori-toggle');
+      $.ajax({
+        url: url, type: 'POST', headers: { 'X-CSRFToken': csrfToken() },
+        success: function () { $table.ajax.reload(null, false); },
+      });
+    });
+
+    $('#kategoriTable tbody').on('click', '[data-kategori-hapus]', function () {
+      if (!confirm('Hapus kategori ini?')) { return; }
+      var url = $(this).data('kategori-hapus');
+      $.ajax({
+        url: url, type: 'POST', headers: { 'X-CSRFToken': csrfToken() },
+        success: function () { $table.ajax.reload(null, false); },
+        error: function (xhr) {
+          var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Gagal menghapus kategori.';
+          alert(msg);
+        },
+      });
+    });
+  });
+</script>
+{% endblock %}
