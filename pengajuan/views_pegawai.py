@@ -55,6 +55,7 @@ def formulir_pengajuan(request):
             pengajuan.kanal = Pengajuan.Kanal.WEB
             pengajuan.form_saved = True
             pengajuan.save()
+            form.save_m2m()
             messages.success(request, "Formulir pengajuan berhasil disimpan.")
             return redirect("pegawai:upload_dokumen", kode=pengajuan.kode)
     else:

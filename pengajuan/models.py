@@ -25,11 +25,6 @@ class Pengajuan(models.Model):
         KEPERLUAN_PRIBADI = "Keperluan Pribadi", "Keperluan Pribadi"
         LAINNYA = "Lainnya", "Lainnya"
 
-    class SumberPembiayaan(models.TextChoices):
-        BIAYA_SENDIRI = "Biaya Sendiri", "Biaya Sendiri"
-        SPONSOR = "Sponsor/Penyelenggara", "Sponsor/Penyelenggara"
-        NEGARA_LEMBAGA_LAIN = "Negara/Lembaga Lain", "Negara/Lembaga Lain"
-
     class Kanal(models.TextChoices):
         MOBILE = "mobile", "Mobile App"
         WEB = "web", "Web App"
@@ -48,8 +43,13 @@ class Pengajuan(models.Model):
     # --- Detail perjalanan (diisi pegawai pada Formulir Pengajuan) ---
     kategori = models.CharField(max_length=30, choices=Kategori.choices, blank=True)
     maksud = models.TextField("Maksud Perjalanan", blank=True)
-    tujuan_negara = models.CharField(max_length=100, blank=True)
-    sumber_pembiayaan = models.CharField(max_length=30, choices=SumberPembiayaan.choices, blank=True)
+    tujuan_negara = models.ManyToManyField(
+        "paspor.Negara", blank=True, related_name="pengajuan_list", verbose_name="Tujuan Negara",
+    )
+    sumber_pembiayaan = models.ForeignKey(
+        "paspor.SumberPembiayaan", on_delete=models.PROTECT, null=True, blank=True,
+        related_name="pengajuan_list", verbose_name="Sumber Pembiayaan",
+    )
     tgl_berangkat = models.DateField(null=True, blank=True)
     tgl_kembali = models.DateField(null=True, blank=True)
     jumlah_hari_kerja = models.PositiveIntegerField(null=True, blank=True)
@@ -98,6 +98,13 @@ class Pengajuan(models.Model):
         )
         next_num = int(last.kode.split("-")[-1]) + 1 if last else 1
         return f"{prefix}{next_num:04d}"
+
+    @property
+    def tujuan_negara_display(self):
+        """Nama-nama negara tujuan sebagai satu string dipisah koma,
+        untuk ditampilkan pada tabel/pratinjau/export yang butuh teks
+        tunggal (field aslinya ManyToMany, bisa lebih dari satu negara)."""
+        return ", ".join(self.tujuan_negara.values_list("nama_negara", flat=True))
 
     @property
     def jumlah_hari_kalender(self):

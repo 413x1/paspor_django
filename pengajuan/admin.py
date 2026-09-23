@@ -32,11 +32,16 @@ class DokumenPaklnInline(admin.TabularInline):
 
 @admin.register(Pengajuan)
 class PengajuanAdmin(admin.ModelAdmin):
-    list_display = ("kode", "pegawai", "kategori", "tujuan_negara", "kanal", "status", "tgl_pengajuan")
+    list_display = ("kode", "pegawai", "kategori", "tujuan_negara_display", "kanal", "status", "tgl_pengajuan")
     list_filter = ("status", "kanal", "kategori")
     search_fields = ("kode", "pegawai__username", "pegawai__profile__nama", "pegawai__profile__nip")
     readonly_fields = ("kode", "created_at", "updated_at")
+    filter_horizontal = ("tujuan_negara",)
     inlines = [DokumenPegawaiInline, DokumenUnorInline, DokumenUnorPendukungInline, DokumenPaklnInline]
+
+    @admin.display(description="Tujuan Negara")
+    def tujuan_negara_display(self, obj):
+        return obj.tujuan_negara_display
 
 
 @admin.register(DokumenTemplate)

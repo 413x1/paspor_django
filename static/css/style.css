@@ -518,3 +518,43 @@ body { background: var(--bg); color: var(--slate-900); }
   .notif-dropdown { position: fixed; top: 68px; right: 16px; left: 16px; width: auto; }
   .notif-toast-container { top: 76px; right: 16px; left: 16px; width: auto; }
 }
+
+/* ---------- Multi-Select Dropdown generik (mis. Tujuan Negara) ---------- */
+.multiselect { position: relative; }
+.multiselect-native { position: absolute; opacity: 0; height: 1px; width: 1px; pointer-events: none; }
+.multiselect-control {
+  width: 100%; min-height: 42px; display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; background: var(--white); border: 1px solid var(--line); border-radius: 8px;
+  padding: 6px 10px; cursor: pointer; text-align: left;
+}
+.multiselect-control:hover { border-color: var(--slate-400); }
+.multiselect-chips { display: flex; flex-wrap: wrap; gap: 5px; flex: 1 1 auto; min-width: 0; }
+.multiselect-placeholder { color: var(--slate-400); font-size: 13.5px; }
+.multiselect-chip {
+  display: inline-flex; align-items: center; gap: 5px; background: var(--blue-bg); color: var(--navy-800);
+  border-radius: 999px; padding: 3px 6px 3px 10px; font-size: 12px; font-weight: 600;
+}
+.multiselect-chip-remove {
+  border: none; background: rgba(29, 53, 87, .12); color: inherit; width: 16px; height: 16px;
+  border-radius: 50%; font-size: 12px; line-height: 1; cursor: pointer; flex-shrink: 0;
+}
+.multiselect-chip-remove:hover { background: rgba(29, 53, 87, .24); }
+.multiselect-caret {
+  display: block; width: 0.625em; height: 0.625em; flex-shrink: 0;
+  border: 0.125em solid var(--teal); border-right: 0; border-top: 0;
+  transform: rotate(-45deg); margin-top: -0.2em;
+}
+.multiselect-panel {
+  display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30;
+  background: var(--white); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
+  padding: 8px; max-height: 280px; display: none; flex-direction: column;
+}
+.multiselect-panel.is-active { display: flex; }
+.multiselect-search { margin-bottom: 6px; flex-shrink: 0; }
+.multiselect-options { overflow-y: auto; }
+.multiselect-option {
+  display: flex; align-items: center; gap: 8px; padding: 7px 6px; border-radius: 6px;
+  font-size: 13px; color: var(--slate-900); cursor: pointer;
+}
+.multiselect-option:hover { background: var(--bg); }
+.multiselect-option input[type="checkbox"] { flex-shrink: 0; }

@@ -191,7 +191,7 @@ def export_database(request):
         writer.writerow(["Kode", "Nama Pegawai", "Kategori", "Tujuan", "Tgl Pengajuan", "Status"])
         for p in pengajuan_list:
             nama = getattr(getattr(p.pegawai, "profile", None), "nama", p.pegawai.get_full_name())
-            writer.writerow([p.kode, nama, p.kategori, p.tujuan_negara, p.tgl_pengajuan or "", p.get_status_display()])
+            writer.writerow([p.kode, nama, p.kategori, p.tujuan_negara_display, p.tgl_pengajuan or "", p.get_status_display()])
         return response
 
     return render(request, "unor/export.html", {"pengajuan_list": pengajuan_list})

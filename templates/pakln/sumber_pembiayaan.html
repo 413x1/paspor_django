@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Manajemen Sumber Pembiayaan{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Manajemen Sumber Pembiayaan</h2>
+    <p class="sub">Kelola daftar sumber pembiayaan yang menjadi pilihan pada field "Sumber Pembiayaan" di Formulir Pengajuan.</p>
+  </div>
+  <a href="{% url 'pakln:dashboard' %}" class="button is-small">← Kembali ke Dasbor</a>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;margin-bottom:14px;">Tambah Sumber Pembiayaan Baru</div>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.nama.id_for_label }}">Nama</label>
+          <div class="control">{{ form.nama }}</div>
+          {% for e in form.nama.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.tipe_perjalanan.id_for_label }}">Tipe Perjalanan</label>
+          <div class="control"><div class="select is-fullwidth">{{ form.tipe_perjalanan }}</div></div>
+          {% for e in form.tipe_perjalanan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="{{ form.keterangan.id_for_label }}">Keterangan</label>
+      <div class="control">{{ form.keterangan }}</div>
+      {% for e in form.keterangan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div class="field">
+      <label class="checkbox" for="{{ form.is_active.id_for_label }}">
+        {{ form.is_active }} {{ form.fields.is_active.label }}
+      </label>
+    </div>
+
+    <button type="submit" class="button is-primary">Simpan Sumber Pembiayaan</button>
+  </form>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;">
+    Daftar Sumber Pembiayaan <span class="badge-auto">{{ sumber_list|length }}</span>
+  </div>
+  <div class="table-wrap">
+    <table class="table data-table is-fullwidth is-hoverable">
+      <thead>
+        <tr><th>Nama</th><th>Tipe Perjalanan</th><th>Keterangan</th><th>Status</th><th>Aksi</th></tr>
+      </thead>
+      <tbody>
+        {% for s in sumber_list %}
+          <tr>
+            <td><strong>{{ s.nama }}</strong></td>
+            <td>{{ s.get_tipe_perjalanan_display }}</td>
+            <td>{{ s.keterangan|default:"—" }}</td>
+            <td>
+              {% if s.is_active %}
+                <span class="tag paspor-status is-selesai"><span class="dot"></span>Aktif</span>
+              {% else %}
+                <span class="tag paspor-status is-belum"><span class="dot"></span>Nonaktif</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="actions" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                <a href="{% url 'pakln:edit_sumber_pembiayaan' sumber_id=s.pk %}" class="button is-small">✎ Edit</a>
+                <form method="post" action="{% url 'pakln:toggle_sumber_pembiayaan' sumber_id=s.pk %}" style="margin:0;">
+                  {% csrf_token %}
+                  <button type="submit" class="button is-small">{% if s.is_active %}🙈 Nonaktifkan{% else %}👁 Aktifkan{% endif %}</button>
+                </form>
+                <form method="post" action="{% url 'pakln:hapus_sumber_pembiayaan' sumber_id=s.pk %}" style="margin:0;" onsubmit="return confirm('Hapus sumber pembiayaan ini?');">
+                  {% csrf_token %}
+                  <button type="submit" class="button is-small is-danger">🗑 Hapus</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="cell-muted" style="text-align:center;">Belum ada data sumber pembiayaan.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

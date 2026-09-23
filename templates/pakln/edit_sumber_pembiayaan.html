@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Edit Sumber Pembiayaan{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Edit Sumber Pembiayaan</h2>
+    <p class="sub">{{ sumber.nama }}</p>
+  </div>
+  <a href="{% url 'pakln:kelola_sumber_pembiayaan' %}" class="button is-small">← Kembali ke Manajemen Sumber Pembiayaan</a>
+</div>
+
+<div class="box">
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.nama.id_for_label }}">Nama</label>
+          <div class="control">{{ form.nama }}</div>
+          {% for e in form.nama.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.tipe_perjalanan.id_for_label }}">Tipe Perjalanan</label>
+          <div class="control"><div class="select is-fullwidth">{{ form.tipe_perjalanan }}</div></div>
+          {% for e in form.tipe_perjalanan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="{{ form.keterangan.id_for_label }}">Keterangan</label>
+      <div class="control">{{ form.keterangan }}</div>
+      {% for e in form.keterangan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div class="field">
+      <label class="checkbox" for="{{ form.is_active.id_for_label }}">
+        {{ form.is_active }} {{ form.fields.is_active.label }}
+      </label>
+    </div>
+
+    <div class="actions-bar">
+      <a href="{% url 'pakln:kelola_sumber_pembiayaan' %}" class="button">Batal</a>
+      <button type="submit" class="button is-primary">Simpan Perubahan</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

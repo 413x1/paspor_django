@@ -13,9 +13,10 @@ from django.utils.safestring import mark_safe
 from accounts.forms import EditUserForm, TambahUserForm
 from accounts.models import User
 from notifications.services import notify_complete_pkln
+from paspor.models import Negara, SumberPembiayaan
 
 from .decorators import role_required
-from .forms import DokumenPaklnForm, DokumenTemplateForm
+from .forms import DokumenPaklnForm, DokumenTemplateForm, NegaraForm, SumberPembiayaanForm
 from .models import DokumenPakln, DokumenTemplate, Pengajuan
 
 
@@ -250,6 +251,157 @@ def hapus_template(request, template_id):
 
 
 @role_required("admin_pakln")
+def kelola_negara(request):
+    """Manajemen Negara — Admin Biro PAKLN mengelola daftar negara yang
+    menjadi sumber pilihan pada dropdown "Tujuan Negara" di Formulir
+    Pengajuan (hanya negara `is_active=True` yang ditawarkan ke pegawai)."""
+    if request.method == "POST":
+        form = NegaraForm(request.POST)
+        if form.is_valid():
+            negara = form.save()
+            messages.success(request, f"Negara '{negara.nama_negara}' berhasil ditambahkan.")
+            return redirect("pakln:kelola_negara")
+        messages.error(request, "Periksa kembali isian formulir.")
+    else:
+        form = NegaraForm()
+
+    negara_list = Negara.objects.all()
+    return render(request, "pakln/negara.html", {"form": form, "negara_list": negara_list})
+
+
+@role_required("admin_pakln")
+def edit_negara(request, negara_id):
+    """Sunting negara yang sudah ada."""
+    negara = get_object_or_404(Negara, pk=negara_id)
+
+    if request.method == "POST":
+        form = NegaraForm(request.POST, instance=negara)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Negara '{negara.nama_negara}' berhasil diperbarui.")
+            return redirect("pakln:kelola_negara")
+        messages.error(request, "Periksa kembali isian formulir.")
+    else:
+        form = NegaraForm(instance=negara)
+
+    return render(request, "pakln/edit_negara.html", {"form": form, "negara": negara})
+
+
+@role_required("admin_pakln")
+def toggle_negara(request, negara_id):
+    """Aktifkan/nonaktifkan negara dengan satu klik dari Daftar Negara,
+    tanpa membuka form edit. Negara nonaktif tidak lagi ditawarkan pada
+    Formulir Pengajuan, tapi pengajuan lama yang sudah memilihnya tidak
+    terpengaruh."""
+    negara = get_object_or_404(Negara, pk=negara_id)
+    if request.method == "POST":
+        negara.is_active = not negara.is_active
+        negara.save(update_fields=["is_active"])
+        messages.success(
+            request,
+            f"Negara '{negara.nama_negara}' kini {'aktif' if negara.is_active else 'nonaktif'}.",
+        )
+    return redirect("pakln:kelola_negara")
+
+
+@role_required("admin_pakln")
+def hapus_negara(request, negara_id):
+    """Hapus permanen data negara. Ditolak jika negara ini masih dipakai
+    pada satu atau lebih pengajuan (riwayat/jejak audit) — gunakan
+    nonaktifkan untuk kasus itu."""
+    negara = get_object_or_404(Negara, pk=negara_id)
+    if request.method == "POST":
+        if negara.pengajuan_list.exists():
+            messages.error(
+                request,
+                f"Negara '{negara.nama_negara}' tidak dapat dihapus karena masih dipakai pada "
+                f"pengajuan yang sudah ada. Nonaktifkan saja agar tidak lagi ditawarkan.",
+            )
+        else:
+            nama = negara.nama_negara
+            negara.delete()
+            messages.success(request, f"Negara '{nama}' berhasil dihapus.")
+    return redirect("pakln:kelola_negara")
+
+
+@role_required("admin_pakln")
+def kelola_sumber_pembiayaan(request):
+    """Manajemen Sumber Pembiayaan — Admin Biro PAKLN mengelola daftar
+    sumber pembiayaan yang menjadi pilihan pada dropdown "Sumber
+    Pembiayaan" di Formulir Pengajuan (hanya `is_active=True` yang
+    ditawarkan ke pegawai)."""
+    if request.method == "POST":
+        form = SumberPembiayaanForm(request.POST)
+        if form.is_valid():
+            sumber = form.save()
+            messages.success(request, f"Sumber pembiayaan '{sumber.nama}' berhasil ditambahkan.")
+            return redirect("pakln:kelola_sumber_pembiayaan")
+        messages.error(request, "Periksa kembali isian formulir.")
+    else:
+        form = SumberPembiayaanForm()
+
+    sumber_list = SumberPembiayaan.objects.all()
+    return render(
+        request, "pakln/sumber_pembiayaan.html", {"form": form, "sumber_list": sumber_list}
+    )
+
+
+@role_required("admin_pakln")
+def edit_sumber_pembiayaan(request, sumber_id):
+    """Sunting sumber pembiayaan yang sudah ada."""
+    sumber = get_object_or_404(SumberPembiayaan, pk=sumber_id)
+
+    if request.method == "POST":
+        form = SumberPembiayaanForm(request.POST, instance=sumber)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Sumber pembiayaan '{sumber.nama}' berhasil diperbarui.")
+            return redirect("pakln:kelola_sumber_pembiayaan")
+        messages.error(request, "Periksa kembali isian formulir.")
+    else:
+        form = SumberPembiayaanForm(instance=sumber)
+
+    return render(request, "pakln/edit_sumber_pembiayaan.html", {"form": form, "sumber": sumber})
+
+
+@role_required("admin_pakln")
+def toggle_sumber_pembiayaan(request, sumber_id):
+    """Aktifkan/nonaktifkan sumber pembiayaan dengan satu klik dari
+    Daftar Sumber Pembiayaan, tanpa membuka form edit. Sumber nonaktif
+    tidak lagi ditawarkan pada Formulir Pengajuan, tapi pengajuan lama
+    yang sudah memilihnya tidak terpengaruh."""
+    sumber = get_object_or_404(SumberPembiayaan, pk=sumber_id)
+    if request.method == "POST":
+        sumber.is_active = not sumber.is_active
+        sumber.save(update_fields=["is_active"])
+        messages.success(
+            request,
+            f"Sumber pembiayaan '{sumber.nama}' kini {'aktif' if sumber.is_active else 'nonaktif'}.",
+        )
+    return redirect("pakln:kelola_sumber_pembiayaan")
+
+
+@role_required("admin_pakln")
+def hapus_sumber_pembiayaan(request, sumber_id):
+    """Hapus permanen data sumber pembiayaan. Ditolak jika masih dipakai
+    pada satu atau lebih pengajuan (riwayat/jejak audit) — gunakan
+    nonaktifkan untuk kasus itu."""
+    sumber = get_object_or_404(SumberPembiayaan, pk=sumber_id)
+    if request.method == "POST":
+        if sumber.pengajuan_list.exists():
+            messages.error(
+                request,
+                f"Sumber pembiayaan '{sumber.nama}' tidak dapat dihapus karena masih dipakai pada "
+                f"pengajuan yang sudah ada. Nonaktifkan saja agar tidak lagi ditawarkan.",
+            )
+        else:
+            nama = sumber.nama
+            sumber.delete()
+            messages.success(request, f"Sumber pembiayaan '{nama}' berhasil dihapus.")
+    return redirect("pakln:kelola_sumber_pembiayaan")
+
+
+@role_required("admin_pakln")
 def preview(request, kode):
     """Tahap 3: Pratinjau Pengajuan dari Admin Unor (read-only)."""
     pengajuan = get_object_or_404(
@@ -356,7 +508,7 @@ def export_database(request):
         writer.writerow(["Kode", "Nama Pegawai", "Kategori", "Tujuan", "Tgl Masuk PAKLN", "Status"])
         for p in pengajuan_list:
             nama = getattr(getattr(p.pegawai, "profile", None), "nama", p.pegawai.get_full_name())
-            writer.writerow([p.kode, nama, p.kategori, p.tujuan_negara, p.tgl_masuk_pakln or "", p.get_status_display()])
+            writer.writerow([p.kode, nama, p.kategori, p.tujuan_negara_display, p.tgl_masuk_pakln or "", p.get_status_display()])
         return response
 
     return render(request, "pakln/export.html", {"pengajuan_list": pengajuan_list})

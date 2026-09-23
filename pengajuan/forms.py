@@ -1,4 +1,7 @@
 from django import forms
+from django.db import models
+
+from paspor.models import Negara, SumberPembiayaan
 
 from .models import DokumenPakln, DokumenPegawai, DokumenTemplate, DokumenUnor, Pengajuan
 
@@ -24,7 +27,9 @@ class PengajuanForm(forms.ModelForm):
             "maksud": forms.Textarea(
                 attrs={"rows": 3, "class": "textarea", "placeholder": "Contoh: Menunaikan ibadah umrah bersama keluarga"}
             ),
-            "tujuan_negara": forms.TextInput(attrs={"class": "input", "placeholder": "cth. Arab Saudi"}),
+            "tujuan_negara": forms.SelectMultiple(
+                attrs={"data-multiselect": "Pilih satu atau lebih negara tujuan…"}
+            ),
             "sumber_pembiayaan": forms.Select(),
             "tgl_berangkat": forms.DateInput(attrs={"type": "date", "class": "input"}),
             "tgl_kembali": forms.DateInput(attrs={"type": "date", "class": "input"}),
@@ -36,6 +41,29 @@ class PengajuanForm(forms.ModelForm):
         jumlah hari kerja terhadap sisa cuti tahun berjalan."""
         self.profile = profile
         super().__init__(*args, **kwargs)
+        # Sertakan juga negara yang sudah dipilih sebelumnya walau kini
+        # dinonaktifkan Admin PKLN, supaya tidak diam-diam hilang saat
+        # pegawai membuka ulang formulir & menyimpan tanpa mengubahnya.
+        queryset = Negara.objects.filter(is_active=True)
+        if self.instance and self.instance.pk:
+            selected_ids = self.instance.tujuan_negara.values_list("pk", flat=True)
+            queryset = Negara.objects.filter(models.Q(is_active=True) | models.Q(pk__in=selected_ids))
+        self.fields["tujuan_negara"].queryset = queryset
+        self.fields["tujuan_negara"].required = True
+
+        # Formulir ini khusus alur Non-Kedinasan — tawarkan hanya sumber
+        # pembiayaan bertipe "Non-Dinas". Sama seperti tujuan_negara,
+        # sertakan pilihan lama yang sudah dinonaktifkan agar tidak hilang.
+        sumber_queryset = SumberPembiayaan.objects.filter(
+            tipe_perjalanan=SumberPembiayaan.TipePerjalanan.NON_DINAS, is_active=True,
+        )
+        if self.instance and self.instance.sumber_pembiayaan_id:
+            sumber_queryset = SumberPembiayaan.objects.filter(
+                models.Q(tipe_perjalanan=SumberPembiayaan.TipePerjalanan.NON_DINAS, is_active=True)
+                | models.Q(pk=self.instance.sumber_pembiayaan_id)
+            )
+        self.fields["sumber_pembiayaan"].queryset = sumber_queryset
+        self.fields["sumber_pembiayaan"].required = True
 
     def clean(self):
         cleaned = super().clean()
@@ -116,3 +144,40 @@ class DokumenTemplateForm(forms.ModelForm):
                 "Pilih minimal salah satu target: Pegawai atau Admin Unor."
             )
         return cleaned
+
+
+class NegaraForm(forms.ModelForm):
+    """Form Manajemen Negara (Admin Biro PAKLN) — sumber data dropdown
+    multi-select "Tujuan Negara" pada Formulir Pengajuan."""
+
+    class Meta:
+        model = Negara
+        fields = ["nama_negara", "kode_negara", "is_active"]
+        widgets = {
+            "nama_negara": forms.TextInput(attrs={"class": "input", "placeholder": "cth. Arab Saudi"}),
+            "kode_negara": forms.TextInput(attrs={"class": "input", "placeholder": "cth. SA (opsional)"}),
+        }
+        labels = {"is_active": "Tampilkan pada Formulir Pengajuan"}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["kode_negara"].required = False
+
+
+class SumberPembiayaanForm(forms.ModelForm):
+    """Form Manajemen Sumber Pembiayaan (Admin Biro PAKLN) — sumber data
+    dropdown "Sumber Pembiayaan" pada Formulir Pengajuan."""
+
+    class Meta:
+        model = SumberPembiayaan
+        fields = ["tipe_perjalanan", "nama", "keterangan", "is_active"]
+        widgets = {
+            "tipe_perjalanan": forms.Select(),
+            "nama": forms.TextInput(attrs={"class": "input", "placeholder": "cth. Biaya Sendiri"}),
+            "keterangan": forms.Textarea(attrs={"rows": 2, "class": "textarea", "placeholder": "Opsional"}),
+        }
+        labels = {"is_active": "Tampilkan pada Formulir Pengajuan"}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["keterangan"].required = False
