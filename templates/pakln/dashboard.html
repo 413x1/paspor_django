@@ -1,5 +1,10 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Dasbor Admin Biro PAKLN{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
+{% endblock %}
 
 {% block content %}
 <div class="page-head">
@@ -14,7 +19,7 @@
   <div class="summary-card"><div class="num">{{ summary.total }}</div><div class="label">Total Pengajuan</div></div>
   <div class="summary-card"><div class="num">{{ summary.proses_unor }}</div><div class="label">Dalam Proses Unor</div></div>
   <div class="summary-card active"><div class="num">{{ summary.proses_pakln }}</div><div class="label">Dalam Proses Biro PAKLN</div></div>
-  <div class="summary-card"><div class="num">{{ summary.selesai }}</div><div class="label">Selesai</div></div>
+  <div class="summary-card{% if summary.selesai > 0 %} is-done{% endif %}"><div class="num">{{ summary.selesai }}</div><div class="label">Selesai</div></div>
 </div>
 
 <div class="box">
@@ -24,112 +29,122 @@
   <form method="post" action="{% url 'pakln:preview_nd' %}" id="formGenerateND">
     {% csrf_token %}
     <div class="table-wrap">
-      <table class="table data-table is-fullwidth is-hoverable">
+      <table id="dashboardTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
         <thead>
           <tr>
             <th></th><th>Pegawai</th><th>Unit Organisasi</th><th>Jenis</th><th>Kategori</th><th>Tujuan</th>
             <th>Berangkat</th><th>Kembali</th><th>Tgl Pengajuan Unor</th><th>Status</th><th>Action</th>
           </tr>
         </thead>
-        <tbody>
-          {% for p in pengajuan_list %}
-            <tr>
-              <td>
-                {% if p.nd_checkable %}
-                  <input
-                    type="checkbox"
-                    class="nd-check"
-                    name="pengajuan_ids"
-                    value="{{ p.pk }}"
-                    data-unor="{{ p.pegawai.profile.unit_organisasi_id|default:'' }}"
-                    data-negara="{{ p.negara_key }}"
-                    data-maksud="{{ p.maksud_key }}"
-                    data-has-nd="{{ p.sudah_ada_nd|yesno:'1,0' }}"
-                    title="{% if p.sudah_ada_nd %}Sudah pernah digenerate ND{% endif %}"
-                  >
-                {% endif %}
-              </td>
-              <td>
-                <strong>{{ p.pegawai.profile.nama }}</strong><br>
-                <span class="cell-muted">{{ p.pegawai.profile.nip }}</span>
-              </td>
-              <td>{{ p.pegawai.profile.unit_organisasi.name|default:"—" }}</td>
-              <td>Non-Kedinasan</td>
-              <td>{{ p.kategori|default:"—" }}</td>
-              <td>{{ p.tujuan_negara_display|default:"—" }}</td>
-              <td>{{ p.tgl_berangkat|date:"d M Y"|default:"—" }}</td>
-              <td>{{ p.tgl_kembali|date:"d M Y"|default:"—" }}</td>
-              <td>{{ p.tgl_masuk_pakln|date:"d M Y"|default:"—" }}</td>
-              <td><span class="tag paspor-status is-{{ p.status }}"><span class="dot"></span>{{ p.get_status_display }}</span></td>
-              <td>
-                {% if p.status == "proses" %}
-                  <span class="cell-muted">Menunggu Admin Unor</span>
-                {% elif p.status == "proses_pakln" and not p.preview_pakln_agree %}
-                  <a href="{% url 'pakln:preview' kode=p.kode %}" class="button is-warning is-small">TL →</a>
-                {% elif p.status == "proses_pakln" %}
-                  <a href="{% url 'pakln:upload_dokumen' kode=p.kode %}" class="button is-warning is-small">TL →</a>
-                {% else %}
-                  <a href="{% url 'pakln:preview' kode=p.kode %}" class="button is-small">Lihat</a>
-                {% endif %}
-              </td>
-            </tr>
-          {% empty %}
-            <tr><td colspan="11" class="cell-muted" style="text-align:center;">Belum ada pengajuan yang masuk.</td></tr>
-          {% endfor %}
-        </tbody>
+        <tbody></tbody>
       </table>
     </div>
 
+    <div id="ndSelectedInputs"></div>
     <button type="submit" id="btnGenerateND" class="button is-primary" disabled>Generate ND →</button>
   </form>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
 <script>
   $(function () {
-    var $checks = $('.nd-check');
+    // Pilihan ND disimpan di sini (id -> kunci unor/negara/maksud) karena
+    // baris tabel dimuat ulang tiap ganti halaman/pencarian (server-side).
+    var selected = {};
 
-    function selected() { return $checks.filter(':checked'); }
+    function firstSelected() {
+      var ids = Object.keys(selected);
+      return ids.length ? selected[ids[0]] : null;
+    }
 
-    function refreshLocks() {
-      var $sel = selected();
-      if ($sel.length === 0) {
-        $checks.prop('disabled', false).closest('tr').removeClass('is-locked');
-        return;
-      }
-      var unor = $sel.first().data('unor');
-      var negara = $sel.first().data('negara');
-      var maksud = $sel.first().data('maksud');
-      $checks.each(function () {
+    function keyOf($c) {
+      return {
+        unor: String($c.data('unor')),
+        negara: String($c.data('negara')),
+        maksud: String($c.data('maksud')),
+      };
+    }
+
+    function refreshChecks() {
+      var ref = firstSelected();
+      $('#dashboardTable .nd-check').each(function () {
         var $c = $(this);
-        if ($c.is(':checked')) { return; }
-        var match = String($c.data('unor')) === String(unor)
-          && String($c.data('negara')) === String(negara)
-          && String($c.data('maksud')) === String(maksud);
-        $c.prop('disabled', !match).closest('tr').toggleClass('is-locked', !match);
+        var checked = Object.prototype.hasOwnProperty.call(selected, $c.val());
+        var k = keyOf($c);
+        var match = !ref || checked
+          || (k.unor === ref.unor && k.negara === ref.negara && k.maksud === ref.maksud);
+        $c.prop('checked', checked).prop('disabled', !match)
+          .closest('tr').toggleClass('is-locked', !match);
       });
     }
 
-    function updateSubmitState() {
-      $('#btnGenerateND').prop('disabled', selected().length === 0);
+    function syncForm() {
+      var $box = $('#ndSelectedInputs').empty();
+      Object.keys(selected).forEach(function (id) {
+        $('<input type="hidden" name="pengajuan_ids">').val(id).appendTo($box);
+      });
+      $('#btnGenerateND').prop('disabled', Object.keys(selected).length === 0);
     }
 
-    $checks.on('change', function () {
+    $('#dashboardTable').DataTable({
+      serverSide: true,
+      processing: true,
+      autoWidth: false,
+      ajax: { url: '{% url "pakln:dashboard_data" %}', type: 'GET', cache: false },
+      columns: [
+        { data: 0, orderable: false, searchable: false },
+        { data: 1 },
+        { data: 2 },
+        { data: 3, orderable: false, searchable: false },
+        { data: 4 },
+        { data: 5, orderable: false, searchable: false },
+        { data: 6 },
+        { data: 7 },
+        { data: 8 },
+        { data: 9 },
+        { data: 10, orderable: false, searchable: false },
+      ],
+      order: [[8, 'desc']],
+      pageLength: 10,
+      lengthMenu: [10, 25, 50, 100],
+      dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
+      language: {
+        search: '',
+        searchPlaceholder: 'Cari pengajuan...',
+        lengthMenu: 'Tampilkan _MENU_ pengajuan',
+        info: 'Menampilkan _START_–_END_ dari _TOTAL_ pengajuan',
+        infoEmpty: 'Tidak ada pengajuan',
+        infoFiltered: '(disaring dari _MAX_ total pengajuan)',
+        zeroRecords: 'Tidak ada pengajuan yang cocok.',
+        processing: 'Memuat…',
+        paginate: { previous: '‹ Sebelumnya', next: 'Berikutnya ›' },
+      },
+      drawCallback: refreshChecks,
+    });
+
+    $('#dashboardTable').on('change', '.nd-check', function () {
       var $c = $(this);
-      if ($c.is(':checked') && $c.data('has-nd') == '1') {
-        var ok = confirm(
-          'Pegawai ini sudah memiliki dokumen ND yang pernah digenerate sebelumnya.\n' +
-          'Lanjutkan generate ND baru untuk pegawai ini?'
-        );
-        if (!ok) {
-          $c.prop('checked', false);
-          return;
+      if ($c.is(':checked')) {
+        if (String($c.data('has-nd')) === '1') {
+          var ok = confirm(
+            'Pegawai ini sudah memiliki dokumen ND yang pernah digenerate sebelumnya.\n' +
+            'Lanjutkan generate ND baru untuk pegawai ini?'
+          );
+          if (!ok) {
+            $c.prop('checked', false);
+            return;
+          }
         }
+        selected[$c.val()] = keyOf($c);
+      } else {
+        delete selected[$c.val()];
       }
-      refreshLocks();
-      updateSubmitState();
+      refreshChecks();
+      syncForm();
     });
   });
 </script>
+
 {% endblock %}

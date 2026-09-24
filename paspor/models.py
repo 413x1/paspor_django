@@ -74,3 +74,32 @@ class SumberPembiayaan(models.Model):
 
     def __str__(self):
         return self.nama
+
+
+class KategoriPerjalanan(models.Model):
+    """Data referensi kategori perjalanan luar negeri. Dikelola oleh Admin
+    Biro PAKLN (menu Manajemen Kategori Perjalanan) dan dipakai sebagai
+    sumber pilihan pada field "Kategori Perjalanan" di Formulir Pengajuan
+    (dikelompokkan pada dropdown berdasarkan `jenis_perjalanan`)."""
+
+    class JenisPerjalanan(models.TextChoices):
+        PDLN = "PDLN", "PDLN (Perjalanan Dinas Luar Negeri)"
+        NON_DINAS = "Non-Dinas", "Perjalanan Non Dinas Luar Negeri"
+
+    jenis_perjalanan = models.CharField(
+        "Jenis Perjalanan", max_length=20, choices=JenisPerjalanan.choices,
+        default=JenisPerjalanan.NON_DINAS,
+    )
+    nama_kategori = models.CharField("Nama Kategori", max_length=100)
+    is_active = models.BooleanField("Aktif", default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["jenis_perjalanan", "nama_kategori"]
+        verbose_name = "Kategori Perjalanan"
+        verbose_name_plural = "Kategori Perjalanan"
+
+    def __str__(self):
+        return self.nama_kategori

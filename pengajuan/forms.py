@@ -1,15 +1,54 @@
+import itertools
+
 from django import forms
 from django.db import models
+from django.forms.models import ModelChoiceIterator
 
-from paspor.models import Negara, SumberPembiayaan
+from paspor.models import KategoriPerjalanan, Negara, SumberPembiayaan
 
 from .models import DokumenPakln, DokumenPegawai, DokumenTemplate, DokumenUnor, Pengajuan, PengaturanND
+
+
+class GroupedModelChoiceIterator(ModelChoiceIterator):
+    """Seperti ModelChoiceIterator bawaan, tapi mengelompokkan baris
+    menjadi <optgroup> berdasarkan `field.group_by(obj)`. Queryset WAJIB
+    terurut per hasil `group_by` (grouping hanya berlaku pada baris yang
+    berurutan, mengikuti perilaku `itertools.groupby`)."""
+
+    def __iter__(self):
+        if self.field.empty_label is not None:
+            yield ("", self.field.empty_label)
+        queryset = self.queryset
+        if not queryset._prefetch_related_lookups:
+            queryset = queryset.iterator()
+        for group, objs in itertools.groupby(queryset, key=self.field.group_by):
+            yield (group, [self.choice(obj) for obj in objs])
+
+
+class GroupedModelChoiceField(forms.ModelChoiceField):
+    """ModelChoiceField yang merender <optgroup> (mis. Kategori Perjalanan
+    dikelompokkan per Jenis Perjalanan)."""
+
+    iterator = GroupedModelChoiceIterator
+
+    def __init__(self, *args, group_by, **kwargs):
+        self.group_by = group_by
+        super().__init__(*args, **kwargs)
 
 
 class PengajuanForm(forms.ModelForm):
     """Formulir Pengajuan (bagian "Detail Perjalanan" yang diisi manual
     oleh pegawai — data pegawai lainnya ditampilkan read-only dari
     PegawaiProfile)."""
+
+    # Field eksplisit (bukan auto-generate dari Meta) supaya bisa memakai
+    # GroupedModelChoiceField — dropdown Kategori Perjalanan dikelompokkan
+    # per Jenis Perjalanan (<optgroup>). Queryset diisi ulang di __init__.
+    kategori = GroupedModelChoiceField(
+        queryset=KategoriPerjalanan.objects.none(),
+        group_by=lambda obj: obj.get_jenis_perjalanan_display(),
+        empty_label="— Pilih Kategori Perjalanan —",
+    )
 
     class Meta:
         model = Pengajuan
@@ -23,7 +62,6 @@ class PengajuanForm(forms.ModelForm):
             "jumlah_hari_kerja",
         ]
         widgets = {
-            "kategori": forms.Select(),
             "maksud": forms.Textarea(
                 attrs={"rows": 3, "class": "textarea", "placeholder": "Contoh: Menunaikan ibadah umrah bersama keluarga"}
             ),
@@ -64,6 +102,20 @@ class PengajuanForm(forms.ModelForm):
             )
         self.fields["sumber_pembiayaan"].queryset = sumber_queryset
         self.fields["sumber_pembiayaan"].required = True
+
+        # Formulir ini khusus alur Non-Kedinasan — tawarkan hanya kategori
+        # bertipe "Non-Dinas" (dikelompokkan per Jenis Perjalanan; saat ini
+        # praktis hanya satu grup terisi sampai alur PDLN dibangun).
+        kategori_queryset = KategoriPerjalanan.objects.filter(
+            jenis_perjalanan=KategoriPerjalanan.JenisPerjalanan.NON_DINAS, is_active=True,
+        )
+        if self.instance and self.instance.kategori_id:
+            kategori_queryset = KategoriPerjalanan.objects.filter(
+                models.Q(jenis_perjalanan=KategoriPerjalanan.JenisPerjalanan.NON_DINAS, is_active=True)
+                | models.Q(pk=self.instance.kategori_id)
+            )
+        self.fields["kategori"].queryset = kategori_queryset
+        self.fields["kategori"].required = True
 
     def clean(self):
         cleaned = super().clean()
@@ -135,7 +187,13 @@ class DokumenTemplateForm(forms.ModelForm):
         self.fields["file"].required = not (self.instance and self.instance.pk)
         self.fields["unit_organisasi"].required = False
         self.fields["kategori"].required = False
-        self.fields["kategori"].choices = [("", "— Semua kategori —")] + list(Pengajuan.Kategori.choices)
+        self.fields["kategori"].empty_label = "— Semua kategori —"
+        kategori_queryset = KategoriPerjalanan.objects.filter(is_active=True)
+        if self.instance and self.instance.kategori_id:
+            kategori_queryset = KategoriPerjalanan.objects.filter(
+                models.Q(is_active=True) | models.Q(pk=self.instance.kategori_id)
+            )
+        self.fields["kategori"].queryset = kategori_queryset
 
     def clean(self):
         cleaned = super().clean()
@@ -181,6 +239,20 @@ class SumberPembiayaanForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["keterangan"].required = False
+
+
+class KategoriPerjalananForm(forms.ModelForm):
+    """Form Manajemen Kategori Perjalanan (Admin Biro PAKLN) — sumber data
+    dropdown "Kategori Perjalanan" pada Formulir Pengajuan."""
+
+    class Meta:
+        model = KategoriPerjalanan
+        fields = ["jenis_perjalanan", "nama_kategori", "is_active"]
+        widgets = {
+            "jenis_perjalanan": forms.Select(),
+            "nama_kategori": forms.TextInput(attrs={"class": "input", "placeholder": "cth. Ibadah"}),
+        }
+        labels = {"is_active": "Tampilkan pada Formulir Pengajuan"}
 
 
 class PengaturanNDForm(forms.ModelForm):

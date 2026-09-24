@@ -1,6 +1,10 @@
 from django.contrib import messages
+from django.db.models import Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import escape, format_html
 
 from notifications.services import notify_resubmit_unor, notify_submit_unor
 
@@ -24,16 +28,90 @@ def _active_pengajuan(user):
 @role_required("pegawai")
 def beranda(request):
     aktif = _active_pengajuan(request.user)
-    riwayat_qs = Pengajuan.objects.filter(pegawai=request.user).order_by("-created_at")
-    if aktif:
-        riwayat_qs = riwayat_qs.exclude(pk=aktif.pk)
-
     context = {
         "aktif": aktif,
-        "riwayat": riwayat_qs,
         "profile": getattr(request.user, "profile", None),
     }
     return render(request, "pegawai/beranda.html", context)
+
+
+# Kolom tabel "Riwayat" (index sesuai urutan kolom pada pegawai/beranda.html)
+# -> field untuk pengurutan (ORDER BY) di endpoint server-side DataTables.
+# Kolom Tujuan (M2M) dan Kanal (selalu "—" pada baris riwayat) sengaja
+# tidak disertakan — tidak diurutkan di JS (orderable:false).
+_RIWAYAT_DATA_ORDER_FIELDS = {
+    "1": "kategori__nama_kategori",
+    "2": "tgl_pengajuan",
+    "4": "status",
+}
+
+
+@role_required("pegawai")
+def riwayat_data(request):
+    """Endpoint JSON server-side untuk tabel "Riwayat" pada Beranda
+    Pegawai (protokol DataTables: draw/start/length/search/order pada
+    GET), mengikuti pola `users_data` (Manajemen User). Pengajuan yang
+    sedang aktif ditampilkan terpisah (baris tersendiri, bukan bagian
+    tabel ini)."""
+    aktif = _active_pengajuan(request.user)
+    qs = Pengajuan.objects.filter(pegawai=request.user).select_related("kategori")
+    if aktif:
+        qs = qs.exclude(pk=aktif.pk)
+    records_total = qs.count()
+
+    search_value = request.GET.get("search[value]", "").strip()
+    if search_value:
+        qs = qs.filter(
+            Q(kategori__nama_kategori__icontains=search_value)
+            | Q(tujuan_negara__nama_negara__icontains=search_value)
+        ).distinct()
+    records_filtered = qs.count()
+
+    order_col = request.GET.get("order[0][column]")
+    order_field = _RIWAYAT_DATA_ORDER_FIELDS.get(order_col, "-created_at")
+    if request.GET.get("order[0][dir]") == "desc":
+        order_field = f"-{order_field}"
+    qs = qs.order_by(order_field, "-created_at")
+
+    try:
+        start = int(request.GET.get("start", 0))
+        length = int(request.GET.get("length", 10))
+    except ValueError:
+        start, length = 0, 10
+    page = qs[start:] if length == -1 else qs[start:start + length]
+
+    data = []
+    for p in page:
+        status_html = format_html(
+            '<span class="tag paspor-status is-{}"><span class="dot"></span>{}</span>',
+            p.status, p.get_status_display(),
+        )
+        if p.submitted:
+            aksi_html = format_html(
+                '<a href="{}" class="button is-small">Lihat</a>',
+                reverse("pegawai:monitor_progres", args=[p.kode]),
+            )
+        else:
+            aksi_html = format_html(
+                '<a href="{}" class="button is-small">Lanjutkan</a>',
+                reverse("pegawai:formulir_pengajuan"),
+            )
+
+        data.append([
+            format_html("🌏 <strong>{}</strong>", p.tujuan_negara_display or "—"),
+            escape(p.kategori.nama_kategori) if p.kategori else "—",
+            p.tgl_pengajuan.strftime("%d %b %Y") if p.tgl_pengajuan else "—",
+            "—",
+            status_html,
+            aksi_html,
+        ])
+
+    return JsonResponse({
+        "draw": int(request.GET.get("draw", 1)),
+        "recordsTotal": records_total,
+        "recordsFiltered": records_filtered,
+        "data": data,
+    })
 
 
 @role_required("pegawai")

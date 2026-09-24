@@ -19,12 +19,6 @@ class Pengajuan(models.Model):
     - selesai         : seluruh proses administrasi rampung.
     """
 
-    class Kategori(models.TextChoices):
-        IBADAH = "Ibadah", "Ibadah"
-        PENDIDIKAN = "Pendidikan", "Pendidikan"
-        KEPERLUAN_PRIBADI = "Keperluan Pribadi", "Keperluan Pribadi"
-        LAINNYA = "Lainnya", "Lainnya"
-
     class Kanal(models.TextChoices):
         MOBILE = "mobile", "Mobile App"
         WEB = "web", "Web App"
@@ -41,7 +35,10 @@ class Pengajuan(models.Model):
     )
 
     # --- Detail perjalanan (diisi pegawai pada Formulir Pengajuan) ---
-    kategori = models.CharField(max_length=30, choices=Kategori.choices, blank=True)
+    kategori = models.ForeignKey(
+        "paspor.KategoriPerjalanan", on_delete=models.PROTECT, null=True, blank=True,
+        related_name="pengajuan_list", verbose_name="Kategori Perjalanan",
+    )
     maksud = models.TextField("Maksud Perjalanan", blank=True)
     tujuan_negara = models.ManyToManyField(
         "paspor.Negara", blank=True, related_name="pengajuan_list", verbose_name="Tujuan Negara",
@@ -67,6 +64,10 @@ class Pengajuan(models.Model):
     # dokumen yang perlu diperbaiki) — dikosongkan lagi saat pegawai
     # mengirim ulang pengajuannya.
     catatan_unor = models.TextField("Catatan Admin Unor", blank=True)
+
+    # Catatan Admin Biro PAKLN saat mengembalikan pengajuan ke Admin Unor
+    # (mis. rekomendasi/berkas administrasi Unor perlu diperbaiki).
+    catatan_pakln = models.TextField("Catatan Admin PKLN", blank=True)
 
     # --- Tanggal penting untuk pelaporan / monitor progres ---
     tgl_pengajuan = models.DateField(null=True, blank=True)
@@ -297,11 +298,12 @@ class DokumenTemplate(models.Model):
         verbose_name="Unit Organisasi Tertentu",
         help_text="Kosongkan agar berlaku untuk seluruh unit organisasi.",
     )
-    kategori = models.CharField(
-        "Kategori Perjalanan Tertentu",
-        max_length=30,
-        choices=Pengajuan.Kategori.choices,
-        blank=True,
+    kategori = models.ForeignKey(
+        "paspor.KategoriPerjalanan",
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="dokumen_template_list",
+        verbose_name="Kategori Perjalanan Tertentu",
         help_text="Kosongkan agar berlaku untuk seluruh kategori perjalanan.",
     )
 
