@@ -244,11 +244,10 @@ class DokumenUnorPendukung(models.Model):
 
 
 class DokumenPakln(models.Model):
-    """3 jenis dokumen administrasi yang dilengkapi Admin Biro PAKLN."""
+    """Dokumen administrasi wajib yang dilengkapi Admin Biro PAKLN. Dokumen
+    pendukung lainnya (opsional) ada pada `DokumenPaklnPendukung`."""
 
     class Jenis(models.TextChoices):
-        ND_KABAG = "nd_kabag", "Nota Dinas Kepala Bagian"
-        ND_KABIRO = "nd_kabiro", "Nota Dinas Kepala Biro"
         ILN_SEKJEN = "iln_sekjen", "Izin Luar Negeri (TTD Sekjen a.n. Menteri)"
 
     pengajuan = models.ForeignKey(Pengajuan, on_delete=models.CASCADE, related_name="dokumen_pakln")
@@ -263,6 +262,46 @@ class DokumenPakln(models.Model):
 
     def __str__(self):
         return f"{self.pengajuan.kode} — {self.get_jenis_display()}"
+
+
+def dokumen_pakln_pendukung_path(instance, filename):
+    return f"pengajuan/{instance.pengajuan.kode}/pakln/pendukung/{filename}"
+
+
+class DokumenPaklnPendukung(models.Model):
+    """Satu berkas dokumen pendukung Admin Biro PAKLN per pengajuan, dengan
+    checklist jenis yang tercakup di dalamnya. Mengunggah/mengganti berkas
+    dan mencentang/melepas centang salah satu jenis adalah dua proses yang
+    berdiri sendiri-sendiri — tidak saling mensyaratkan, dan opsional
+    (tidak menjadi syarat "selesaikan proses"), berbeda dengan
+    `DokumenPakln` (ILN Sekjen) yang wajib."""
+
+    pengajuan = models.OneToOneField(
+        Pengajuan, on_delete=models.CASCADE, related_name="dokumen_pakln_pendukung"
+    )
+    file = models.FileField(upload_to=dokumen_pakln_pendukung_path, blank=True)
+    uploaded_at = models.DateTimeField(null=True, blank=True)
+
+    nd_kabag = models.BooleanField("Nota Dinas Kepala Bagian", default=False)
+    nd_kabiro = models.BooleanField("Nota Dinas Kepala Biro", default=False)
+
+    class Meta:
+        verbose_name = "Dokumen Pendukung Biro PAKLN"
+        verbose_name_plural = "Dokumen Pendukung Biro PAKLN"
+
+    KATEGORI_LABELS = {
+        "nd_kabag": "Nota Dinas Kepala Bagian",
+        "nd_kabiro": "Nota Dinas Kepala Biro",
+    }
+
+    def kategori_tercentang(self):
+        return [label for field, label in self.KATEGORI_LABELS.items() if getattr(self, field)]
+
+    def is_lengkap(self):
+        return bool(self.file) and bool(self.kategori_tercentang())
+
+    def __str__(self):
+        return f"{self.pengajuan.kode} — Dokumen Pendukung Biro PAKLN"
 
 
 # ---------------------------------------------------------------------------

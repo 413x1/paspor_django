@@ -1,10 +1,14 @@
+import base64
 import csv
+from datetime import datetime
 
 from django.contrib import messages
+from django.contrib.staticfiles import finders
 from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import escape, format_html
@@ -18,7 +22,155 @@ from paspor.models import KategoriPerjalanan, Negara, SumberPembiayaan
 
 from .decorators import role_required
 from .forms import DokumenPaklnForm, DokumenTemplateForm, KategoriPerjalananForm, NegaraForm, SumberPembiayaanForm
-from .models import DokumenPakln, DokumenTemplate, Pengajuan
+from .models import DokumenPakln, DokumenPaklnPendukung, DokumenTemplate, Pengajuan
+
+_BULAN_ID = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+]
+
+
+def _tanggal_indonesia(tanggal):
+    return f"{tanggal.day} {_BULAN_ID[tanggal.month - 1]} {tanggal.year}"
+
+
+def _parse_tanggal_display(value):
+    """String tanggal dari <input type="date"> (YYYY-MM-DD) -> 'd Bulan
+    YYYY' berbahasa Indonesia, atau '' jika kosong/tidak valid."""
+    try:
+        tanggal = datetime.strptime(value, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return ""
+    return _tanggal_indonesia(tanggal)
+
+
+def _hitung_hari_kalender(tgl_berangkat, tgl_kembali):
+    try:
+        berangkat = datetime.strptime(tgl_berangkat, "%Y-%m-%d").date()
+        kembali = datetime.strptime(tgl_kembali, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return None
+    delta = (kembali - berangkat).days + 1
+    return delta if delta > 0 else None
+
+
+def _logo_data_uri():
+    """Logo sebagai data URI (base64) — dipakai di template PDF supaya
+    WeasyPrint tidak perlu fetch balik ke server (menghindari risiko
+    deadlock/lambat saat render PDF dari dalam request yang sedang berjalan)."""
+    path = finders.find("images/logopu.png")
+    if not path:
+        return ""
+    with open(path, "rb") as f:
+        encoded = base64.b64encode(f.read()).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
+
+
+@role_required("admin_pakln")
+def generate_nd_kabag(request):
+    """Generate Dokumen — Nota Dinas Kepala Bagian (konsep ND dari Plt.
+    Kepala Bagian Kerja Sama Luar Negeri ke Kepala Biro PAKLN). Halaman
+    berisi form input + pratinjau langsung (live preview) yang diperbarui
+    lewat jQuery di sisi klien. Tombol "Unduh PDF" men-submit form ini
+    (POST biasa) ke `download_nd_kabag_pdf`."""
+    return render(request, "pakln/generate_nd_kabag.html")
+
+
+@role_required("admin_pakln")
+@require_POST
+def download_nd_kabag_pdf(request):
+    """Cetak Nota Dinas Kepala Bagian jadi PDF (WeasyPrint) dari data form
+    Generate ND Kabag. Dikirim lewat submit form biasa (bukan AJAX) supaya
+    browser langsung menerima file unduhan dari response ini."""
+    context = {
+        "nama": request.POST.get("nama", "").strip() or "[nama]",
+        "negara_tujuan": request.POST.get("negara_tujuan", "").strip() or "[negara tujuan]",
+        "nip": request.POST.get("nip", "").strip(),
+        "pangkat_golongan": request.POST.get("pangkat_golongan", "").strip(),
+        "jabatan": request.POST.get("jabatan", "").strip(),
+        "unit_kerja": request.POST.get("unit_kerja", "").strip(),
+        "maksud_perjalanan": request.POST.get("maksud_perjalanan", "").strip(),
+        "sumber_pembiayaan": request.POST.get("sumber_pembiayaan", "").strip(),
+        "tgl_berangkat": request.POST.get("tgl_berangkat", "").strip(),
+        "tgl_kembali": request.POST.get("tgl_kembali", "").strip(),
+        "tanggal_nota_dinas": _tanggal_indonesia(timezone.now().date()),
+        "logo_data_uri": _logo_data_uri(),
+    }
+    html_string = render_to_string("pakln/pdf_template_nd_kabag.html", context)
+
+    try:
+        from weasyprint import HTML
+        pdf_bytes = HTML(string=html_string).write_pdf()
+    except ImportError:
+        messages.error(request, "Gagal membuat PDF: pustaka WeasyPrint belum terpasang di server ini.")
+        return redirect("pakln:generate_nd_kabag")
+    except OSError:
+        messages.error(
+            request,
+            "Gagal membuat PDF: WeasyPrint memerlukan pustaka native GTK/Pango yang belum "
+            "terpasang di server ini (lihat dokumentasi instalasi WeasyPrint untuk Windows/Linux).",
+        )
+        return redirect("pakln:generate_nd_kabag")
+
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="Nota_Dinas_Kabag.pdf"'
+    return response
+
+
+@role_required("admin_pakln")
+def generate_nd_karo(request):
+    """Generate Dokumen — Nota Dinas Kepala Biro (permohonan Persetujuan
+    Izin Perjalanan ke Luar Negeri dari Kepala Biro PAKLN ke Sekretaris
+    Jenderal), meniru struktur `generate_nd_kabag` — form input + live
+    preview jQuery, tombol "Unduh PDF" men-submit ke
+    `download_nd_karo_pdf`."""
+    return render(request, "pakln/generate_nd_karo.html")
+
+
+@role_required("admin_pakln")
+@require_POST
+def download_nd_karo_pdf(request):
+    """Cetak Nota Dinas Kepala Biro jadi PDF (WeasyPrint) dari data form
+    Generate ND Karo."""
+    tgl_berangkat = request.POST.get("tgl_berangkat", "").strip()
+    tgl_kembali = request.POST.get("tgl_kembali", "").strip()
+    hari_kalender = _hitung_hari_kalender(tgl_berangkat, tgl_kembali)
+
+    context = {
+        "nama": request.POST.get("nama", "").strip() or "[nama]",
+        "negara_tujuan": request.POST.get("negara_tujuan", "").strip() or "[negara tujuan]",
+        "nip": request.POST.get("nip", "").strip() or "[nip]",
+        "pangkat_golongan": request.POST.get("pangkat_golongan", "").strip(),
+        "jabatan": request.POST.get("jabatan", "").strip() or "[jabatan]",
+        "unit_kerja": request.POST.get("unit_kerja", "").strip() or "[nama unor]",
+        "maksud_perjalanan": request.POST.get("maksud_perjalanan", "").strip() or "[keperluan]",
+        "sumber_pembiayaan": request.POST.get("sumber_pembiayaan", "").strip() or "[sumber biaya]",
+        "tgl_berangkat_display": _parse_tanggal_display(tgl_berangkat) or "[tanggal berangkat]",
+        "tgl_kembali_display": _parse_tanggal_display(tgl_kembali) or "[tanggal pulang]",
+        "jumlah_hari_kerja": request.POST.get("jumlah_hari_kerja", "").strip() or "[h_kerja]",
+        "jumlah_hari_kalender": hari_kalender if hari_kalender is not None else "[h_kalender]",
+        "tanggal_nota_dinas": _tanggal_indonesia(timezone.now().date()),
+        "logo_data_uri": _logo_data_uri(),
+    }
+    html_string = render_to_string("pakln/pdf_template_nd_karo.html", context)
+
+    try:
+        from weasyprint import HTML
+        pdf_bytes = HTML(string=html_string).write_pdf()
+    except ImportError:
+        messages.error(request, "Gagal membuat PDF: pustaka WeasyPrint belum terpasang di server ini.")
+        return redirect("pakln:generate_nd_karo")
+    except OSError:
+        messages.error(
+            request,
+            "Gagal membuat PDF: WeasyPrint memerlukan pustaka native GTK/Pango yang belum "
+            "terpasang di server ini (lihat dokumentasi instalasi WeasyPrint untuk Windows/Linux).",
+        )
+        return redirect("pakln:generate_nd_karo")
+
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="Nota_Dinas_Karo.pdf"'
+    return response
 
 
 @role_required("admin_pakln")
@@ -942,12 +1094,17 @@ def upload_dokumen(request, kode):
 
     jenis_choices = DokumenPakln.Jenis.choices
     dokumen_map = {d.jenis: d for d in pengajuan.dokumen_pakln.all()}
+    pendukung, _ = DokumenPaklnPendukung.objects.get_or_create(pengajuan=pengajuan)
+
+    # Dokumen Izin Luar Negeri (TTD Sekjen) wajib; dokumen pendukung
+    # (Nota Dinas Kepala Bagian/Kepala Biro) opsional — tidak menjadi
+    # syarat kelengkapan untuk menyelesaikan proses.
     lengkap = len(dokumen_map) >= len(jenis_choices)
 
     if request.method == "POST":
         if "selesaikan" in request.POST:
             if not lengkap:
-                messages.error(request, "Lengkapi seluruh dokumen administrasi Biro PAKLN sebelum menyelesaikan proses.")
+                messages.error(request, "Lengkapi dokumen Izin Luar Negeri (TTD Sekjen a.n. Menteri) sebelum menyelesaikan proses.")
             elif not request.POST.get("agree"):
                 messages.error(request, "Centang pernyataan kelengkapan dokumen terlebih dahulu.")
             elif pengajuan.status == Pengajuan.Status.SELESAI:
@@ -973,6 +1130,35 @@ def upload_dokumen(request, kode):
                     f"Sisa cuti tahun berjalan pegawai berkurang {hari_terpakai} hari.",
                 )
                 return redirect("pakln:dashboard")
+        elif "pendukung_upload" in request.POST:
+            # Proses unggah berkas pendukung — berdiri sendiri, tidak
+            # memerlukan checklist jenis sudah dicentang lebih dulu.
+            file_obj = request.FILES.get("file")
+            if not file_obj:
+                messages.error(request, "Pilih berkas dokumen pendukung terlebih dahulu.")
+            else:
+                pendukung.file = file_obj
+                pendukung.uploaded_at = timezone.now()
+                pendukung.save(update_fields=["file", "uploaded_at"])
+                messages.success(request, "Dokumen pendukung berhasil diunggah.")
+                return redirect("pakln:upload_dokumen", kode=kode)
+        elif "pendukung_hapus" in request.POST:
+            pendukung.file.delete(save=False)
+            pendukung.file = ""
+            pendukung.uploaded_at = None
+            pendukung.save(update_fields=["file", "uploaded_at"])
+            messages.success(request, "Berkas dokumen pendukung dihapus.")
+            return redirect("pakln:upload_dokumen", kode=kode)
+        elif "toggle_pendukung" in request.POST:
+            # Proses mencentang jenis — berdiri sendiri, tidak memerlukan
+            # berkas diunggah ulang.
+            kategori = request.POST.get("kategori")
+            if kategori not in DokumenPaklnPendukung.KATEGORI_LABELS:
+                messages.error(request, "Jenis dokumen pendukung tidak valid.")
+            else:
+                setattr(pendukung, kategori, not getattr(pendukung, kategori))
+                pendukung.save(update_fields=[kategori])
+                return redirect("pakln:upload_dokumen", kode=kode)
         else:
             jenis = request.POST.get("jenis")
             existing = dokumen_map.get(jenis)
@@ -991,6 +1177,8 @@ def upload_dokumen(request, kode):
         "pengajuan": pengajuan,
         "jenis_choices": jenis_choices,
         "dokumen_map": dokumen_map,
+        "pendukung": pendukung,
+        "pendukung_kategori": list(DokumenPaklnPendukung.KATEGORI_LABELS.items()),
         "lengkap": lengkap,
     }
     return render(request, "pakln/upload.html", context)

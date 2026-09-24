@@ -5,6 +5,10 @@ from . import views_pakln as views
 urlpatterns = [
     path("", views.dashboard, name="dashboard"),
     path("dashboard/data/", views.dashboard_data, name="dashboard_data"),
+    path("generate-nd-kabag/", views.generate_nd_kabag, name="generate_nd_kabag"),
+    path("generate-nd-kabag/unduh-pdf/", views.download_nd_kabag_pdf, name="download_nd_kabag_pdf"),
+    path("generate-nd-karo/", views.generate_nd_karo, name="generate_nd_karo"),
+    path("generate-nd-karo/unduh-pdf/", views.download_nd_karo_pdf, name="download_nd_karo_pdf"),
     path("users/", views.kelola_user, name="kelola_user"),
     path("users/data/", views.users_data, name="users_data"),
     path("users/<int:user_id>/edit/", views.edit_user, name="edit_user"),
