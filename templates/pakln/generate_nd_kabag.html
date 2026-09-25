@@ -160,8 +160,16 @@
         <button type="submit" form="ndKabagForm" class="button is-primary is-small">⬇ Unduh PDF</button>
       </div>
 
+      {% if kode_terpilih %}
+        <div class="notification paspor-msg is-info" style="margin-bottom:14px;">
+          <strong>{{ kode_terpilih|length }} pengajuan terpilih</strong> dari Dasbor: {{ kode_terpilih|join:", " }}.
+          Dicatat otomatis ke Histori Generate Dokumen saat PDF berhasil diunduh.
+        </div>
+      {% endif %}
+
       <form id="ndKabagForm" method="post" action="{% url 'pakln:download_nd_kabag_pdf' %}" novalidate>
         {% csrf_token %}
+        <input type="hidden" name="pengajuan_kodes" value="{{ kode_terpilih_csv }}">
         <div class="field">
           <label class="label">Nama</label>
           <div class="control"><input type="text" name="nama" class="input" placeholder="cth. Muhammad Faris Al Bassam, S.E."></div>
@@ -245,7 +253,7 @@
     // <input>/<textarea name="..."> yang senama, real-time saat diketik.
     function updatePreview($field) {
       var name = $field.attr('name');
-      var value = $.trim($field.val());
+      var value = ($field.val() || '').trim();
       var $targets = $('#ndPaper [data-field="' + name + '"]');
       $targets.each(function () {
         var $span = $(this);

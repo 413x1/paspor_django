@@ -304,6 +304,44 @@ class DokumenPaklnPendukung(models.Model):
         return f"{self.pengajuan.kode} — Dokumen Pendukung Biro PAKLN"
 
 
+def dokumen_generate_log_path(instance, filename):
+    return f"generate_dokumen/{instance.jenis}/{filename}"
+
+
+class DokumenGenerateLog(models.Model):
+    """Riwayat dokumen (ND Kabag/ND Karo) yang berhasil digenerate Admin
+    Biro PAKLN lewat halaman Generate Dokumen — satu baris per aksi
+    "Unduh PDF" yang sukses, termasuk salinan berkasnya sendiri supaya
+    bisa diunduh ulang dari halaman Histori Generate Dokumen."""
+
+    class Jenis(models.TextChoices):
+        ND_KABAG = "nd_kabag", "ND Kabag"
+        ND_KARO = "nd_karo", "ND Karo"
+
+    jenis = models.CharField(max_length=20, choices=Jenis.choices)
+    jumlah_pengajuan = models.PositiveIntegerField(
+        "Jumlah Pengajuan", default=1,
+        help_text="Jumlah pengajuan yang diproses dalam satu batch generate ini.",
+    )
+    pengajuan = models.ManyToManyField(
+        Pengajuan, blank=True, related_name="dokumen_generate_logs",
+        verbose_name="Pengajuan Terkait",
+    )
+    file = models.FileField("Berkas PDF", upload_to=dokumen_generate_log_path)
+    dibuat_oleh = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Riwayat Generate Dokumen"
+        verbose_name_plural = "Riwayat Generate Dokumen"
+
+    def __str__(self):
+        return f"{self.get_jenis_display()} — {self.created_at:%d %b %Y %H:%M}"
+
+
 # ---------------------------------------------------------------------------
 # Manajemen Template — berkas contoh/standar (PDF/DOCX) yang disediakan
 # Admin Biro PAKLN agar dokumen yang diunggah Pegawai/Admin Unor mengikuti

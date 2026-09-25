@@ -4,6 +4,7 @@ from datetime import datetime
 
 from django.contrib import messages
 from django.contrib.staticfiles import finders
+from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
@@ -22,7 +23,9 @@ from paspor.models import KategoriPerjalanan, Negara, SumberPembiayaan
 
 from .decorators import role_required
 from .forms import DokumenPaklnForm, DokumenTemplateForm, KategoriPerjalananForm, NegaraForm, SumberPembiayaanForm
-from .models import DokumenPakln, DokumenPaklnPendukung, DokumenTemplate, Pengajuan
+from .models import (
+    DokumenGenerateLog, DokumenPakln, DokumenPaklnPendukung, DokumenTemplate, Pengajuan,
+)
 
 _BULAN_ID = [
     "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -66,6 +69,33 @@ def _logo_data_uri():
     return f"data:image/png;base64,{encoded}"
 
 
+def _kode_terpilih(request):
+    """Daftar kode Pengajuan yang diteruskan lewat query string
+    `?pengajuan=KODE1,KODE2` dari tombol batch di Dasbor (lihat
+    dashboard.html), dipakai untuk mengisi field tersembunyi di form
+    generate supaya bisa dicatat ke riwayat saat PDF berhasil dibuat."""
+    raw = request.GET.get("pengajuan", "")
+    return [k.strip() for k in raw.split(",") if k.strip()]
+
+
+def _simpan_log_generate(request, jenis, pdf_bytes, filename):
+    """Catat satu baris Riwayat Generate Dokumen setiap kali PDF (ND
+    Kabag/ND Karo) berhasil dibuat — dipanggil hanya setelah
+    `HTML(...).write_pdf()` sukses."""
+    kode_list = [k.strip() for k in request.POST.get("pengajuan_kodes", "").split(",") if k.strip()]
+    pengajuan_qs = Pengajuan.objects.filter(kode__in=kode_list) if kode_list else Pengajuan.objects.none()
+
+    log = DokumenGenerateLog(
+        jenis=jenis,
+        jumlah_pengajuan=pengajuan_qs.count() or 1,
+        dibuat_oleh=request.user,
+    )
+    log.file.save(filename, ContentFile(pdf_bytes), save=False)
+    log.save()
+    if pengajuan_qs.exists():
+        log.pengajuan.set(pengajuan_qs)
+
+
 @role_required("admin_pakln")
 def generate_nd_kabag(request):
     """Generate Dokumen — Nota Dinas Kepala Bagian (konsep ND dari Plt.
@@ -73,7 +103,11 @@ def generate_nd_kabag(request):
     berisi form input + pratinjau langsung (live preview) yang diperbarui
     lewat jQuery di sisi klien. Tombol "Unduh PDF" men-submit form ini
     (POST biasa) ke `download_nd_kabag_pdf`."""
-    return render(request, "pakln/generate_nd_kabag.html")
+    kode_terpilih = _kode_terpilih(request)
+    return render(request, "pakln/generate_nd_kabag.html", {
+        "kode_terpilih": kode_terpilih,
+        "kode_terpilih_csv": ",".join(kode_terpilih),
+    })
 
 
 @role_required("admin_pakln")
@@ -112,6 +146,8 @@ def download_nd_kabag_pdf(request):
         )
         return redirect("pakln:generate_nd_kabag")
 
+    _simpan_log_generate(request, DokumenGenerateLog.Jenis.ND_KABAG, pdf_bytes, "Nota_Dinas_Kabag.pdf")
+
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename="Nota_Dinas_Kabag.pdf"'
     return response
@@ -124,7 +160,11 @@ def generate_nd_karo(request):
     Jenderal), meniru struktur `generate_nd_kabag` — form input + live
     preview jQuery, tombol "Unduh PDF" men-submit ke
     `download_nd_karo_pdf`."""
-    return render(request, "pakln/generate_nd_karo.html")
+    kode_terpilih = _kode_terpilih(request)
+    return render(request, "pakln/generate_nd_karo.html", {
+        "kode_terpilih": kode_terpilih,
+        "kode_terpilih_csv": ",".join(kode_terpilih),
+    })
 
 
 @role_required("admin_pakln")
@@ -168,9 +208,84 @@ def download_nd_karo_pdf(request):
         )
         return redirect("pakln:generate_nd_karo")
 
+    _simpan_log_generate(request, DokumenGenerateLog.Jenis.ND_KARO, pdf_bytes, "Nota_Dinas_Karo.pdf")
+
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename="Nota_Dinas_Karo.pdf"'
     return response
+
+
+@role_required("admin_pakln")
+def histori_generate(request):
+    """Histori Generate Dokumen — riwayat seluruh PDF (ND Kabag/ND Karo)
+    yang pernah berhasil digenerate Admin Biro PAKLN, dengan tautan unduh
+    ulang. Daftarnya ditampilkan sebagai Data Table Server-Side (lihat
+    `histori_generate_data`)."""
+    return render(
+        request, "pakln/histori_generate.html",
+        {"histori_count": DokumenGenerateLog.objects.count()},
+    )
+
+
+# Kolom tabel "Histori Generate Dokumen" (index sesuai urutan kolom pada
+# histori_generate.html) -> field untuk pengurutan (ORDER BY) di endpoint
+# server-side DataTables. Kolom No. (posisi baris) dan Aksi sengaja tidak
+# disertakan — tidak diurutkan di JS (orderable:false).
+_HISTORI_GENERATE_ORDER_FIELDS = {
+    "1": "created_at",
+    "2": "jenis",
+    "3": "jumlah_pengajuan",
+}
+
+
+@role_required("admin_pakln")
+def histori_generate_data(request):
+    """Endpoint JSON server-side untuk tabel "Histori Generate Dokumen"
+    (protokol DataTables: draw/start/length/search/order pada GET),
+    mengikuti pola `users_data` (Manajemen User)."""
+    qs = DokumenGenerateLog.objects.select_related("dibuat_oleh")
+    records_total = qs.count()
+
+    search_value = request.GET.get("search[value]", "").strip()
+    if search_value:
+        qs = qs.filter(
+            Q(jenis__icontains=search_value) | Q(dibuat_oleh__username__icontains=search_value)
+        )
+    records_filtered = qs.count()
+
+    order_col = request.GET.get("order[0][column]")
+    order_field = _HISTORI_GENERATE_ORDER_FIELDS.get(order_col, "-created_at")
+    if request.GET.get("order[0][dir]") == "desc":
+        order_field = f"-{order_field}"
+    qs = qs.order_by(order_field, "-created_at")
+
+    try:
+        start = int(request.GET.get("start", 0))
+        length = int(request.GET.get("length", 10))
+    except ValueError:
+        start, length = 0, 10
+    page = qs[start:] if length == -1 else qs[start:start + length]
+
+    data = []
+    for idx, log in enumerate(page):
+        aksi_html = format_html(
+            '<a href="{}" download class="button is-small">⬇ Unduh</a>', log.file.url,
+        ) if log.file else mark_safe('<span class="cell-muted">Berkas tidak tersedia</span>')
+
+        data.append([
+            start + idx + 1,
+            log.created_at.strftime("%d %b %Y %H:%M"),
+            log.get_jenis_display(),
+            log.jumlah_pengajuan,
+            aksi_html,
+        ])
+
+    return JsonResponse({
+        "draw": int(request.GET.get("draw", 1)),
+        "recordsTotal": records_total,
+        "recordsFiltered": records_filtered,
+        "data": data,
+    })
 
 
 @role_required("admin_pakln")
@@ -195,16 +310,17 @@ def dashboard(request):
 
 # Kolom tabel "Tabel Rincian Pengajuan" (index sesuai urutan kolom pada
 # pakln/dashboard.html) -> field untuk pengurutan (ORDER BY) di endpoint
-# server-side DataTables. Kolom Jenis (statis), Tujuan (M2M), dan Action
-# sengaja tidak disertakan — tidak diurutkan di JS (orderable:false).
+# server-side DataTables. Kolom Checkbox (0, statis), Jenis (statis),
+# Tujuan (M2M), dan Action sengaja tidak disertakan — tidak diurutkan di
+# JS (orderable:false).
 _PAKLN_DASHBOARD_ORDER_FIELDS = {
-    "0": "pegawai__profile__nama",
-    "1": "pegawai__profile__unit_organisasi__name",
-    "3": "kategori__nama_kategori",
-    "5": "tgl_berangkat",
-    "6": "tgl_kembali",
-    "7": "tgl_masuk_pakln",
-    "8": "status",
+    "1": "pegawai__profile__nama",
+    "2": "pegawai__profile__unit_organisasi__name",
+    "4": "kategori__nama_kategori",
+    "6": "tgl_berangkat",
+    "7": "tgl_kembali",
+    "8": "tgl_masuk_pakln",
+    "9": "status",
 }
 
 
@@ -273,7 +389,21 @@ def dashboard_data(request):
                 reverse("pakln:preview", args=[p.kode]),
             )
 
+        # Checkbox seleksi batch (untuk Generate ND Kabag/Karo) — hanya
+        # bisa dicentang saat pengajuan sedang "Dalam Proses Biro PAKLN";
+        # status lain (mis. Selesai, Dalam Proses Unor) checkbox-nya
+        # disabled supaya tidak ikut terpilih.
+        if p.status == Pengajuan.Status.PROSES_PAKLN:
+            checkbox_html = format_html(
+                '<input type="checkbox" class="pengajuan-select-checkbox" value="{}">', p.kode,
+            )
+        else:
+            checkbox_html = format_html(
+                '<input type="checkbox" class="pengajuan-select-checkbox" value="{}" disabled>', p.kode,
+            )
+
         data.append([
+            checkbox_html,
             pegawai_html,
             escape(unit.name if unit else "—"),
             "Non-Kedinasan",

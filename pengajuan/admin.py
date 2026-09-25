@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from .models import (
+    DokumenGenerateLog,
     DokumenPakln,
     DokumenPaklnPendukung,
     DokumenPegawai,
@@ -60,3 +61,11 @@ class DokumenTemplateAdmin(admin.ModelAdmin):
     search_fields = ("nama", "keterangan")
     filter_horizontal = ("unit_organisasi",)
     readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(DokumenGenerateLog)
+class DokumenGenerateLogAdmin(admin.ModelAdmin):
+    list_display = ("jenis", "jumlah_pengajuan", "dibuat_oleh", "created_at")
+    list_filter = ("jenis",)
+    filter_horizontal = ("pengajuan",)
+    readonly_fields = ("created_at",)

@@ -350,6 +350,15 @@ body { background: var(--bg); color: var(--slate-900); }
 .dt-footer .dt-paging-button.current { background: var(--navy-900); border-color: var(--navy-900); color: var(--white); }
 .dt-footer .dt-paging-button.disabled { color: var(--slate-400); cursor: default; opacity: .5; }
 .dt-processing { color: var(--slate-600); font-size: 13px; }
+/* Footer tabel dengan aksi batch (mis. Dasbor Admin PAKLN): tombol
+   Generate di kiri, info + paginasi dikelompokkan berdekatan di kanan. */
+.dashboard-generate-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.dt-footer-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.dt-footer-right .dt-paging { margin: 0; }
+/* Kolom checkbox seleksi batch pada tabel */
+.table.data-table td.dt-select-col, .table.data-table th.dt-select-col { text-align: center; width: 36px; }
+.pengajuan-select-checkbox { width: 16px; height: 16px; cursor: pointer; }
+.pengajuan-select-checkbox:disabled { cursor: not-allowed; opacity: .35; }
 @media (max-width: 640px) {
   .dt-toolbar, .dt-footer { flex-direction: column; align-items: stretch; }
   .dt-toolbar .dt-search input.dt-input { min-width: 0; width: 100%; }
