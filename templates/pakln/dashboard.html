@@ -23,11 +23,26 @@
 </div>
 
 <div class="box">
-  <div class="section-title">Tabel Rincian Pengajuan</div>
+  <div class="table-head-row">
+    <div class="section-title">Tabel Rincian Pengajuan</div>
+    <div class="table-head-actions" data-nav-dropdown>
+      <button type="button" id="btnGenerateNd" class="button is-small is-primary" data-nav-dropdown-toggle disabled>
+        📄 Generate ND<span class="navbar-manage-caret"></span>
+      </button>
+      <div class="table-head-menu">
+        <a href="#" class="navbar-item" id="menuGenerateNdKabag">Generate ND Kabag</a>
+        <a href="#" class="navbar-item" id="menuGenerateNdKaro">Generate ND Karo</a>
+      </div>
+    </div>
+  </div>
+  <p class="helptext" style="margin:-6px 0 10px;">
+    Centang baris berstatus <strong>Dalam Proses Biro PAKLN</strong> untuk membuat dokumen ND Kabag/ND Karo sekaligus (batch) lewat tombol Dropdown di kanan atas tabel.
+  </p>
   <div class="table-wrap">
     <table id="dashboardTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
       <thead>
         <tr>
+          <th class="dt-select-col"></th>
           <th>Pegawai</th><th>Unit Organisasi</th><th>Jenis</th><th>Kategori</th><th>Tujuan</th>
           <th>Berangkat</th><th>Kembali</th><th>Tgl Pengajuan Unor</th><th>Status</th><th>Action</th>
         </tr>
@@ -42,24 +57,34 @@
 <script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
 <script>
   $(function () {
-    $('#dashboardTable').DataTable({
+    // State: kode pengajuan (identifier yang dipakai di seluruh proyek ini,
+    // bukan primary key numerik) yang sedang dicentang untuk digenerate
+    // secara batch — dipertahankan lintas halaman/pencarian/pengurutan tabel.
+    var selectedPengajuanIds = [];
+
+    function updateGenerateButtons() {
+      $('#btnGenerateNd').prop('disabled', selectedPengajuanIds.length === 0);
+    }
+
+    var $table = $('#dashboardTable').DataTable({
       serverSide: true,
       processing: true,
       autoWidth: false,
       ajax: { url: '{% url "pakln:dashboard_data" %}', type: 'GET', cache: false },
       columns: [
-        { data: 0 },
+        { data: 0, orderable: false, searchable: false, className: 'dt-select-col' },
         { data: 1 },
-        { data: 2, orderable: false, searchable: false },
-        { data: 3 },
-        { data: 4, orderable: false, searchable: false },
-        { data: 5 },
+        { data: 2 },
+        { data: 3, orderable: false, searchable: false },
+        { data: 4 },
+        { data: 5, orderable: false, searchable: false },
         { data: 6 },
         { data: 7 },
         { data: 8 },
-        { data: 9, orderable: false, searchable: false },
+        { data: 9 },
+        { data: 10, orderable: false, searchable: false },
       ],
-      order: [[7, 'desc']],
+      order: [[8, 'desc']],
       pageLength: 10,
       lengthMenu: [10, 25, 50, 100],
       dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
@@ -74,6 +99,44 @@
         processing: 'Memuat…',
         paginate: { previous: '‹ Sebelumnya', next: 'Berikutnya ›' },
       },
+    });
+
+    // Setiap kali tabel digambar ulang (ganti halaman/cari/urutkan),
+    // pulihkan status centang baris yang sudah dipilih sebelumnya.
+    $table.on('draw', function () {
+      $('.pengajuan-select-checkbox').each(function () {
+        if (selectedPengajuanIds.indexOf(this.value) !== -1) {
+          this.checked = true;
+        }
+      });
+    });
+
+    $('#dashboardTable tbody').on('change', '.pengajuan-select-checkbox', function () {
+      var kode = this.value;
+      var idx = selectedPengajuanIds.indexOf(kode);
+      if (this.checked && idx === -1) {
+        selectedPengajuanIds.push(kode);
+      } else if (!this.checked && idx !== -1) {
+        selectedPengajuanIds.splice(idx, 1);
+      }
+      updateGenerateButtons();
+    });
+
+    // Tombol Generate ND Kabag/ND Karo — fungsi generate dokumen aslinya
+    // (halaman & view-nya) TIDAK diubah; di sini hanya meneruskan kode
+    // pengajuan yang dipilih lewat query string supaya bisa diproses
+    // kolektif oleh halaman generate tersebut.
+    function goGenerate(url) {
+      if (selectedPengajuanIds.length === 0) { return; }
+      window.location.href = url + '?pengajuan=' + encodeURIComponent(selectedPengajuanIds.join(','));
+    }
+    $('#menuGenerateNdKabag').on('click', function (e) {
+      e.preventDefault();
+      goGenerate('{% url "pakln:generate_nd_kabag" %}');
+    });
+    $('#menuGenerateNdKaro').on('click', function (e) {
+      e.preventDefault();
+      goGenerate('{% url "pakln:generate_nd_karo" %}');
     });
   });
 </script>

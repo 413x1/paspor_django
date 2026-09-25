@@ -1,7 +1,9 @@
 from django.contrib import admin
 
 from .models import (
+    DokumenGenerateLog,
     DokumenPakln,
+    DokumenPaklnPendukung,
     DokumenPegawai,
     DokumenTemplate,
     DokumenUnor,
@@ -30,6 +32,11 @@ class DokumenPaklnInline(admin.TabularInline):
     extra = 0
 
 
+class DokumenPaklnPendukungInline(admin.StackedInline):
+    model = DokumenPaklnPendukung
+    extra = 0
+
+
 @admin.register(Pengajuan)
 class PengajuanAdmin(admin.ModelAdmin):
     list_display = ("kode", "pegawai", "kategori", "tujuan_negara_display", "kanal", "status", "tgl_pengajuan")
@@ -37,7 +44,10 @@ class PengajuanAdmin(admin.ModelAdmin):
     search_fields = ("kode", "pegawai__username", "pegawai__profile__nama", "pegawai__profile__nip")
     readonly_fields = ("kode", "created_at", "updated_at")
     filter_horizontal = ("tujuan_negara",)
-    inlines = [DokumenPegawaiInline, DokumenUnorInline, DokumenUnorPendukungInline, DokumenPaklnInline]
+    inlines = [
+        DokumenPegawaiInline, DokumenUnorInline, DokumenUnorPendukungInline,
+        DokumenPaklnInline, DokumenPaklnPendukungInline,
+    ]
 
     @admin.display(description="Tujuan Negara")
     def tujuan_negara_display(self, obj):
@@ -51,3 +61,11 @@ class DokumenTemplateAdmin(admin.ModelAdmin):
     search_fields = ("nama", "keterangan")
     filter_horizontal = ("unit_organisasi",)
     readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(DokumenGenerateLog)
+class DokumenGenerateLogAdmin(admin.ModelAdmin):
+    list_display = ("jenis", "jumlah_pengajuan", "dibuat_oleh", "created_at")
+    list_filter = ("jenis",)
+    filter_horizontal = ("pengajuan",)
+    readonly_fields = ("created_at",)
