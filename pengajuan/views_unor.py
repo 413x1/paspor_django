@@ -1,9 +1,13 @@
 import csv
 
 from django.contrib import messages
-from django.http import HttpResponse
+from django.db.models import Q
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import escape, format_html
+from django.utils.safestring import mark_safe
 
 from notifications.services import notify_approve_unor, notify_reject_unor
 
@@ -38,7 +42,109 @@ def dashboard(request):
         "proses_pakln": pengajuan_list.filter(status=Pengajuan.Status.PROSES_PAKLN).count(),
         "selesai": pengajuan_list.filter(status=Pengajuan.Status.SELESAI).count(),
     }
-    return render(request, "unor/dashboard.html", {"pengajuan_list": pengajuan_list, "summary": summary})
+    return render(request, "unor/dashboard.html", {"summary": summary})
+
+
+# Kolom tabel "Tabel Rincian per Pengajuan Pegawai" (index sesuai urutan
+# kolom pada unor/dashboard.html) -> field untuk pengurutan (ORDER BY) di
+# endpoint server-side DataTables. Kolom Jenis (statis) dan Tujuan (M2M)
+# sengaja tidak disertakan — tidak diurutkan di JS (orderable:false).
+_UNOR_DASHBOARD_ORDER_FIELDS = {
+    "0": "pegawai__profile__nama",
+    "1": "pegawai__profile__unit_kerja",
+    "3": "kategori__nama_kategori",
+    "5": "tgl_berangkat",
+    "6": "tgl_kembali",
+    "7": "tgl_pengajuan",
+    "8": "kanal",
+    "9": "status",
+}
+
+
+@role_required("admin_unor")
+def dashboard_data(request):
+    """Endpoint JSON server-side untuk "Tabel Rincian per Pengajuan
+    Pegawai" pada Dasbor Admin Unor (protokol DataTables: draw/start/
+    length/search/order pada GET), mengikuti pola `users_data` (Manajemen
+    User)."""
+    qs = (
+        _scoped(request)
+        .exclude(status=Pengajuan.Status.BELUM)
+        .select_related("pegawai__profile", "kategori")
+    )
+    records_total = qs.count()
+
+    search_value = request.GET.get("search[value]", "").strip()
+    if search_value:
+        qs = qs.filter(
+            Q(pegawai__profile__nama__icontains=search_value)
+            | Q(pegawai__profile__nip__icontains=search_value)
+            | Q(pegawai__profile__unit_kerja__icontains=search_value)
+            | Q(kategori__nama_kategori__icontains=search_value)
+            | Q(tujuan_negara__nama_negara__icontains=search_value)
+        ).distinct()
+    records_filtered = qs.count()
+
+    order_col = request.GET.get("order[0][column]")
+    order_field = _UNOR_DASHBOARD_ORDER_FIELDS.get(order_col, "-created_at")
+    if request.GET.get("order[0][dir]") == "desc":
+        order_field = f"-{order_field}"
+    qs = qs.order_by(order_field, "-created_at")
+
+    try:
+        start = int(request.GET.get("start", 0))
+        length = int(request.GET.get("length", 10))
+    except ValueError:
+        start, length = 0, 10
+    page = qs[start:] if length == -1 else qs[start:start + length]
+
+    data = []
+    for p in page:
+        pegawai_html = format_html(
+            "<strong>{}</strong><br><span class=\"cell-muted\">{}</span>",
+            p.pegawai.profile.nama, p.pegawai.profile.nip,
+        )
+        status_html = format_html(
+            '<span class="tag paspor-status is-{}"><span class="dot"></span>{}</span>',
+            p.status, p.get_status_display(),
+        )
+
+        if p.status == Pengajuan.Status.PROSES and not p.preview_unor_agree:
+            aksi_html = format_html(
+                '<a href="{}" class="button is-warning is-small">TL →</a>',
+                reverse("unor:preview", args=[p.kode]),
+            )
+        elif p.status == Pengajuan.Status.PROSES:
+            aksi_html = format_html(
+                '<a href="{}" class="button is-warning is-small">TL →</a>',
+                reverse("unor:upload_dokumen", args=[p.kode]),
+            )
+        else:
+            aksi_html = format_html(
+                '<a href="{}" class="button is-small">Lihat</a>',
+                reverse("unor:preview", args=[p.kode]),
+            )
+
+        data.append([
+            pegawai_html,
+            escape(p.pegawai.profile.unit_kerja or "—"),
+            "Non-Kedinasan",
+            escape(p.kategori.nama_kategori) if p.kategori else "—",
+            escape(p.tujuan_negara_display or "—"),
+            p.tgl_berangkat.strftime("%d %b %Y") if p.tgl_berangkat else "—",
+            p.tgl_kembali.strftime("%d %b %Y") if p.tgl_kembali else "—",
+            p.tgl_pengajuan.strftime("%d %b %Y") if p.tgl_pengajuan else "—",
+            p.get_kanal_display(),
+            status_html,
+            aksi_html,
+        ])
+
+    return JsonResponse({
+        "draw": int(request.GET.get("draw", 1)),
+        "recordsTotal": records_total,
+        "recordsFiltered": records_filtered,
+        "data": data,
+    })
 
 
 @role_required("admin_unor")
@@ -102,6 +208,7 @@ def upload_dokumen(request, kode):
             else:
                 pengajuan.status = Pengajuan.Status.PROSES_PAKLN
                 pengajuan.tgl_masuk_pakln = timezone.now().date()
+                pengajuan.catatan_pakln = ""
                 pengajuan.save()
                 notify_approve_unor(pengajuan)
                 messages.success(request, f"Pengajuan {pengajuan.kode} diteruskan ke Admin Biro PAKLN.")
@@ -177,7 +284,10 @@ def hapus_dokumen(request, kode, jenis):
 @role_required("admin_unor")
 def export_database(request):
     """Tahap 5: Export Database — tabel rincian + unduh CSV
-    (representasi sederhana dari tombol "Export Excel" pada mockup)."""
+    (representasi sederhana dari tombol "Export Excel" pada mockup).
+    Tabel pratinjau di halaman ditampilkan lewat Data Table Server-Side
+    (lihat `export_data`) — CSV tetap mengekspor seluruh baris yang
+    cocok, bukan hanya satu halaman tabel."""
     pengajuan_list = (
         _scoped(request)
         .exclude(status=Pengajuan.Status.BELUM)
@@ -194,4 +304,71 @@ def export_database(request):
             writer.writerow([p.kode, nama, p.kategori, p.tujuan_negara_display, p.tgl_pengajuan or "", p.get_status_display()])
         return response
 
-    return render(request, "unor/export.html", {"pengajuan_list": pengajuan_list})
+    return render(request, "unor/export.html", {})
+
+
+# Kolom tabel pratinjau "Export Database" (index sesuai urutan kolom pada
+# unor/export.html) -> field untuk pengurutan (ORDER BY) di endpoint
+# server-side DataTables. Kolom Tujuan (M2M) sengaja tidak disertakan.
+_UNOR_EXPORT_ORDER_FIELDS = {
+    "0": "pegawai__profile__nama",
+    "1": "kategori__nama_kategori",
+    "3": "tgl_pengajuan",
+    "4": "status",
+}
+
+
+@role_required("admin_unor")
+def export_data(request):
+    """Endpoint JSON server-side untuk tabel pratinjau "Export Database"
+    (protokol DataTables: draw/start/length/search/order pada GET),
+    mengikuti pola `users_data` (Manajemen User)."""
+    qs = (
+        _scoped(request)
+        .exclude(status=Pengajuan.Status.BELUM)
+        .select_related("pegawai__profile", "kategori")
+    )
+    records_total = qs.count()
+
+    search_value = request.GET.get("search[value]", "").strip()
+    if search_value:
+        qs = qs.filter(
+            Q(pegawai__profile__nama__icontains=search_value)
+            | Q(kategori__nama_kategori__icontains=search_value)
+            | Q(tujuan_negara__nama_negara__icontains=search_value)
+        ).distinct()
+    records_filtered = qs.count()
+
+    order_col = request.GET.get("order[0][column]")
+    order_field = _UNOR_EXPORT_ORDER_FIELDS.get(order_col, "-tgl_pengajuan")
+    if request.GET.get("order[0][dir]") == "desc":
+        order_field = f"-{order_field}"
+    qs = qs.order_by(order_field, "-created_at")
+
+    try:
+        start = int(request.GET.get("start", 0))
+        length = int(request.GET.get("length", 10))
+    except ValueError:
+        start, length = 0, 10
+    page = qs[start:] if length == -1 else qs[start:start + length]
+
+    data = []
+    for p in page:
+        status_html = format_html(
+            '<span class="tag paspor-status is-{}"><span class="dot"></span>{}</span>',
+            p.status, p.get_status_display(),
+        )
+        data.append([
+            format_html("<strong>{}</strong>", p.pegawai.profile.nama),
+            escape(p.kategori.nama_kategori) if p.kategori else "—",
+            escape(p.tujuan_negara_display or "—"),
+            p.tgl_pengajuan.strftime("%d %b %Y") if p.tgl_pengajuan else "—",
+            status_html,
+        ])
+
+    return JsonResponse({
+        "draw": int(request.GET.get("draw", 1)),
+        "recordsTotal": records_total,
+        "recordsFiltered": records_filtered,
+        "data": data,
+    })

@@ -4,7 +4,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from accounts.models import PegawaiProfile, User
-from paspor.models import Negara, SumberPembiayaan, UnitOrganisasi
+from paspor.models import KategoriPerjalanan, Negara, SumberPembiayaan, UnitOrganisasi
 from pengajuan.models import Pengajuan
 
 # Data awal unit organisasi eselon I Kementerian PU (tabel org_units).
@@ -107,12 +107,18 @@ class Command(BaseCommand):
         biaya_sendiri, _ = SumberPembiayaan.objects.get_or_create(
             nama="Biaya Sendiri", tipe_perjalanan=SumberPembiayaan.TipePerjalanan.NON_DINAS,
         )
+        kategori_ibadah, _ = KategoriPerjalanan.objects.get_or_create(
+            nama_kategori="Ibadah", jenis_perjalanan=KategoriPerjalanan.JenisPerjalanan.NON_DINAS,
+        )
+        kategori_pribadi, _ = KategoriPerjalanan.objects.get_or_create(
+            nama_kategori="Keperluan Pribadi", jenis_perjalanan=KategoriPerjalanan.JenisPerjalanan.NON_DINAS,
+        )
 
         pengajuan_umrah, _ = Pengajuan.objects.get_or_create(
             kode="PSP-2026-0091",
             defaults={
                 "pegawai": pegawai,
-                "kategori": Pengajuan.Kategori.IBADAH,
+                "kategori": kategori_ibadah,
                 "maksud": "Menunaikan ibadah umrah bersama keluarga",
                 "sumber_pembiayaan": biaya_sendiri,
                 "tgl_berangkat": datetime.date(2026, 6, 1),
@@ -135,7 +141,7 @@ class Command(BaseCommand):
             kode="PSP-2026-0114",
             defaults={
                 "pegawai": pegawai,
-                "kategori": Pengajuan.Kategori.KEPERLUAN_PRIBADI,
+                "kategori": kategori_pribadi,
                 "maksud": "Menghadiri acara keluarga",
                 "sumber_pembiayaan": biaya_sendiri,
                 "tgl_berangkat": datetime.date(2026, 7, 12),

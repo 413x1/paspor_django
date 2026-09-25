@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}PASPOR{% endblock %} — Kementerian PU</title>
   <link rel="stylesheet" href="{% static 'vendors/bulma/css/versions/bulma-no-dark-mode.min.css' %}">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260918b">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260923c">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -35,10 +35,16 @@
           <a class="navbar-item {% if vn == 'unor:export' %}is-active{% endif %}" href="{% url 'unor:export' %}">Export</a>
         {% elif user.role == 'admin_pakln' %}
           <a class="navbar-item {% if vn == 'pakln:dashboard' %}is-active{% endif %}" href="{% url 'pakln:dashboard' %}">Dasbor</a>
-          <a class="navbar-item {% if vn == 'pakln:kelola_user' %}is-active{% endif %}" href="{% url 'pakln:kelola_user' %}">Manajemen User</a>
-          <a class="navbar-item {% if vn == 'pakln:kelola_template' or vn == 'pakln:edit_template' %}is-active{% endif %}" href="{% url 'pakln:kelola_template' %}">Manajemen Template</a>
-          <a class="navbar-item {% if vn == 'pakln:kelola_negara' or vn == 'pakln:edit_negara' %}is-active{% endif %}" href="{% url 'pakln:kelola_negara' %}">Manajemen Negara</a>
-          <a class="navbar-item {% if vn == 'pakln:kelola_sumber_pembiayaan' or vn == 'pakln:edit_sumber_pembiayaan' %}is-active{% endif %}" href="{% url 'pakln:kelola_sumber_pembiayaan' %}">Manajemen Sumber Pembiayaan</a>
+          <div class="navbar-item has-dropdown{% if vn == 'pakln:kelola_user' or vn == 'pakln:kelola_template' or vn == 'pakln:edit_template' or vn == 'pakln:kelola_negara' or vn == 'pakln:edit_negara' or vn == 'pakln:kelola_sumber_pembiayaan' or vn == 'pakln:edit_sumber_pembiayaan' or vn == 'pakln:kelola_kategori' or vn == 'pakln:edit_kategori' %} is-active-route{% endif %}" data-nav-dropdown>
+            <a class="navbar-link is-arrowless" href="#" data-nav-dropdown-toggle>Manajemen<span class="navbar-manage-caret"></span></a>
+            <div class="navbar-dropdown">
+              <a class="navbar-item {% if vn == 'pakln:kelola_user' %}is-active{% endif %}" href="{% url 'pakln:kelola_user' %}">Manajemen User</a>
+              <a class="navbar-item {% if vn == 'pakln:kelola_template' or vn == 'pakln:edit_template' %}is-active{% endif %}" href="{% url 'pakln:kelola_template' %}">Manajemen Template</a>
+              <a class="navbar-item {% if vn == 'pakln:kelola_negara' or vn == 'pakln:edit_negara' %}is-active{% endif %}" href="{% url 'pakln:kelola_negara' %}">Manajemen Negara</a>
+              <a class="navbar-item {% if vn == 'pakln:kelola_sumber_pembiayaan' or vn == 'pakln:edit_sumber_pembiayaan' %}is-active{% endif %}" href="{% url 'pakln:kelola_sumber_pembiayaan' %}">Manajemen Sumber Pembiayaan</a>
+              <a class="navbar-item {% if vn == 'pakln:kelola_kategori' or vn == 'pakln:edit_kategori' %}is-active{% endif %}" href="{% url 'pakln:kelola_kategori' %}">Manajemen Kategori Perjalanan</a>
+            </div>
+          </div>
           <a class="navbar-item {% if vn == 'pakln:export' %}is-active{% endif %}" href="{% url 'pakln:export' %}">Export</a>
         {% endif %}
         {% endwith %}
@@ -146,6 +152,26 @@
       var $t = $('#' + $(this).data('target'));
       $(this).toggleClass('is-active');
       $t.toggleClass('is-active');
+    });
+
+    // Dropdown navbar (mis. "Manajemen" pada topbar Admin PKLN) — dibuka
+    // lewat klik, bukan hover, dan tertutup lagi saat klik di luar area-nya.
+    $(document).on('click', '[data-nav-dropdown-toggle]', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var $item = $(this).closest('[data-nav-dropdown]');
+      var wasActive = $item.hasClass('is-active');
+      $('[data-nav-dropdown].is-active').removeClass('is-active');
+      if (!wasActive) { $item.addClass('is-active'); }
+    });
+    $(document).on('click', '[data-nav-dropdown] .navbar-dropdown', function (e) {
+      e.stopPropagation();
+    });
+    $(document).on('click', function () {
+      $('[data-nav-dropdown].is-active').removeClass('is-active');
+    });
+    $(document).on('keydown', function (e) {
+      if (e.key === 'Escape') { $('[data-nav-dropdown].is-active').removeClass('is-active'); }
     });
 
     function closeModals() {

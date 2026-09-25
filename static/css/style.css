@@ -59,6 +59,7 @@ body { background: var(--bg); color: var(--slate-900); }
   --topbar-bg: #374774;      /* mockup --navy-800 */
   --topbar-role-bg: #465a8c; /* mockup --navy-700 */
   --topbar-avatar-bg: #ffbd12; /* mockup --gold-500 */
+  --tab-active-bg: #d9d9d9;  /* latar tab/menu aktif di topbar (Dasbor, Export, Manajemen) */
 }
 .navbar.paspor-topbar {
   background: var(--topbar-bg);
@@ -69,14 +70,58 @@ body { background: var(--bg); color: var(--slate-900); }
 }
 .paspor-topbar .navbar-item,
 .paspor-topbar .navbar-link { color: rgba(255, 255, 255, .92); background: transparent; }
-.paspor-topbar a.navbar-item:hover,
-.paspor-topbar .navbar-item.has-dropdown:hover .navbar-link { background: rgba(255, 255, 255, .08); color: var(--white); }
+.paspor-topbar a.navbar-item:hover { background: rgba(255, 255, 255, .08); color: var(--white); }
 .paspor-topbar .navbar-start a.navbar-item {
-  font-weight: 600; font-size: 13.5px; border-radius: 8px; margin: 0 2px;
+  font-weight: 600; font-size: 13.5px; border-radius: 14px; margin: 0 2px;
+  padding: 10px 18px;
 }
 .paspor-topbar .navbar-start a.navbar-item.is-active,
 .paspor-topbar .navbar-start a.navbar-item.is-active:hover {
-  background: rgba(255, 255, 255, .16); color: var(--white);
+  background: var(--tab-active-bg); color: var(--navy-900);
+}
+/* "Manajemen" — dropdown yang mengelompokkan menu Admin PKLN (User,
+   Template, Negara, Sumber Pembiayaan) supaya navbar tidak melebar
+   berlebihan dan tombol "Keluar" tetap selalu terlihat. */
+.paspor-topbar .navbar-start .navbar-link {
+  font-weight: 600; font-size: 13.5px; border-radius: 14px; margin: 0 2px;
+  padding: 10px 18px;
+}
+.paspor-topbar .navbar-item.has-dropdown > .navbar-link:hover {
+  background: rgba(255, 255, 255, .08); color: var(--white);
+}
+.paspor-topbar .navbar-item.has-dropdown.is-active-route > .navbar-link,
+.paspor-topbar .navbar-item.has-dropdown.is-active > .navbar-link {
+  background: var(--tab-active-bg); color: var(--navy-900);
+}
+/* Chevron kustom di sisi kanan "Manajemen" — kosong saat tertutup,
+   muncul ("v") hanya saat dropdown dibuka lewat klik. */
+.navbar-manage-caret {
+  display: inline-block; width: 0.625em; height: 0.625em; margin: 0 0 1px 8px;
+  border: 0.125em solid currentColor; border-right: 0; border-top: 0;
+  transform: rotate(-45deg);
+  opacity: 0; transition: opacity .12s ease;
+}
+.paspor-topbar .navbar-item.has-dropdown.is-active .navbar-manage-caret {
+  opacity: 1;
+}
+.paspor-topbar .navbar-dropdown {
+  display: none;
+  border-radius: var(--radius); box-shadow: var(--shadow); border-top: none; margin-top: 4px;
+  padding: 8px;
+}
+.paspor-topbar .navbar-item.has-dropdown.is-active .navbar-dropdown {
+  display: block;
+}
+.paspor-topbar .navbar-dropdown a.navbar-item {
+  color: var(--slate-900); font-size: 13.5px; font-weight: 600;
+  border-radius: 14px; margin: 0 0 2px; padding: 10px 18px;
+}
+.paspor-topbar .navbar-dropdown a.navbar-item:last-child { margin-bottom: 0; }
+.paspor-topbar .navbar-dropdown a.navbar-item:hover {
+  background: var(--tab-active-bg); color: var(--navy-900);
+}
+.paspor-topbar .navbar-dropdown a.navbar-item.is-active {
+  background: var(--blue-bg); color: var(--navy-900);
 }
 .paspor-topbar .brand { display: flex; align-items: center; gap: 12px; }
 .paspor-topbar .brand .logo {
@@ -90,6 +135,12 @@ body { background: var(--bg); color: var(--slate-900); }
   white-space: normal; max-width: 230px; line-height: 1.3; margin-top: 2px;
 }
 .paspor-topbar .navbar-burger { color: var(--white); height: 3.5rem; }
+@media screen and (min-width: 1024px) {
+  /* Jaga-jaga: bungkus ke baris baru alih-alih meluber & menyembunyikan
+     navbar-end (notifikasi/akun/Keluar) bila suatu saat menu bertambah
+     panjang lagi di lebar layar yang pas-pasan. */
+  .paspor-topbar .navbar-menu { flex-wrap: wrap; row-gap: 4px; }
+}
 .paspor-role {
   background: var(--topbar-role-bg); color: var(--white);
   font-size: 10px; font-weight: 700; border-radius: 6px; padding: 2px 8px;
@@ -229,6 +280,8 @@ body { background: var(--bg); color: var(--slate-900); }
   padding: 18px 20px;
 }
 .summary-card.active { background: var(--gold-bg); border-color: var(--gold); }
+.summary-card.is-done { background: var(--green-bg); border-color: var(--green); }
+.summary-card.is-done .num { color: var(--green); }
 .summary-card .num { font-size: 30px; font-weight: 800; color: var(--navy-900); }
 .summary-card .label { font-size: 13px; color: var(--slate-600); margin-top: 2px; }
 @media (max-width: 800px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
@@ -263,7 +316,7 @@ body { background: var(--bg); color: var(--slate-900); }
 /* ---------- DataTables (server-side) ---------- */
 .dt-toolbar {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; flex-wrap: wrap; padding: 4px 0 14px;
+  gap: 12px; flex-wrap: wrap; padding: 14px 18px;
 }
 .dt-toolbar .dt-length { font-size: 13px; color: var(--slate-600); }
 .dt-toolbar .dt-length select.dt-input {
@@ -284,7 +337,7 @@ body { background: var(--bg); color: var(--slate-900); }
 .table.data-table th.dt-ordering-desc .dt-column-order { opacity: 1; }
 .dt-footer {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; flex-wrap: wrap; padding: 14px 0 4px; border-top: 1px solid var(--line);
+  gap: 12px; flex-wrap: wrap; padding: 16px 18px; border-top: 1px solid var(--line);
 }
 .dt-footer .dt-info { font-size: 12.5px; color: var(--slate-400); }
 .dt-footer .dt-paging-button {
@@ -311,6 +364,14 @@ body { background: var(--bg); color: var(--slate-900); }
 .doc-row .info p { margin: 0; font-size: 12.5px; color: var(--slate-400); max-width: 480px; }
 .doc-row .actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
 .doc-row.uploaded { border-color: var(--green); background: #f4fbf6; }
+
+/* Tombol aksi pada kolom "Aksi" tabel Data Table Server-Side (Manajemen
+   Negara/Sumber Pembiayaan/Kategori Perjalanan/Template) — tetap sejajar
+   horizontal, tidak bertumpuk ke bawah walau kolomnya sempit. */
+.table-actions {
+  display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; white-space: nowrap;
+}
+.table-actions .button { flex-shrink: 0; padding-left: 10px; padding-right: 10px; }
 
 /* ---------- Timeline (monitor progres) ---------- */
 .timeline { list-style: none; margin: 0; padding: 0; }
