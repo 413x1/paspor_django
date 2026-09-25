@@ -23,9 +23,20 @@
 </div>
 
 <div class="box">
-  <div class="section-title">Tabel Rincian Pengajuan</div>
+  <div class="table-head-row">
+    <div class="section-title">Tabel Rincian Pengajuan</div>
+    <div class="table-head-actions" data-nav-dropdown>
+      <button type="button" id="btnGenerateNd" class="button is-small is-primary" data-nav-dropdown-toggle disabled>
+        📄 Generate ND<span class="navbar-manage-caret"></span>
+      </button>
+      <div class="table-head-menu">
+        <a href="#" class="navbar-item" id="menuGenerateNdKabag">Generate ND Kabag</a>
+        <a href="#" class="navbar-item" id="menuGenerateNdKaro">Generate ND Karo</a>
+      </div>
+    </div>
+  </div>
   <p class="helptext" style="margin:-6px 0 10px;">
-    Centang baris berstatus <strong>Dalam Proses Biro PAKLN</strong> untuk membuat dokumen ND Kabag/ND Karo sekaligus (batch) lewat tombol di bawah tabel.
+    Centang baris berstatus <strong>Dalam Proses Biro PAKLN</strong> untuk membuat dokumen ND Kabag/ND Karo sekaligus (batch) lewat tombol Dropdown di kanan atas tabel.
   </p>
   <div class="table-wrap">
     <table id="dashboardTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
@@ -38,13 +49,6 @@
       </thead>
       <tbody></tbody>
     </table>
-  </div>
-
-  <!-- Dipindah ke posisi kiri-bawah tabel oleh JS (menggantikan info paginasi
-       yang digeser ke kanan, berdekatan dengan tombol paginasi). -->
-  <div id="dashboardGenerateActions" class="dashboard-generate-actions" hidden>
-    <button type="button" id="btnGenerateNdKabag" class="button is-small is-primary" disabled>📄 Generate ND Kabag</button>
-    <button type="button" id="btnGenerateNdKaro" class="button is-small is-primary" disabled>📄 Generate ND Karo</button>
   </div>
 </div>
 {% endblock %}
@@ -59,8 +63,7 @@
     var selectedPengajuanIds = [];
 
     function updateGenerateButtons() {
-      var isEmpty = selectedPengajuanIds.length === 0;
-      $('#btnGenerateNdKabag, #btnGenerateNdKaro').prop('disabled', isEmpty);
+      $('#btnGenerateNd').prop('disabled', selectedPengajuanIds.length === 0);
     }
 
     var $table = $('#dashboardTable').DataTable({
@@ -98,15 +101,6 @@
       },
     });
 
-    // Restrukturisasi footer sekali saja: kelompokkan info + paginasi di
-    // kanan (berdekatan), lalu sisipkan tombol Generate di kiri (posisi
-    // yang tadinya ditempati teks info).
-    var $footer = $('#dashboardTable').closest('.dt-container').find('.dt-footer');
-    var $footerRight = $('<div class="dt-footer-right"></div>');
-    $footer.find('.dt-info, .dt-paging').appendTo($footerRight);
-    $footer.prepend($('#dashboardGenerateActions').removeAttr('hidden'));
-    $footer.append($footerRight);
-
     // Setiap kali tabel digambar ulang (ganti halaman/cari/urutkan),
     // pulihkan status centang baris yang sudah dipilih sebelumnya.
     $table.on('draw', function () {
@@ -136,10 +130,12 @@
       if (selectedPengajuanIds.length === 0) { return; }
       window.location.href = url + '?pengajuan=' + encodeURIComponent(selectedPengajuanIds.join(','));
     }
-    $('#btnGenerateNdKabag').on('click', function () {
+    $('#menuGenerateNdKabag').on('click', function (e) {
+      e.preventDefault();
       goGenerate('{% url "pakln:generate_nd_kabag" %}');
     });
-    $('#btnGenerateNdKaro').on('click', function () {
+    $('#menuGenerateNdKaro').on('click', function (e) {
+      e.preventDefault();
       goGenerate('{% url "pakln:generate_nd_karo" %}');
     });
   });

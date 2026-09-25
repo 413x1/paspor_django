@@ -350,15 +350,32 @@ body { background: var(--bg); color: var(--slate-900); }
 .dt-footer .dt-paging-button.current { background: var(--navy-900); border-color: var(--navy-900); color: var(--white); }
 .dt-footer .dt-paging-button.disabled { color: var(--slate-400); cursor: default; opacity: .5; }
 .dt-processing { color: var(--slate-600); font-size: 13px; }
-/* Footer tabel dengan aksi batch (mis. Dasbor Admin PAKLN): tombol
-   Generate di kiri, info + paginasi dikelompokkan berdekatan di kanan. */
-.dashboard-generate-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.dt-footer-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.dt-footer-right .dt-paging { margin: 0; }
 /* Kolom checkbox seleksi batch pada tabel */
 .table.data-table td.dt-select-col, .table.data-table th.dt-select-col { text-align: center; width: 36px; }
 .pengajuan-select-checkbox { width: 16px; height: 16px; cursor: pointer; }
 .pengajuan-select-checkbox:disabled { cursor: not-allowed; opacity: .35; }
+/* Baris judul tabel + aksi batch (mis. dropdown "Generate ND" pada
+   Dasbor Admin PAKLN), judul di kiri dan tombol aksi di kanan atas. */
+.table-head-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 6px;
+}
+.table-head-row .section-title { margin-bottom: 0; }
+.table-head-actions { position: relative; display: inline-block; }
+.table-head-actions.is-active .navbar-manage-caret { opacity: 1; }
+.table-head-actions #btnGenerateNd:disabled .navbar-manage-caret { opacity: 0; }
+.table-head-menu {
+  display: none; position: absolute; top: calc(100% + 6px); right: 0; z-index: 20;
+  min-width: 190px; background: var(--white); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 6px;
+}
+.table-head-actions.is-active .table-head-menu { display: block; }
+.table-head-menu a.navbar-item {
+  display: block; color: var(--slate-900); font-size: 13.5px; font-weight: 600;
+  border-radius: 10px; padding: 9px 12px; margin-bottom: 2px;
+}
+.table-head-menu a.navbar-item:last-child { margin-bottom: 0; }
+.table-head-menu a.navbar-item:hover { background: var(--tab-active-bg); color: var(--navy-900); }
 @media (max-width: 640px) {
   .dt-toolbar, .dt-footer { flex-direction: column; align-items: stretch; }
   .dt-toolbar .dt-search input.dt-input { min-width: 0; width: 100%; }
