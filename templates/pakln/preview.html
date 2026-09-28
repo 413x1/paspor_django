@@ -96,39 +96,29 @@
     </form>
   {% endif %}
 
-  {% if pengajuan.status == "proses_pakln" %}
-    <button type="button" class="button is-danger is-fullwidth" style="margin-top:10px;" data-modal-open="kembalikanModal">
-      ↩ Kembalikan pada Admin Unor
-    </button>
-  {% endif %}
 </div>
-
-<a href="{% url 'pakln:dashboard' %}" class="button is-fullwidth">← Kembali ke Dasbor</a>
 
 {% if pengajuan.status == "proses_pakln" %}
-<div id="kembalikanModal" class="modal paspor-modal">
-  <div class="modal-background"></div>
-  <div class="modal-card">
-    <div class="modal-card-body">
-      <h3>Kembalikan ke Admin Unor</h3>
-      <p class="modal-intro">
-        Gunakan ini jika ada kekurangan atau kesalahan pada rekomendasi/berkas administrasi Admin Unor yang perlu
-        diperbaiki. Pengajuan akan berstatus <strong>Dalam Proses Unor</strong> kembali sampai Admin Unor mengirim ulang.
-      </p>
-      <form method="post">
-        {% csrf_token %}
-        <div class="field">
-          <label class="label" for="catatan_pakln">Catatan Perbaikan</label>
-          <div class="control">
-            <textarea class="textarea" id="catatan_pakln" name="catatan" rows="4" required
-              placeholder="cth. Rekomendasi Nota Dinas Kepala Bagian belum sesuai format, mohon direvisi."></textarea>
-          </div>
-        </div>
-        <button type="submit" name="kembalikan" class="button is-danger is-fullwidth" style="margin-top:16px;">↩ Kembalikan</button>
-        <button type="button" class="button is-fullwidth" style="margin-top:8px;" data-modal-close>Batal</button>
-      </form>
+<div class="box" style="background:#fdecea; border-color:#f3c6c2;">
+  <div class="section-title" style="font-size:14px;">↩ Kembalikan ke Admin Unor</div>
+  <p class="cell-muted" style="margin:-8px 0 14px;">
+    Gunakan ini jika ada kekurangan atau kesalahan pada rekomendasi/berkas administrasi Admin Unor yang perlu diperbaiki
+    sebelum dapat diproses lebih lanjut. Pengajuan akan berstatus <strong>Dalam Proses Unor</strong> kembali sampai
+    Admin Unor mengirim ulang.
+  </p>
+  <form method="post" onsubmit="return confirm('Kembalikan pengajuan ini ke Admin Unor beserta catatan?');">
+    {% csrf_token %}
+    <div class="field">
+      <label class="label" for="catatan_pakln">Catatan untuk Admin Unor</label>
+      <div class="control">
+        <textarea class="textarea" id="catatan_pakln" name="catatan" rows="3" required
+          placeholder="cth. Rekomendasi Nota Dinas Kepala Bagian belum sesuai format, mohon direvisi."></textarea>
+      </div>
     </div>
-  </div>
+    <button type="submit" name="kembalikan" class="button is-danger is-fullwidth">↩ Kembalikan ke Admin Unor</button>
+  </form>
 </div>
 {% endif %}
+
+<a href="{% url 'pakln:dashboard' %}" class="button is-fullwidth">← Kembali ke Dasbor</a>
 {% endblock %}

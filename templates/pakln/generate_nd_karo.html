@@ -1,0 +1,403 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Generate ND Karo{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* =====================================================================
+     "Kertas" pratinjau Nota Dinas Kepala Biro — SENGAJA diisolasi dari
+     Bulma (tidak memakai class .button/.input/.field dst.) supaya tata
+     letak cetak (margin A4, font resmi) tidak ikut terpengaruh perubahan
+     styling framework di masa depan. Sama persis dengan pola ND Kabag.
+     ===================================================================== */
+  .nd-preview-col {
+    background: #eef0f4;
+    border-radius: 14px;
+    padding: 28px 20px;
+    display: flex;
+    justify-content: center;
+  }
+  .nd-paper-shadow-wrap {
+    box-shadow: 0 14px 40px rgba(20, 30, 60, 0.18), 0 2px 8px rgba(20, 30, 60, 0.08);
+    background: #ffffff;
+  }
+  .nd-paper {
+    width: 700px;
+    max-width: 100%;
+    min-height: 990px;
+    box-sizing: border-box;
+    padding: 70px 64px;
+    background: #ffffff;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 14px;
+    line-height: 1.55;
+    color: #111111;
+  }
+  .nd-paper * { box-sizing: border-box; }
+  .nd-head { display: flex; align-items: flex-start; gap: 14px; }
+  .nd-head img { width: 62px; height: 62px; object-fit: contain; flex-shrink: 0; margin-top: 4px; }
+  .nd-head-text { flex: 1 1 auto; text-align: center; }
+  .nd-head-text .nd-org1 { font-size: 17px; font-weight: 700; letter-spacing: .3px; }
+  .nd-head-text .nd-org2 { font-size: 15px; font-weight: 700; margin-top: 1px; }
+  .nd-head-text .nd-addr { font-size: 10.5px; margin-top: 3px; }
+  .nd-rule { border: none; border-top: 2px solid #111111; margin: 8px 0 4px; }
+  .nd-title { text-align: center; font-weight: 700; text-decoration: underline; font-size: 14px; margin-bottom: 0; }
+  .nd-nomor { text-align: center; font-size: 13px; margin-bottom: 18px; }
+  .nd-meta { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+  .nd-meta td { padding: 1px 0; vertical-align: top; font-size: 14px; }
+  .nd-meta td.nd-meta-label { width: 78px; white-space: nowrap; }
+  .nd-meta td.nd-meta-colon { width: 12px; }
+  .nd-rule-thin { border: none; border-top: 1px solid #111111; margin: 10px 0 20px; }
+  .nd-body p { margin: 0 0 14px; text-align: justify; text-indent: 34px; }
+  .nd-list { width: 100%; border-collapse: collapse; margin: 0 0 14px; font-size: 14px; }
+  .nd-list td { padding: 1px 4px 1px 0; vertical-align: top; }
+  .nd-list td.nd-list-no { width: 22px; }
+  .nd-list td.nd-list-label { width: 150px; }
+  .nd-list td.nd-list-colon { width: 12px; }
+  .nd-pegawai-table { width: 100%; border-collapse: collapse; margin: 6px 0 16px; font-size: 12.5px; }
+  .nd-pegawai-table th, .nd-pegawai-table td { border: 1px solid #111111; padding: 6px 8px; vertical-align: top; }
+  .nd-pegawai-table th { text-align: center; font-weight: 700; background: #f3f3f3; }
+  .nd-pegawai-table td.nd-pt-no { text-align: center; width: 26px; }
+  .nd-sign-row { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 42px; }
+  .nd-sign-box { display: flex; width: 220px; border: 1px solid #111111; text-align: center; font-size: 11px; }
+  .nd-sign-box > div { flex: 1 1 50%; }
+  .nd-sign-box > div:first-child { border-right: 1px solid #111111; }
+  .nd-sign-box .nd-sign-box-head { border-bottom: 1px solid #111111; padding: 4px 2px; }
+  .nd-sign-box .nd-sign-box-body { height: 42px; }
+  .nd-sign-block { text-align: center; }
+  .nd-sign-block .nd-sign-name { margin-top: 52px; font-weight: 700; text-decoration: underline; }
+  .nd-dyn { font-weight: 700; }
+  .nd-dyn.is-placeholder { font-weight: 400; font-style: italic; color: #8a8f9a; }
+
+  /* ---------- Panel form (Bulma tetap dipakai di sini) ---------- */
+  .nd-form-col .box { position: sticky; top: 16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Generate Dokumen — ND Karo</h2>
+    <p class="sub">Permohonan Persetujuan Izin Perjalanan ke Luar Negeri dari Kepala Biro PAKLN ke Sekretaris Jenderal. Pratinjau di kiri memperbarui otomatis mengikuti isian form.</p>
+  </div>
+  <a href="{% url 'pakln:dashboard' %}" class="button is-small">← Kembali ke Dasbor</a>
+</div>
+
+<div class="columns is-variable is-5">
+  <!-- Kolom Kiri: Live Preview Dokumen -->
+  <div class="column is-7">
+    <div class="nd-preview-col">
+      <div class="nd-paper-shadow-wrap">
+        <div class="nd-paper" id="ndPaper">
+          <div class="nd-head">
+            <img src="{% static 'images/logopu.png' %}" alt="Logo Kementerian PU">
+            <div class="nd-head-text">
+              <div class="nd-org1">KEMENTERIAN PEKERJAAN UMUM</div>
+              <div class="nd-org2">SEKRETARIAT JENDERAL</div>
+              <div class="nd-addr">Jalan Pattimura Nomor 20, Kebayoran Baru, Jakarta Selatan 12110, Telepon (021)7392681, Surel: bpakln@pu.go.id</div>
+            </div>
+          </div>
+          <hr class="nd-rule">
+
+          <div class="nd-title">NOTA DINAS</div>
+          <div class="nd-nomor">NOMOR</div>
+
+          <table class="nd-meta">
+            <tr>
+              <td class="nd-meta-label">Yth.</td>
+              <td class="nd-meta-colon">:</td>
+              <td>Sekretaris Jenderal Kementerian Pekerjaan Umum</td>
+            </tr>
+            <tr>
+              <td class="nd-meta-label">Dari</td>
+              <td class="nd-meta-colon">:</td>
+              <td>Kepala Biro Perencanaan Anggaran dan Kerja Sama Luar Negeri</td>
+            </tr>
+            <tr>
+              <td class="nd-meta-label">Hal</td>
+              <td class="nd-meta-colon">:</td>
+              <td>
+                Permohonan Izin Melakukan Perjalanan Luar Negeri a.n.
+                <span id="prev-nama-1" data-field="nama" class="nd-dyn is-placeholder">[nama]</span>
+                ke
+                <span id="prev-negara-1" data-field="negara_tujuan" class="nd-dyn is-placeholder">[negara tujuan]</span>
+                dalam rangka
+                <span id="prev-keperluan-1" data-field="maksud_perjalanan" class="nd-dyn is-placeholder">[keperluan]</span>
+              </td>
+            </tr>
+            <tr>
+              <td class="nd-meta-label">Tanggal</td>
+              <td class="nd-meta-colon">:</td>
+              <td><span id="prev-tanggal" class="nd-dyn"></span></td>
+            </tr>
+          </table>
+          <hr class="nd-rule-thin">
+
+          <div class="nd-body">
+            <p>
+              Sehubungan dengan keperluan administrasi pegawai dalam melakukan perjalanan ke luar negeri
+              non-kedinasan, bersama ini kami sampaikan dengan hormat permohonan Persetujuan Izin
+              Perjalanan ke Luar Negeri sebagai berikut:
+            </p>
+          </div>
+
+          <table class="nd-list">
+            <tr>
+              <td class="nd-list-no">1.</td>
+              <td class="nd-list-label">Tujuan Negara</td>
+              <td class="nd-list-colon">:</td>
+              <td><span id="prev-negara-2" data-field="negara_tujuan" class="nd-dyn is-placeholder">[negara tujuan]</span></td>
+            </tr>
+            <tr>
+              <td class="nd-list-no">2.</td>
+              <td class="nd-list-label">Maksud/Tujuan</td>
+              <td class="nd-list-colon">:</td>
+              <td><span id="prev-keperluan-2" data-field="maksud_perjalanan" class="nd-dyn is-placeholder">[keperluan]</span></td>
+            </tr>
+            <tr>
+              <td class="nd-list-no">3.</td>
+              <td class="nd-list-label">Unit Organisasi</td>
+              <td class="nd-list-colon">:</td>
+              <td><span id="prev-unor" data-field="unit_kerja" class="nd-dyn is-placeholder">[nama unor]</span></td>
+            </tr>
+            <tr>
+              <td class="nd-list-no">4.</td>
+              <td class="nd-list-label">Sumber Pembiayaan</td>
+              <td class="nd-list-colon">:</td>
+              <td><span id="prev-sumber" data-field="sumber_pembiayaan" class="nd-dyn is-placeholder">[sumber biaya]</span></td>
+            </tr>
+            <tr>
+              <td class="nd-list-no">5.</td>
+              <td class="nd-list-label">Data Pegawai</td>
+              <td class="nd-list-colon">:</td>
+              <td></td>
+            </tr>
+          </table>
+
+          <table class="nd-pegawai-table">
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Nama/NIP</th>
+                <th>Jabatan</th>
+                <th>Periode Perjalanan</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="nd-pt-no">1.</td>
+                <td>
+                  <span id="prev-t-nama" data-field="nama" class="nd-dyn is-placeholder">[nama]</span><br>
+                  <span id="prev-t-nip" data-field="nip" class="nd-dyn is-placeholder">[nip]</span>
+                </td>
+                <td><span id="prev-t-jabatan" data-field="jabatan" class="nd-dyn is-placeholder">[jabatan]</span></td>
+                <td>
+                  <span id="prev-t-berangkat" class="nd-dyn is-placeholder">[tanggal berangkat]</span>
+                  s.d.
+                  <span id="prev-t-kembali" class="nd-dyn is-placeholder">[tanggal pulang]</span><br>
+                  <span id="prev-t-hkerja" data-field="jumlah_hari_kerja" class="nd-dyn is-placeholder">[h_kerja]</span> hari kerja /
+                  <span id="prev-t-hkalender" class="nd-dyn is-placeholder">[h_kalender]</span> hari kalender
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="nd-body">
+            <p>
+              Dapat kami sampaikan bahwa permohonan Persetujuan Izin Perjalanan ke Luar Negeri dimaksud,
+              telah mendapat persetujuan Menteri Pekerjaan Umum sebagaimana terlampir.
+            </p>
+            <p>
+              Demikian kami sampaikan, atas perhatian dan perkenan arahan lebih lanjut, kami ucapkan
+              terima kasih.
+            </p>
+          </div>
+
+          <div class="nd-sign-row">
+            <div class="nd-sign-box">
+              <div>
+                <div class="nd-sign-box-head">Katim AKI</div>
+                <div class="nd-sign-box-body"></div>
+              </div>
+              <div>
+                <div class="nd-sign-box-head">Plt. Kabag KLN</div>
+                <div class="nd-sign-box-body"></div>
+              </div>
+            </div>
+            <div class="nd-sign-block">
+              <div>Kepala Biro Perencanaan Anggaran</div>
+              <div>dan Kerja Sama Luar Negeri</div>
+              <div class="nd-sign-name">Reiza Setiawan</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kolom Kanan: Form Input Data -->
+  <div class="column is-5 nd-form-col">
+    <div class="box">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;">
+        <div class="section-title" style="font-size:14px;margin-bottom:0;">Form Input Data</div>
+        <button type="submit" form="ndKaroForm" class="button is-primary is-small">⬇ Unduh PDF</button>
+      </div>
+
+      {% if kode_terpilih %}
+        <div class="notification paspor-msg is-info" style="margin-bottom:14px;">
+          <strong>{{ kode_terpilih|length }} pengajuan terpilih</strong> dari Dasbor: {{ kode_terpilih|join:", " }}.
+          Dicatat otomatis ke Histori Generate Dokumen saat PDF berhasil diunduh.
+        </div>
+      {% endif %}
+
+      <form id="ndKaroForm" method="post" action="{% url 'pakln:download_nd_karo_pdf' %}" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="pengajuan_kodes" value="{{ kode_terpilih_csv }}">
+        <div class="field">
+          <label class="label">Nama</label>
+          <div class="control"><input type="text" name="nama" class="input" placeholder="cth. Muhammad Faris Al Bassam, S.E."></div>
+        </div>
+        <div class="columns">
+          <div class="column">
+            <div class="field">
+              <label class="label">NIP</label>
+              <div class="control"><input type="text" name="nip" class="input" placeholder="cth. 199605072019031006"></div>
+            </div>
+          </div>
+          <div class="column">
+            <div class="field">
+              <label class="label">Pangkat/Golongan</label>
+              <div class="control"><input type="text" name="pangkat_golongan" class="input" placeholder="cth. III/b, Penata Muda Tk. I"></div>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label">Jabatan</label>
+          <div class="control"><input type="text" name="jabatan" class="input" placeholder="cth. Analis Kebijakan Pertama Bagian Kerja Sama Luar Negeri"></div>
+        </div>
+        <div class="field">
+          <label class="label">Unit Kerja</label>
+          <div class="control"><input type="text" name="unit_kerja" class="input" placeholder="cth. Sekretariat Jenderal"></div>
+        </div>
+        <div class="field">
+          <label class="label">Negara Tujuan</label>
+          <div class="control"><input type="text" name="negara_tujuan" class="input" placeholder="cth. Arab Saudi"></div>
+        </div>
+        <div class="field">
+          <label class="label">Maksud Perjalanan</label>
+          <div class="control"><textarea name="maksud_perjalanan" class="textarea" rows="2" placeholder="cth. Non Dinas — Ibadah Umrah"></textarea></div>
+        </div>
+        <div class="field">
+          <label class="label">Sumber Pembiayaan</label>
+          <div class="control"><input type="text" name="sumber_pembiayaan" class="input" placeholder="cth. Biaya Sendiri"></div>
+        </div>
+        <div class="columns">
+          <div class="column">
+            <div class="field">
+              <label class="label">Tanggal Berangkat</label>
+              <div class="control"><input type="date" name="tgl_berangkat" class="input"></div>
+            </div>
+          </div>
+          <div class="column">
+            <div class="field">
+              <label class="label">Tanggal Kembali</label>
+              <div class="control"><input type="date" name="tgl_kembali" class="input"></div>
+            </div>
+          </div>
+        </div>
+        <div class="field" style="max-width:220px;">
+          <label class="label">Jumlah Hari Kerja</label>
+          <div class="control"><input type="number" min="0" name="jumlah_hari_kerja" class="input" placeholder="cth. 5"></div>
+          <p class="helptext">Jumlah hari kalender dihitung otomatis dari tanggal berangkat &amp; kembali.</p>
+        </div>
+
+        <p class="helptext">
+          Data pada tabel "Data Pegawai" mengikuti field Nama/NIP/Jabatan di atas (baris tunggal — sesuai
+          satu pengajuan per pegawai pada modul ini).
+        </p>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  $(function () {
+    var BULAN_ID = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+    // Tanggal Nota Dinas mengikuti tanggal hari ini secara otomatis
+    // (tidak ada field form untuk ini — bukan bagian dari spesifikasi form).
+    var today = new Date();
+    $('#prev-tanggal').text(today.getDate() + ' ' + BULAN_ID[today.getMonth()] + ' ' + today.getFullYear());
+
+    var PLACEHOLDERS = {
+      nama: { 'prev-nama-1': '[nama]', 'prev-t-nama': '[nama]' },
+      negara_tujuan: { 'prev-negara-1': '[negara tujuan]', 'prev-negara-2': '[negara tujuan]' },
+      maksud_perjalanan: { 'prev-keperluan-1': '[keperluan]', 'prev-keperluan-2': '[keperluan]' },
+      unit_kerja: { 'prev-unor': '[nama unor]' },
+      sumber_pembiayaan: { 'prev-sumber': '[sumber biaya]' },
+      nip: { 'prev-t-nip': '[nip]' },
+      jabatan: { 'prev-t-jabatan': '[jabatan]' },
+      jumlah_hari_kerja: { 'prev-t-hkerja': '[h_kerja]' },
+    };
+
+    // Satu handler generik (delegasi event) untuk semua field teks — setiap
+    // <span data-field="..."> di kertas pratinjau otomatis mengikuti
+    // <input>/<textarea name="..."> yang senama, real-time saat diketik.
+    function updatePreview($field) {
+      var name = $field.attr('name');
+      var value = ($field.val() || '').trim();
+      var $targets = $('#ndPaper [data-field="' + name + '"]');
+      $targets.each(function () {
+        var $span = $(this);
+        var fallback = (PLACEHOLDERS[name] && PLACEHOLDERS[name][this.id]) || ('[' + name + ']');
+        $span.text(value === '' ? fallback : value);
+        $span.toggleClass('is-placeholder', value === '');
+      });
+    }
+
+    function formatTanggalIndo(isoValue) {
+      if (!isoValue) { return null; }
+      var parts = isoValue.split('-');
+      if (parts.length !== 3) { return null; }
+      var d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      return d.getDate() + ' ' + BULAN_ID[d.getMonth()] + ' ' + d.getFullYear();
+    }
+
+    // Periode Perjalanan pada tabel Data Pegawai — tanggal ditampilkan
+    // dalam format Indonesia, dan "hari kalender" dihitung otomatis dari
+    // selisih tanggal berangkat & kembali (bukan input manual).
+    function updatePeriode() {
+      var berangkatVal = $('#ndKaroForm input[name="tgl_berangkat"]').val();
+      var kembaliVal = $('#ndKaroForm input[name="tgl_kembali"]').val();
+      var berangkatFmt = formatTanggalIndo(berangkatVal);
+      var kembaliFmt = formatTanggalIndo(kembaliVal);
+
+      $('#prev-t-berangkat').text(berangkatFmt || '[tanggal berangkat]').toggleClass('is-placeholder', !berangkatFmt);
+      $('#prev-t-kembali').text(kembaliFmt || '[tanggal pulang]').toggleClass('is-placeholder', !kembaliFmt);
+
+      var hariKalender = null;
+      if (berangkatVal && kembaliVal) {
+        var diff = Math.round((new Date(kembaliVal) - new Date(berangkatVal)) / 86400000) + 1;
+        if (diff > 0) { hariKalender = diff; }
+      }
+      $('#prev-t-hkalender').text(hariKalender !== null ? hariKalender : '[h_kalender]').toggleClass('is-placeholder', hariKalender === null);
+    }
+
+    $('#ndKaroForm').on('input change', 'input[name], textarea[name]', function () {
+      var name = $(this).attr('name');
+      updatePreview($(this));
+      if (name === 'tgl_berangkat' || name === 'tgl_kembali') {
+        updatePeriode();
+      }
+    });
+
+    // Isi awal (kalau form sudah punya nilai, mis. hasil back/forward browser).
+    $('#ndKaroForm').find('input[name], textarea[name]').each(function () {
+      updatePreview($(this));
+    });
+    updatePeriode();
+  });
+</script>
+{% endblock %}

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}PASPOR{% endblock %} — Kementerian PU</title>
   <link rel="stylesheet" href="{% static 'vendors/bulma/css/versions/bulma-no-dark-mode.min.css' %}">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260923c">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260925a">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -35,7 +35,7 @@
           <a class="navbar-item {% if vn == 'unor:export' %}is-active{% endif %}" href="{% url 'unor:export' %}">Export</a>
         {% elif user.role == 'admin_pakln' %}
           <a class="navbar-item {% if vn == 'pakln:dashboard' %}is-active{% endif %}" href="{% url 'pakln:dashboard' %}">Dasbor</a>
-          <div class="navbar-item has-dropdown{% if vn == 'pakln:kelola_user' or vn == 'pakln:kelola_template' or vn == 'pakln:edit_template' or vn == 'pakln:kelola_negara' or vn == 'pakln:edit_negara' or vn == 'pakln:kelola_sumber_pembiayaan' or vn == 'pakln:edit_sumber_pembiayaan' or vn == 'pakln:kelola_kategori' or vn == 'pakln:edit_kategori' %} is-active-route{% endif %}" data-nav-dropdown>
+          <div class="navbar-item has-dropdown{% if vn == 'pakln:kelola_user' or vn == 'pakln:kelola_template' or vn == 'pakln:edit_template' or vn == 'pakln:kelola_negara' or vn == 'pakln:edit_negara' or vn == 'pakln:kelola_sumber_pembiayaan' or vn == 'pakln:edit_sumber_pembiayaan' or vn == 'pakln:kelola_kategori' or vn == 'pakln:edit_kategori' or vn == 'pakln:histori_generate' %} is-active-route{% endif %}" data-nav-dropdown>
             <a class="navbar-link is-arrowless" href="#" data-nav-dropdown-toggle>Manajemen<span class="navbar-manage-caret"></span></a>
             <div class="navbar-dropdown">
               <a class="navbar-item {% if vn == 'pakln:kelola_user' %}is-active{% endif %}" href="{% url 'pakln:kelola_user' %}">Manajemen User</a>
@@ -43,6 +43,7 @@
               <a class="navbar-item {% if vn == 'pakln:kelola_negara' or vn == 'pakln:edit_negara' %}is-active{% endif %}" href="{% url 'pakln:kelola_negara' %}">Manajemen Negara</a>
               <a class="navbar-item {% if vn == 'pakln:kelola_sumber_pembiayaan' or vn == 'pakln:edit_sumber_pembiayaan' %}is-active{% endif %}" href="{% url 'pakln:kelola_sumber_pembiayaan' %}">Manajemen Sumber Pembiayaan</a>
               <a class="navbar-item {% if vn == 'pakln:kelola_kategori' or vn == 'pakln:edit_kategori' %}is-active{% endif %}" href="{% url 'pakln:kelola_kategori' %}">Manajemen Kategori Perjalanan</a>
+              <a class="navbar-item {% if vn == 'pakln:histori_generate' %}is-active{% endif %}" href="{% url 'pakln:histori_generate' %}">Histori Generate Dokumen</a>
             </div>
           </div>
           <a class="navbar-item {% if vn == 'pakln:export' %}is-active{% endif %}" href="{% url 'pakln:export' %}">Export</a>

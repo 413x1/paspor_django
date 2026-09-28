@@ -244,11 +244,10 @@ class DokumenUnorPendukung(models.Model):
 
 
 class DokumenPakln(models.Model):
-    """3 jenis dokumen administrasi yang dilengkapi Admin Biro PAKLN."""
+    """Dokumen administrasi wajib yang dilengkapi Admin Biro PAKLN. Dokumen
+    pendukung lainnya (opsional) ada pada `DokumenPaklnPendukung`."""
 
     class Jenis(models.TextChoices):
-        ND_KABAG = "nd_kabag", "Nota Dinas Kepala Bagian"
-        ND_KABIRO = "nd_kabiro", "Nota Dinas Kepala Biro"
         ILN_SEKJEN = "iln_sekjen", "Izin Luar Negeri (TTD Sekjen a.n. Menteri)"
 
     pengajuan = models.ForeignKey(Pengajuan, on_delete=models.CASCADE, related_name="dokumen_pakln")
@@ -263,6 +262,84 @@ class DokumenPakln(models.Model):
 
     def __str__(self):
         return f"{self.pengajuan.kode} — {self.get_jenis_display()}"
+
+
+def dokumen_pakln_pendukung_path(instance, filename):
+    return f"pengajuan/{instance.pengajuan.kode}/pakln/pendukung/{filename}"
+
+
+class DokumenPaklnPendukung(models.Model):
+    """Satu berkas dokumen pendukung Admin Biro PAKLN per pengajuan, dengan
+    checklist jenis yang tercakup di dalamnya. Mengunggah/mengganti berkas
+    dan mencentang/melepas centang salah satu jenis adalah dua proses yang
+    berdiri sendiri-sendiri — tidak saling mensyaratkan, dan opsional
+    (tidak menjadi syarat "selesaikan proses"), berbeda dengan
+    `DokumenPakln` (ILN Sekjen) yang wajib."""
+
+    pengajuan = models.OneToOneField(
+        Pengajuan, on_delete=models.CASCADE, related_name="dokumen_pakln_pendukung"
+    )
+    file = models.FileField(upload_to=dokumen_pakln_pendukung_path, blank=True)
+    uploaded_at = models.DateTimeField(null=True, blank=True)
+
+    nd_kabag = models.BooleanField("Nota Dinas Kepala Bagian", default=False)
+    nd_kabiro = models.BooleanField("Nota Dinas Kepala Biro", default=False)
+
+    class Meta:
+        verbose_name = "Dokumen Pendukung Biro PAKLN"
+        verbose_name_plural = "Dokumen Pendukung Biro PAKLN"
+
+    KATEGORI_LABELS = {
+        "nd_kabag": "Nota Dinas Kepala Bagian",
+        "nd_kabiro": "Nota Dinas Kepala Biro",
+    }
+
+    def kategori_tercentang(self):
+        return [label for field, label in self.KATEGORI_LABELS.items() if getattr(self, field)]
+
+    def is_lengkap(self):
+        return bool(self.file) and bool(self.kategori_tercentang())
+
+    def __str__(self):
+        return f"{self.pengajuan.kode} — Dokumen Pendukung Biro PAKLN"
+
+
+def dokumen_generate_log_path(instance, filename):
+    return f"generate_dokumen/{instance.jenis}/{filename}"
+
+
+class DokumenGenerateLog(models.Model):
+    """Riwayat dokumen (ND Kabag/ND Karo) yang berhasil digenerate Admin
+    Biro PAKLN lewat halaman Generate Dokumen — satu baris per aksi
+    "Unduh PDF" yang sukses, termasuk salinan berkasnya sendiri supaya
+    bisa diunduh ulang dari halaman Histori Generate Dokumen."""
+
+    class Jenis(models.TextChoices):
+        ND_KABAG = "nd_kabag", "ND Kabag"
+        ND_KARO = "nd_karo", "ND Karo"
+
+    jenis = models.CharField(max_length=20, choices=Jenis.choices)
+    jumlah_pengajuan = models.PositiveIntegerField(
+        "Jumlah Pengajuan", default=1,
+        help_text="Jumlah pengajuan yang diproses dalam satu batch generate ini.",
+    )
+    pengajuan = models.ManyToManyField(
+        Pengajuan, blank=True, related_name="dokumen_generate_logs",
+        verbose_name="Pengajuan Terkait",
+    )
+    file = models.FileField("Berkas PDF", upload_to=dokumen_generate_log_path)
+    dibuat_oleh = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Riwayat Generate Dokumen"
+        verbose_name_plural = "Riwayat Generate Dokumen"
+
+    def __str__(self):
+        return f"{self.get_jenis_display()} — {self.created_at:%d %b %Y %H:%M}"
 
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,8 @@
+import os
+
 from django.contrib import messages
 from django.db.models import Q
-from django.http import JsonResponse
+from django.http import FileResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -10,7 +12,7 @@ from notifications.services import notify_resubmit_unor, notify_submit_unor
 
 from .decorators import role_required
 from .forms import DokumenPegawaiForm, PengajuanForm
-from .models import DokumenPegawai, DokumenTemplate, Pengajuan
+from .models import DokumenPakln, DokumenPegawai, DokumenTemplate, Pengajuan
 
 
 def _active_pengajuan(user):
@@ -231,3 +233,32 @@ def monitor_progres(request, kode):
     if not pengajuan.submitted:
         return redirect("pegawai:upload_dokumen", kode=pengajuan.kode)
     return render(request, "pegawai/monitor.html", {"pengajuan": pengajuan})
+
+
+@role_required("pegawai")
+def download_iln(request, kode):
+    """Unduh dokumen "Izin Luar Negeri (TTD Sekjen a.n. Menteri)" yang
+    diunggah Admin Biro PAKLN pada tahap pemrosesan administrasi — hanya
+    tersedia setelah pengajuan berstatus selesai."""
+    pengajuan = get_object_or_404(Pengajuan, kode=kode, pegawai=request.user)
+
+    if pengajuan.status != Pengajuan.Status.SELESAI:
+        messages.error(
+            request,
+            "Dokumen ILN belum tersedia — pengajuan belum diselesaikan oleh Admin Biro PAKLN.",
+        )
+        return redirect("pegawai:monitor_progres", kode=kode)
+
+    dok = pengajuan.dokumen_pakln.filter(jenis=DokumenPakln.Jenis.ILN_SEKJEN).first()
+    if not dok or not dok.file:
+        messages.error(request, "Dokumen ILN belum tersedia. Silakan hubungi Admin Biro PAKLN.")
+        return redirect("pegawai:monitor_progres", kode=kode)
+
+    try:
+        file_handle = dok.file.open("rb")
+    except (FileNotFoundError, OSError, ValueError):
+        messages.error(request, "Gagal mengunduh dokumen ILN — berkas tidak ditemukan di penyimpanan.")
+        return redirect("pegawai:monitor_progres", kode=kode)
+
+    ekstensi = os.path.splitext(dok.file.name)[1]
+    return FileResponse(file_handle, as_attachment=True, filename=f"ILN_{pengajuan.kode}{ekstensi}")

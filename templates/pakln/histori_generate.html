@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Histori Generate Dokumen{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Histori Generate Dokumen</h2>
+    <p class="sub">Riwayat dokumen ND Kabag &amp; ND Karo yang pernah berhasil digenerate, lengkap dengan tautan unduh ulang.</p>
+  </div>
+  <a href="{% url 'pakln:dashboard' %}" class="button is-small">← Kembali ke Dasbor</a>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;">
+    Daftar Riwayat <span class="badge-auto" id="histCount">{{ histori_count }}</span>
+  </div>
+  <div class="table-wrap">
+    <table id="histTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
+      <thead>
+        <tr>
+          <th>No.</th><th>Tanggal &amp; Waktu Generate</th><th>Jenis Dokumen</th><th>Jumlah Pengajuan</th><th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
+<script>
+  $(function () {
+    $('#histTable').DataTable({
+      serverSide: true,
+      processing: true,
+      autoWidth: false,
+      ajax: { url: '{% url "pakln:histori_generate_data" %}', type: 'GET', cache: false },
+      columns: [
+        { data: 0, orderable: false, searchable: false, width: '8%' },
+        { data: 1, width: '28%' },
+        { data: 2, width: '20%' },
+        { data: 3, width: '22%' },
+        { data: 4, orderable: false, searchable: false, width: '22%' },
+      ],
+      order: [[1, 'desc']],
+      pageLength: 10,
+      lengthMenu: [10, 25, 50, 100],
+      dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
+      language: {
+        search: '',
+        searchPlaceholder: 'Cari riwayat...',
+        lengthMenu: 'Tampilkan _MENU_ riwayat',
+        info: 'Menampilkan _START_–_END_ dari _TOTAL_ riwayat',
+        infoEmpty: 'Belum ada riwayat generate dokumen',
+        infoFiltered: '(disaring dari _MAX_ total riwayat)',
+        zeroRecords: 'Tidak ada riwayat yang cocok.',
+        processing: 'Memuat…',
+        paginate: { previous: '‹ Sebelumnya', next: 'Berikutnya ›' },
+      },
+    }).on('xhr.dt', function (e, settings, json) {
+      if (json) { $('#histCount').text(json.recordsTotal); }
+    });
+  });
+</script>
+{% endblock %}
