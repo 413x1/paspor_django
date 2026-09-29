@@ -159,8 +159,7 @@
         </td>
         <td><span class="nd-dyn">{{ jabatan }}</span></td>
         <td>
-          <span class="nd-dyn">{{ tgl_berangkat_display }}</span> s.d.
-          <span class="nd-dyn">{{ tgl_kembali_display }}</span><br>
+          <span class="nd-dyn">{{ rentang_tanggal }}</span><br>
           <span class="nd-dyn">{{ jumlah_hari_kerja }}</span> hari kerja /
           <span class="nd-dyn">{{ jumlah_hari_kalender }}</span> hari kalender
         </td>
@@ -186,14 +185,13 @@
         <div class="nd-sign-box-body"></div>
       </div>
       <div>
-        <div class="nd-sign-box-head">Plt. Kabag KLN</div>
+        <div class="nd-sign-box-head">{{ label_paraf_kabag }}</div>
         <div class="nd-sign-box-body"></div>
       </div>
     </div>
     <div class="nd-sign-block">
-      <div>Kepala Biro Perencanaan Anggaran</div>
-      <div>dan Kerja Sama Luar Negeri</div>
-      <div class="nd-sign-name">Reiza Setiawan</div>
+      <div>{{ jabatan_baris1 }}{% if jabatan_baris2 %}<br>{{ jabatan_baris2 }}{% endif %}</div>
+      <div class="nd-sign-name">{{ nama_pejabat }}</div>
     </div>
   </div>
 </body>

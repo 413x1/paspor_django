@@ -46,6 +46,7 @@
               <a class="navbar-item {% if vn == 'pakln:histori_generate' %}is-active{% endif %}" href="{% url 'pakln:histori_generate' %}">Histori Generate Dokumen</a>
             </div>
           </div>
+          <a class="navbar-item {% if vn == 'pakln:pengaturan_dokumen' %}is-active{% endif %}" href="{% url 'pakln:pengaturan_dokumen' %}">Setting</a>
           <a class="navbar-item {% if vn == 'pakln:export' %}is-active{% endif %}" href="{% url 'pakln:export' %}">Export</a>
         {% endif %}
         {% endwith %}

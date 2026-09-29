@@ -342,6 +342,40 @@ class DokumenGenerateLog(models.Model):
         return f"{self.get_jenis_display()} — {self.created_at:%d %b %Y %H:%M}"
 
 
+class PengaturanDokumen(models.Model):
+    """Pengaturan default untuk dokumen ND Kabag & ND Karo (menu "Setting",
+    khusus Admin Biro PAKLN) — satu baris saja (singleton, selalu pk=1).
+    Kabag (Plt. Kepala Bagian KLN) & Karo (Kepala Biro PAKLN) adalah dua
+    pejabat penandatangan yang berbeda, sehingga masing-masing punya
+    pasangan field jabatan/nama sendiri — dipakai sebagai nilai awal form
+    Generate ND Kabag / ND Karo saat dibuka."""
+
+    jabatan_penandatangan_kabag = models.CharField(
+        "Jabatan Pejabat Penandatangan (ND Kabag)", max_length=150, blank=True,
+    )
+    nama_pejabat_kabag = models.CharField("Nama Pejabat (ND Kabag)", max_length=150, blank=True)
+    jabatan_penandatangan_karo = models.CharField(
+        "Jabatan Pejabat Penandatangan (ND Karo)", max_length=150, blank=True,
+    )
+    nama_pejabat_karo = models.CharField("Nama Pejabat (ND Karo)", max_length=150, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_oleh = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+",
+    )
+
+    class Meta:
+        verbose_name = "Pengaturan Dokumen"
+        verbose_name_plural = "Pengaturan Dokumen"
+
+    def __str__(self):
+        return "Pengaturan Dokumen"
+
+    @classmethod
+    def get_current(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
 # ---------------------------------------------------------------------------
 # Manajemen Template — berkas contoh/standar (PDF/DOCX) yang disediakan
 # Admin Biro PAKLN agar dokumen yang diunggah Pegawai/Admin Unor mengikuti

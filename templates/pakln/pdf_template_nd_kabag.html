@@ -9,8 +9,8 @@
      framework apa pun agar tata letak cetak stabil dan tidak bergantung
      pada aset eksternal (logo di-embed sebagai data URI, lihat view). */
   @page {
-    size: A4;
-    margin: 2.5cm 2cm;
+    size: A5;
+    margin: 1.6cm 1.5cm;
   }
   * { box-sizing: border-box; }
   body {
@@ -106,9 +106,8 @@
       <div class="nd-sign-box-body"></div>
     </div>
     <div class="nd-sign-block">
-      <div>Plt. Kepala Bagian</div>
-      <div>Kerja Sama Luar Negeri,</div>
-      <div class="nd-sign-name">[Nama Pejabat]</div>
+      <div>{{ jabatan_baris1 }}{% if jabatan_baris2 %}<br>{{ jabatan_baris2 }}{% endif %},</div>
+      <div class="nd-sign-name">{{ nama_pejabat }}</div>
     </div>
   </div>
 </body>

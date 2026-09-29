@@ -55,6 +55,7 @@
   .nd-sign-box .nd-sign-box-body { height: 46px; }
   .nd-sign-block { text-align: left; }
   .nd-sign-block .nd-sign-name { margin-top: 56px; font-weight: 700; text-decoration: underline; }
+  .nd-sign-block > div:first-child .nd-dyn { font-weight: 400; }
   .nd-dyn { font-weight: 700; }
   .nd-dyn.is-placeholder { font-weight: 400; font-style: italic; color: #8a8f9a; }
 
@@ -142,9 +143,8 @@
               <div class="nd-sign-box-body"></div>
             </div>
             <div class="nd-sign-block">
-              <div>Plt. Kepala Bagian</div>
-              <div>Kerja Sama Luar Negeri,</div>
-              <div class="nd-sign-name">[Nama Pejabat]</div>
+              <div><span id="prev-jabatan-ttd" class="nd-dyn is-placeholder">[jabatan]</span></div>
+              <div class="nd-sign-name"><span id="prev-nama-pejabat" data-field="nama_pejabat" class="nd-dyn is-placeholder">[Nama Pejabat]</span></div>
             </div>
           </div>
         </div>
@@ -172,55 +172,82 @@
         <input type="hidden" name="pengajuan_kodes" value="{{ kode_terpilih_csv }}">
         <div class="field">
           <label class="label">Nama</label>
-          <div class="control"><input type="text" name="nama" class="input" placeholder="cth. Muhammad Faris Al Bassam, S.E."></div>
+          <div class="control"><input type="text" name="nama" class="input" value="{{ prefill.nama|default:'' }}" placeholder="cth. Muhammad Faris Al Bassam, S.E."></div>
         </div>
         <div class="columns">
           <div class="column">
             <div class="field">
               <label class="label">NIP</label>
-              <div class="control"><input type="text" name="nip" class="input" placeholder="cth. 199605072019031006"></div>
+              <div class="control"><input type="text" name="nip" class="input" value="{{ prefill.nip|default:'' }}" placeholder="cth. 199605072019031006"></div>
             </div>
           </div>
           <div class="column">
             <div class="field">
               <label class="label">Pangkat/Golongan</label>
-              <div class="control"><input type="text" name="pangkat_golongan" class="input" placeholder="cth. III/b, Penata Muda Tk. I"></div>
+              <div class="control"><input type="text" name="pangkat_golongan" class="input" value="{{ prefill.pangkat_golongan|default:'' }}" placeholder="cth. III/b, Penata Muda Tk. I"></div>
             </div>
           </div>
         </div>
         <div class="field">
           <label class="label">Jabatan</label>
-          <div class="control"><input type="text" name="jabatan" class="input" placeholder="cth. Analis Kebijakan Pertama Bagian Kerja Sama Luar Negeri"></div>
+          <div class="control"><input type="text" name="jabatan" class="input" value="{{ prefill.jabatan|default:'' }}" placeholder="cth. Analis Kebijakan Pertama Bagian Kerja Sama Luar Negeri"></div>
         </div>
         <div class="field">
           <label class="label">Unit Kerja</label>
-          <div class="control"><input type="text" name="unit_kerja" class="input" placeholder="cth. Sekretariat Jenderal"></div>
+          <div class="control"><input type="text" name="unit_kerja" class="input" value="{{ prefill.unit_kerja|default:'' }}" placeholder="cth. Sekretariat Jenderal"></div>
         </div>
         <div class="field">
           <label class="label">Negara Tujuan</label>
-          <div class="control"><input type="text" name="negara_tujuan" class="input" placeholder="cth. Arab Saudi"></div>
+          <div class="control"><input type="text" name="negara_tujuan" class="input" value="{{ prefill.negara_tujuan|default:'' }}" placeholder="cth. Arab Saudi"></div>
         </div>
         <div class="field">
           <label class="label">Maksud Perjalanan</label>
-          <div class="control"><textarea name="maksud_perjalanan" class="textarea" rows="2" placeholder="cth. Non Dinas — Ibadah Umrah"></textarea></div>
+          <div class="control"><textarea name="maksud_perjalanan" class="textarea" rows="2" placeholder="cth. Non Dinas — Ibadah Umrah">{{ prefill.maksud_perjalanan|default:'' }}</textarea></div>
         </div>
         <div class="field">
           <label class="label">Sumber Pembiayaan</label>
-          <div class="control"><input type="text" name="sumber_pembiayaan" class="input" placeholder="cth. Biaya Sendiri"></div>
+          <div class="control"><input type="text" name="sumber_pembiayaan" class="input" value="{{ prefill.sumber_pembiayaan|default:'' }}" placeholder="cth. Biaya Sendiri"></div>
         </div>
         <div class="columns">
           <div class="column">
             <div class="field">
               <label class="label">Tanggal Berangkat</label>
-              <div class="control"><input type="date" name="tgl_berangkat" class="input"></div>
+              <div class="control"><input type="date" name="tgl_berangkat" class="input" value="{{ prefill.tgl_berangkat|default:'' }}"></div>
             </div>
           </div>
           <div class="column">
             <div class="field">
               <label class="label">Tanggal Kembali</label>
-              <div class="control"><input type="date" name="tgl_kembali" class="input"></div>
+              <div class="control"><input type="date" name="tgl_kembali" class="input" value="{{ prefill.tgl_kembali|default:'' }}"></div>
             </div>
           </div>
+        </div>
+
+        {% if kode_terpilih and not prefill %}
+          <p class="help is-danger">
+            Data pegawai/perjalanan tidak dapat dimuat otomatis dari pengajuan terpilih — isi manual di bawah.
+          </p>
+        {% endif %}
+
+        <hr>
+        <div class="section-title" style="font-size:13px;">Pejabat Penandatangan</div>
+        <div class="field">
+          <label class="label">Nama Jabatan</label>
+          <div class="control"><input type="text" name="jabatan_penandatangan" class="input" value="{{ pengaturan.jabatan_penandatangan_kabag|default:'' }}" placeholder="cth. Plt. Kepala Bagian Kerja Sama Luar Negeri"></div>
+        </div>
+        <div class="field">
+          <label class="label">Nama Pejabat</label>
+          <div class="control"><input type="text" name="nama_pejabat" class="input" value="{{ pengaturan.nama_pejabat_kabag|default:'' }}" placeholder="cth. Muhammad Faris Al Bassam, S.E."></div>
+          <p class="helptext">
+            Nilai awal diambil dari <a href="{% url 'pakln:pengaturan_dokumen' %}">Setting</a> — ubah di sini hanya
+            berlaku untuk dokumen ini saja.
+          </p>
+        </div>
+
+        <hr>
+        <div class="field">
+          <label class="label">Tanggal ND</label>
+          <div class="control"><input type="date" name="tanggal_nd" id="ndTanggalInput" class="input" value="{{ default_tanggal_nd }}"></div>
         </div>
 
         <p class="helptext">
@@ -237,15 +264,55 @@
 {% block extra_js %}
 <script>
   $(function () {
-    // Tanggal Nota Dinas mengikuti tanggal hari ini secara otomatis
-    // (tidak ada field form untuk ini — bukan bagian dari spesifikasi form).
     var bulanId = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-    var today = new Date();
-    $('#prev-tanggal').text(today.getDate() + ' ' + bulanId[today.getMonth()] + ' ' + today.getFullYear());
+
+    // Tanggal Nota Dinas mengikuti field "Tanggal ND" pada form (default
+    // hari ini, lihat value awal input, tetap bisa diubah manual).
+    function updateTanggalNd() {
+      var raw = $('#ndTanggalInput').val();
+      if (!raw) { $('#prev-tanggal').text(''); return; }
+      var parts = raw.split('-');
+      $('#prev-tanggal').text(Number(parts[2]) + ' ' + bulanId[Number(parts[1]) - 1] + ' ' + parts[0]);
+    }
+    $('#ndKabagForm').on('input change', '#ndTanggalInput', updateTanggalNd);
+    updateTanggalNd();
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    // Pecah "Jabatan Pejabat Penandatangan" jadi 2 baris sebelum frasa
+    // "(dan) Kerja Sama Luar Negeri" — supaya blok tanda tangan tidak
+    // melebar panjang ke kiri (meniru pola judul jabatan Kementerian PU).
+    // Cerminan persis dari `_split_jabatan_dua_baris` di sisi server.
+    function splitJabatanDuaBaris(jabatan) {
+      var lower = jabatan.toLowerCase();
+      var idx = lower.indexOf('dan kerja sama luar negeri');
+      if (idx === -1) { idx = lower.indexOf('kerja sama luar negeri'); }
+      if (idx === -1) { return [jabatan, '']; }
+      return [jabatan.slice(0, idx).trim(), jabatan.slice(idx).trim()];
+    }
+
+    function updateJabatanTtd() {
+      var raw = ($('input[name="jabatan_penandatangan"]').val() || '').trim();
+      var $el = $('#prev-jabatan-ttd');
+      if (!raw) {
+        $el.text('[jabatan]').addClass('is-placeholder');
+        return;
+      }
+      var parts = splitJabatanDuaBaris(raw);
+      var html = escapeHtml(parts[0]) + (parts[1] ? '<br>' + escapeHtml(parts[1]) : '') + ',';
+      $el.html(html).removeClass('is-placeholder');
+    }
+    $('#ndKabagForm').on('input change', 'input[name="jabatan_penandatangan"]', updateJabatanTtd);
+    updateJabatanTtd();
 
     var PLACEHOLDERS = {
       nama: { 'prev-nama-1': '[nama]', 'prev-nama-2': '[nama/nama dkk]' },
       negara_tujuan: { 'prev-negara-1': '[negara tujuan]', 'prev-negara-2': '[negara tujuan]' },
+      nama_pejabat: { 'prev-nama-pejabat': '[Nama Pejabat]' },
     };
 
     // Satu handler generik (delegasi event) untuk semua field form — setiap

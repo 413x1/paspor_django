@@ -6,7 +6,9 @@ from django.forms.models import ModelChoiceIterator
 
 from paspor.models import KategoriPerjalanan, Negara, SumberPembiayaan
 
-from .models import DokumenPakln, DokumenPegawai, DokumenTemplate, DokumenUnor, Pengajuan
+from .models import (
+    DokumenPakln, DokumenPegawai, DokumenTemplate, DokumenUnor, Pengajuan, PengaturanDokumen,
+)
 
 
 class GroupedModelChoiceIterator(ModelChoiceIterator):
@@ -239,6 +241,29 @@ class SumberPembiayaanForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["keterangan"].required = False
+
+
+class PengaturanDokumenForm(forms.ModelForm):
+    """Form menu "Setting" (Admin Biro PAKLN) — default "Jabatan Pejabat
+    Penandatangan" & "Nama Pejabat" untuk form Generate ND Kabag & ND Karo
+    (dua pejabat penandatangan yang berbeda, field terpisah)."""
+
+    class Meta:
+        model = PengaturanDokumen
+        fields = [
+            "jabatan_penandatangan_kabag", "nama_pejabat_kabag",
+            "jabatan_penandatangan_karo", "nama_pejabat_karo",
+        ]
+        widgets = {
+            "jabatan_penandatangan_kabag": forms.TextInput(
+                attrs={"class": "input", "placeholder": "cth. Plt. Kepala Bagian Kerja Sama Luar Negeri"}
+            ),
+            "nama_pejabat_kabag": forms.TextInput(attrs={"class": "input", "placeholder": "cth. Muhammad Faris Al Bassam, S.E."}),
+            "jabatan_penandatangan_karo": forms.TextInput(
+                attrs={"class": "input", "placeholder": "cth. Kepala Biro Perencanaan Anggaran dan Kerja Sama Luar Negeri"}
+            ),
+            "nama_pejabat_karo": forms.TextInput(attrs={"class": "input", "placeholder": "cth. Reiza Setiawan"}),
+        }
 
 
 class KategoriPerjalananForm(forms.ModelForm):
