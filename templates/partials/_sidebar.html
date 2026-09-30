@@ -1,0 +1,91 @@
+{% load static %}
+<aside class="app-sidebar" id="appSidebar" aria-label="Menu utama">
+  <div class="sidebar-brand">
+    <img class="logo" src="{% static 'images/logopu.png' %}" alt="Logo Kementerian PU">
+    <span class="brand-text">
+      <strong>PASPOR</strong>
+      <small>Platform Administrasi Surat Perjalanan Overseas Request</small>
+    </span>
+    <button type="button" class="sidebar-close" data-sidebar-close aria-label="Tutup menu">&times;</button>
+  </div>
+
+  <nav class="sidebar-nav">
+    {% with vn=request.resolver_match.view_name %}
+    <div class="sidebar-label">Menu</div>
+    <ul class="sidebar-menu">
+      {% if user.role == 'pegawai' %}
+        <li>
+          <a class="sidebar-link {% if vn == 'pegawai:beranda' %}is-active{% endif %}" href="{% url 'pegawai:beranda' %}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+            <span>Beranda</span>
+          </a>
+        </li>
+      {% elif user.role == 'admin_unor' %}
+        <li>
+          <a class="sidebar-link {% if vn == 'unor:dashboard' %}is-active{% endif %}" href="{% url 'unor:dashboard' %}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            <span>Dasbor</span>
+          </a>
+        </li>
+        <li>
+          <a class="sidebar-link {% if vn == 'unor:export' %}is-active{% endif %}" href="{% url 'unor:export' %}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Export</span>
+          </a>
+        </li>
+      {% elif user.role == 'admin_pakln' %}
+        <li>
+          <a class="sidebar-link {% if vn == 'pakln:dashboard' %}is-active{% endif %}" href="{% url 'pakln:dashboard' %}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            <span>Dasbor</span>
+          </a>
+        </li>
+        {# Grup "Manajemen" terbuka otomatis bila halaman aktif ada di dalamnya #}
+        <li class="sidebar-group{% if vn == 'pakln:kelola_user' or vn == 'pakln:edit_user' or vn == 'pakln:kelola_template' or vn == 'pakln:edit_template' or vn == 'pakln:kelola_negara' or vn == 'pakln:edit_negara' or vn == 'pakln:kelola_sumber_pembiayaan' or vn == 'pakln:edit_sumber_pembiayaan' or vn == 'pakln:kelola_kategori' or vn == 'pakln:edit_kategori' or vn == 'pakln:kelola_kalender' or vn == 'pakln:edit_hari_libur' or vn == 'pakln:histori_generate' %} is-open is-active-route{% endif %}" data-sidebar-group>
+          <button type="button" class="sidebar-link" data-sidebar-group-toggle>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+            <span>Manajemen</span>
+            <span class="sidebar-chevron" aria-hidden="true"></span>
+          </button>
+          <ul class="sidebar-submenu">
+            <li><a class="{% if vn == 'pakln:kelola_user' or vn == 'pakln:edit_user' %}is-active{% endif %}" href="{% url 'pakln:kelola_user' %}">Manajemen User</a></li>
+            <li><a class="{% if vn == 'pakln:kelola_template' or vn == 'pakln:edit_template' %}is-active{% endif %}" href="{% url 'pakln:kelola_template' %}">Manajemen Template</a></li>
+            <li><a class="{% if vn == 'pakln:kelola_negara' or vn == 'pakln:edit_negara' %}is-active{% endif %}" href="{% url 'pakln:kelola_negara' %}">Manajemen Negara</a></li>
+            <li><a class="{% if vn == 'pakln:kelola_sumber_pembiayaan' or vn == 'pakln:edit_sumber_pembiayaan' %}is-active{% endif %}" href="{% url 'pakln:kelola_sumber_pembiayaan' %}">Sumber Pembiayaan</a></li>
+            <li><a class="{% if vn == 'pakln:kelola_kategori' or vn == 'pakln:edit_kategori' %}is-active{% endif %}" href="{% url 'pakln:kelola_kategori' %}">Kategori Perjalanan</a></li>
+            <li><a class="{% if vn == 'pakln:kelola_kalender' or vn == 'pakln:edit_hari_libur' %}is-active{% endif %}" href="{% url 'pakln:kelola_kalender' %}">Setting Kalender</a></li>
+            <li><a class="{% if vn == 'pakln:histori_generate' %}is-active{% endif %}" href="{% url 'pakln:histori_generate' %}">Histori Generate Dokumen</a></li>
+          </ul>
+        </li>
+        <li>
+          <a class="sidebar-link {% if vn == 'pakln:export' %}is-active{% endif %}" href="{% url 'pakln:export' %}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Export</span>
+          </a>
+        </li>
+      {% endif %}
+    </ul>
+
+    <div class="sidebar-label">Lainnya</div>
+    <ul class="sidebar-menu">
+      <li>
+        <a class="sidebar-link {% if vn == 'notifications:list' %}is-active{% endif %}" href="{% url 'notifications:list' %}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span>Notifikasi</span>
+          {% if notif_unread_count %}<span class="sidebar-badge">{{ notif_unread_count }}</span>{% endif %}
+        </a>
+      </li>
+      <li>
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button type="submit" class="sidebar-link">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <span>Keluar</span>
+          </button>
+        </form>
+      </li>
+    </ul>
+    {% endwith %}
+  </nav>
+</aside>
+<div class="sidebar-overlay" data-sidebar-close></div>

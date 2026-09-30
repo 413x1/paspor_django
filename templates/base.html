@@ -5,102 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}PASPOR{% endblock %} — Kementerian PU</title>
   <link rel="stylesheet" href="{% static 'vendors/bulma/css/versions/bulma-no-dark-mode.min.css' %}">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260925a">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260930c">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
 
-<nav class="navbar paspor-topbar" role="navigation" aria-label="main navigation">
-  <div class="navbar-brand">
-    <span class="navbar-item brand">
-      <img class="logo" src="{% static 'images/logopu.png' %}" alt="Logo Kementerian PU">
-      <span class="brand-text">
-        <strong>PASPOR</strong>
-        <small>Platform Administrasi Surat Perjalanan Overseas Request</small>
-      </span>
-    </span>
-    <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="pasporNav">
-      <span aria-hidden="true"></span><span aria-hidden="true"></span>
-      <span aria-hidden="true"></span><span aria-hidden="true"></span>
-    </a>
-  </div>
-  <div id="pasporNav" class="navbar-menu">
-    <div class="navbar-start">
-      {% if user.is_authenticated %}
-        {% with vn=request.resolver_match.view_name %}
-        {% if user.role == 'pegawai' %}
-          <a class="navbar-item {% if vn == 'pegawai:beranda' %}is-active{% endif %}" href="{% url 'pegawai:beranda' %}">Beranda</a>
-        {% elif user.role == 'admin_unor' %}
-          <a class="navbar-item {% if vn == 'unor:dashboard' %}is-active{% endif %}" href="{% url 'unor:dashboard' %}">Dasbor</a>
-          <a class="navbar-item {% if vn == 'unor:export' %}is-active{% endif %}" href="{% url 'unor:export' %}">Export</a>
-        {% elif user.role == 'admin_pakln' %}
-          <a class="navbar-item {% if vn == 'pakln:dashboard' %}is-active{% endif %}" href="{% url 'pakln:dashboard' %}">Dasbor</a>
-          <div class="navbar-item has-dropdown{% if vn == 'pakln:kelola_user' or vn == 'pakln:kelola_template' or vn == 'pakln:edit_template' or vn == 'pakln:kelola_negara' or vn == 'pakln:edit_negara' or vn == 'pakln:kelola_sumber_pembiayaan' or vn == 'pakln:edit_sumber_pembiayaan' or vn == 'pakln:kelola_kategori' or vn == 'pakln:edit_kategori' or vn == 'pakln:histori_generate' %} is-active-route{% endif %}" data-nav-dropdown>
-            <a class="navbar-link is-arrowless" href="#" data-nav-dropdown-toggle>Manajemen<span class="navbar-manage-caret"></span></a>
-            <div class="navbar-dropdown">
-              <a class="navbar-item {% if vn == 'pakln:kelola_user' %}is-active{% endif %}" href="{% url 'pakln:kelola_user' %}">Manajemen User</a>
-              <a class="navbar-item {% if vn == 'pakln:kelola_template' or vn == 'pakln:edit_template' %}is-active{% endif %}" href="{% url 'pakln:kelola_template' %}">Manajemen Template</a>
-              <a class="navbar-item {% if vn == 'pakln:kelola_negara' or vn == 'pakln:edit_negara' %}is-active{% endif %}" href="{% url 'pakln:kelola_negara' %}">Manajemen Negara</a>
-              <a class="navbar-item {% if vn == 'pakln:kelola_sumber_pembiayaan' or vn == 'pakln:edit_sumber_pembiayaan' %}is-active{% endif %}" href="{% url 'pakln:kelola_sumber_pembiayaan' %}">Manajemen Sumber Pembiayaan</a>
-              <a class="navbar-item {% if vn == 'pakln:kelola_kategori' or vn == 'pakln:edit_kategori' %}is-active{% endif %}" href="{% url 'pakln:kelola_kategori' %}">Manajemen Kategori Perjalanan</a>
-              <a class="navbar-item {% if vn == 'pakln:kelola_kalender' or vn == 'pakln:edit_hari_libur' %}is-active{% endif %}" href="{% url 'pakln:kelola_kalender' %}">Setting Kalender</a>
-              <a class="navbar-item {% if vn == 'pakln:histori_generate' %}is-active{% endif %}" href="{% url 'pakln:histori_generate' %}">Histori Generate Dokumen</a>
-            </div>
-          </div>
-          <a class="navbar-item {% if vn == 'pakln:export' %}is-active{% endif %}" href="{% url 'pakln:export' %}">Export</a>
-        {% endif %}
-        {% endwith %}
-      {% endif %}
-    </div>
-    <div class="navbar-end">
-      {% if user.is_authenticated %}
-        <div class="navbar-item notif-bell-wrap">
-          <button type="button" class="notif-bell" id="notifBellBtn" aria-haspopup="true" aria-expanded="false" aria-label="Notifikasi">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-            </svg>
-            {% if notif_unread_count %}<span class="notif-badge" id="notifBadge">{{ notif_unread_count|default:0 }}</span>{% endif %}
-          </button>
-          <div class="notif-dropdown" id="notifDropdown">
-            <div class="notif-dropdown-head">
-              <strong>Notifikasi</strong>
-              <button type="button" class="notif-clear-all" id="notifClearAll" data-clear-url="{% url 'notifications:clear_all' %}">Hapus Semua</button>
-            </div>
-            <div class="notif-dropdown-list" id="notifDropdownList">
-              {% for label, items in notif_dropdown_groups %}
-                <div class="notif-group">
-                  <div class="notif-group-label">{{ label }}</div>
-                  {% for notif in items %}
-                    {% include "notifications/_item.html" with notif=notif dismissible=True %}
-                  {% endfor %}
-                </div>
-              {% empty %}
-                <div class="notif-empty">Belum ada notifikasi.</div>
-              {% endfor %}
-            </div>
-            <div class="notif-dropdown-foot">
-              <a href="{% url 'notifications:list' %}">Lihat Semua</a>
-            </div>
-          </div>
-        </div>
-        <span class="navbar-item">
-          <span class="tag paspor-role">{{ user.get_role_display }}</span>
-        </span>
-        <span class="navbar-item is-hidden-touch">{{ user.get_full_name|default:user.username }}</span>
-        <span class="navbar-item">
-          <span class="avatar-chip">{{ user.get_full_name|default:user.username|initials }}</span>
-        </span>
-        <span class="navbar-item">
-          <form method="post" action="{% url 'logout' %}">
-            {% csrf_token %}
-            <button type="submit" class="button is-small is-logout">Keluar</button>
-          </form>
-        </span>
-      {% endif %}
-    </div>
-  </div>
-</nav>
+{% if user.is_authenticated %}
+<div class="app-shell">
+{% include "partials/_sidebar.html" %}
+<div class="app-main">
+{% include "partials/_header.html" %}
+{% endif %}
 
 <main class="page-wrap{% block wrap_extra_class %}{% endblock %}">
   {% if messages %}
@@ -111,6 +26,11 @@
 
   {% block content %}{% endblock %}
 </main>
+
+{% if user.is_authenticated %}
+</div>{# .app-main #}
+</div>{# .app-shell #}
+{% endif %}
 
 {% if notif_toast_queue %}
 <div class="notif-toast-container" id="notifToastContainer">
@@ -149,31 +69,42 @@
 <script src="{% static 'vendors/JQuery/jquery-4.0.0.min.js' %}"></script>
 <script>
   $(function () {
-    // Navbar burger (mobile)
-    $('.navbar-burger').on('click', function () {
-      var $t = $('#' + $(this).data('target'));
-      $(this).toggleClass('is-active');
-      $t.toggleClass('is-active');
+    // Sidebar: desktop = ciutkan/lebarkan (diingat di localStorage),
+    // layar kecil = off-canvas dengan overlay.
+    var mqDesktop = window.matchMedia('(min-width: 1024px)');
+    try {
+      if (localStorage.getItem('paspor.sidebarCollapsed') === '1') { $('body').addClass('sidebar-collapsed'); }
+    } catch (e) {}
+    $('#sidebarToggle').on('click', function () {
+      if (mqDesktop.matches) {
+        var collapsed = $('body').toggleClass('sidebar-collapsed').hasClass('sidebar-collapsed');
+        try { localStorage.setItem('paspor.sidebarCollapsed', collapsed ? '1' : '0'); } catch (e) {}
+      } else {
+        $('body').toggleClass('sidebar-open');
+      }
+    });
+    $(document).on('click', '[data-sidebar-close]', function () { $('body').removeClass('sidebar-open'); });
+
+    // Grup submenu sidebar (mis. "Manajemen") — buka/tutup akordeon.
+    $(document).on('click', '[data-sidebar-group-toggle]', function () {
+      $(this).closest('[data-sidebar-group]').toggleClass('is-open');
     });
 
-    // Dropdown navbar (mis. "Manajemen" pada topbar Admin PKLN) — dibuka
-    // lewat klik, bukan hover, dan tertutup lagi saat klik di luar area-nya.
-    $(document).on('click', '[data-nav-dropdown-toggle]', function (e) {
-      e.preventDefault();
+    // Dropdown akun pengguna di header.
+    $(document).on('click', '[data-user-menu-toggle]', function (e) {
       e.stopPropagation();
-      var $item = $(this).closest('[data-nav-dropdown]');
-      var wasActive = $item.hasClass('is-active');
-      $('[data-nav-dropdown].is-active').removeClass('is-active');
-      if (!wasActive) { $item.addClass('is-active'); }
+      var open = $(this).closest('[data-user-menu]').toggleClass('is-active').hasClass('is-active');
+      $(this).attr('aria-expanded', open ? 'true' : 'false');
     });
-    $(document).on('click', '[data-nav-dropdown] .navbar-dropdown', function (e) {
-      e.stopPropagation();
-    });
+    $(document).on('click', '[data-user-menu] .header-user-menu', function (e) { e.stopPropagation(); });
     $(document).on('click', function () {
-      $('[data-nav-dropdown].is-active').removeClass('is-active');
+      $('[data-user-menu].is-active').removeClass('is-active').find('[data-user-menu-toggle]').attr('aria-expanded', 'false');
     });
     $(document).on('keydown', function (e) {
-      if (e.key === 'Escape') { $('[data-nav-dropdown].is-active').removeClass('is-active'); }
+      if (e.key === 'Escape') {
+        $('[data-user-menu].is-active').removeClass('is-active');
+        $('body').removeClass('sidebar-open');
+      }
     });
 
     function closeModals() {
