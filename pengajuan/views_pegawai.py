@@ -1,4 +1,5 @@
 import os
+from datetime import date
 
 from django.contrib import messages
 from django.db.models import Q
@@ -9,6 +10,7 @@ from django.utils import timezone
 from django.utils.html import escape, format_html
 
 from notifications.services import notify_resubmit_unor, notify_submit_unor
+from paspor.kalender import rincian_hari
 
 from .decorators import role_required
 from .forms import DokumenPegawaiForm, PengajuanForm
@@ -146,6 +148,29 @@ def formulir_pengajuan(request):
         "pegawai/formulir.html",
         {"form": form, "profile": profile},
     )
+
+
+# Batas rentang untuk endpoint `hitung_hari` — perjalanan non-dinas
+# normalnya hitungan hari–minggu; mencegah iterasi tanggal yang tidak wajar.
+_MAKS_RENTANG_HITUNG_HARI = 366
+
+
+@role_required("pegawai", "admin_unor", "admin_pakln")
+def hitung_hari(request):
+    """Endpoint JSON untuk mengisi otomatis Jumlah Hari Kalender & Jumlah
+    Hari Kerja begitu tanggal berangkat/kembali diubah (lihat
+    `paspor.kalender.rincian_hari`). Hanya untuk tampilan — nilai final
+    tetap dihitung ulang di server saat formulir disimpan."""
+    try:
+        berangkat = date.fromisoformat(request.GET.get("berangkat", ""))
+        kembali = date.fromisoformat(request.GET.get("kembali", ""))
+    except ValueError:
+        return JsonResponse({"error": "Format tanggal tidak valid (YYYY-MM-DD)."}, status=400)
+    if kembali < berangkat:
+        return JsonResponse({"error": "Tanggal kembali tidak boleh sebelum tanggal keberangkatan."}, status=400)
+    if (kembali - berangkat).days + 1 > _MAKS_RENTANG_HITUNG_HARI:
+        return JsonResponse({"error": f"Rentang maksimal {_MAKS_RENTANG_HITUNG_HARI} hari."}, status=400)
+    return JsonResponse(rincian_hari(berangkat, kembali))
 
 
 @role_required("pegawai")

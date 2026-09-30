@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import KategoriPerjalanan, Negara, SumberPembiayaan, UnitOrganisasi
+from .models import HariLibur, KategoriPerjalanan, Negara, SumberPembiayaan, UnitOrganisasi
 
 
 @admin.register(UnitOrganisasi)
@@ -32,3 +32,12 @@ class KategoriPerjalananAdmin(admin.ModelAdmin):
     list_filter = ("jenis_perjalanan", "is_active")
     search_fields = ("nama_kategori",)
     ordering = ("jenis_perjalanan", "nama_kategori")
+
+
+@admin.register(HariLibur)
+class HariLiburAdmin(admin.ModelAdmin):
+    list_display = ("tanggal", "keterangan", "jenis", "is_active")
+    list_filter = ("jenis", "is_active")
+    search_fields = ("keterangan",)
+    date_hierarchy = "tanggal"
+    ordering = ("tanggal",)

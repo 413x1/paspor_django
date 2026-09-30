@@ -308,7 +308,7 @@
         <div class="field" style="max-width:220px;">
           <label class="label">Jumlah Hari Kerja</label>
           <div class="control"><input type="number" min="0" name="jumlah_hari_kerja" class="input" placeholder="cth. 5"></div>
-          <p class="helptext">Jumlah hari kalender dihitung otomatis dari tanggal berangkat &amp; kembali.</p>
+          <p class="helptext">Jumlah hari kalender dihitung otomatis dari tanggal berangkat &amp; kembali. Jumlah hari kerja diisi otomatis dari Setting Kalender saat tanggal diubah, dan tetap bisa disunting.</p>
         </div>
 
         <p class="helptext">
@@ -385,11 +385,26 @@
       $('#prev-t-hkalender').text(hariKalender !== null ? hariKalender : '[h_kalender]').toggleClass('is-placeholder', hariKalender === null);
     }
 
-    $('#ndKaroForm').on('input change', 'input[name], textarea[name]', function () {
+    // Saat Admin mengubah tanggal, isi ulang Jumlah Hari Kerja dari
+    // kalender libur (paspor.kalender) — tetap bisa diedit manual sesudahnya.
+    function isiHariKerja() {
+      var berangkatVal = $('#ndKaroForm input[name="tgl_berangkat"]').val();
+      var kembaliVal = $('#ndKaroForm input[name="tgl_kembali"]').val();
+      if (!berangkatVal || !kembaliVal) { return; }
+      $.getJSON('{% url "pegawai:hitung_hari" %}', { berangkat: berangkatVal, kembali: kembaliVal })
+        .done(function (r) {
+          var $hk = $('#ndKaroForm input[name="jumlah_hari_kerja"]');
+          $hk.val(r.hari_kerja);
+          updatePreview($hk);
+        });
+    }
+
+    $('#ndKaroForm').on('input change', 'input[name], textarea[name]', function (e) {
       var name = $(this).attr('name');
       updatePreview($(this));
       if (name === 'tgl_berangkat' || name === 'tgl_kembali') {
         updatePeriode();
+        if (e.type === 'change') { isiHariKerja(); }
       }
     });
 
