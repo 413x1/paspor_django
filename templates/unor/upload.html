@@ -122,6 +122,8 @@
   </form>
 </div>
 
+{% include "partials/_riwayat_pengajuan.html" %}
+
 <div style="display:flex; gap:10px;">
   <a href="{% url 'unor:preview' kode=pengajuan.kode %}" class="button" style="flex:1;">← Kembali ke Pratinjau</a>
   <a href="{% url 'unor:dashboard' %}" class="button" style="flex:1;">Kembali ke Dasbor</a>

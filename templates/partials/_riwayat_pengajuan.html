@@ -1,0 +1,68 @@
+{# Riwayat Pemrosesan Pengajuan — wiki/instructions/RIWAYAT_PEMROSESAN_PENGAJUAN.MD §6. #}
+{# Context: `riwayat` & `peta_alur` dari pengajuan.riwayat.konteks(); pesan sudah difilter per peran di server. #}
+{# gaya="timeline" (halaman pegawai): tampil seperti card Timeline Proses, tanpa peta alur — tahapnya sudah ada di Timeline Proses. #}
+<div class="box riwayat-box">
+  <div class="section-title" style="font-size:14px;">Riwayat Pemrosesan</div>
+
+  {% if gaya == "timeline" %}
+    {% if riwayat %}
+      <ul class="timeline">
+        {% for entri in riwayat %}
+          <li>
+            <div class="dot-wrap is-{{ entri.tone }}" aria-hidden="true">{{ entri.ikon }}</div>
+            <div>
+              <h4>{{ entri.label }}</h4>
+              <p>oleh {{ entri.aktor }}</p>
+              {% if entri.catatan %}
+                <div class="riwayat-pesan">{{ entri.catatan|linebreaksbr }}</div>
+              {% endif %}
+              <div class="tgl">{{ entri.waktu|date:"d M Y, H:i" }}</div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="cell-muted" style="margin:0;">Belum ada riwayat pemrosesan.</p>
+    {% endif %}
+  {% else %}
+    <ol class="peta-alur" aria-label="Peta alur proses">
+      {% for simpul in peta_alur.simpul %}
+        <li class="peta-simpul is-{{ simpul.state }}">
+          <span class="peta-dot">{% if simpul.state == "done" %}✓{% elif simpul.state == "current" %}●{% else %}○{% endif %}</span>
+          <span class="peta-judul">{{ simpul.judul }}</span>
+        </li>
+        {% if not forloop.last %}
+          <li class="peta-garis{% if simpul.state == 'done' %} is-done{% endif %}" aria-hidden="true">
+            {% if forloop.counter == 1 and peta_alur.kembali_ke_pegawai %}
+              <span class="peta-kembali" title="Dikembalikan Admin Unor ke Pegawai">↩ {{ peta_alur.kembali_ke_pegawai }}×</span>
+            {% elif forloop.counter == 2 and peta_alur.kembali_ke_unor %}
+              <span class="peta-kembali" title="Dikembalikan Biro PAKLN ke Admin Unor">↩ {{ peta_alur.kembali_ke_unor }}×</span>
+            {% endif %}
+          </li>
+        {% endif %}
+      {% endfor %}
+    </ol>
+
+    {% if riwayat %}
+      <ul class="riwayat-list">
+        {% for entri in riwayat %}
+          <li class="is-{{ entri.tone }}">
+            <span class="riwayat-ikon" aria-hidden="true">{{ entri.ikon }}</span>
+            <div class="riwayat-isi">
+              <div class="riwayat-head">
+                <strong>{{ entri.label }}</strong>
+                <span class="riwayat-waktu">{{ entri.waktu|date:"d M Y, H:i" }}</span>
+              </div>
+              <div class="riwayat-aktor">oleh {{ entri.aktor }}</div>
+              {% if entri.catatan %}
+                <div class="riwayat-pesan">{{ entri.catatan|linebreaksbr }}</div>
+              {% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="cell-muted" style="margin:0;">Belum ada riwayat pemrosesan.</p>
+    {% endif %}
+  {% endif %}
+</div>

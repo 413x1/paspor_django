@@ -1,6 +1,7 @@
 import csv
 
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -11,9 +12,10 @@ from django.utils.safestring import mark_safe
 
 from notifications.services import notify_approve_unor, notify_reject_unor
 
+from . import riwayat
 from .decorators import role_required
 from .forms import DokumenUnorForm
-from .models import DokumenTemplate, DokumenUnor, DokumenUnorPendukung, Pengajuan
+from .models import DokumenTemplate, DokumenUnor, DokumenUnorPendukung, Pengajuan, RiwayatPengajuan
 
 
 def _scoped(request, qs=None):
@@ -164,11 +166,17 @@ def preview(request, kode):
         if not catatan:
             messages.error(request, "Isi catatan untuk pegawai sebelum mengembalikan pengajuan.")
         else:
-            pengajuan.status = Pengajuan.Status.BELUM
-            pengajuan.submitted = False
-            pengajuan.preview_unor_agree = False
-            pengajuan.catatan_unor = catatan
-            pengajuan.save()
+            status_dari = pengajuan.status
+            with transaction.atomic():
+                pengajuan.status = Pengajuan.Status.BELUM
+                pengajuan.submitted = False
+                pengajuan.preview_unor_agree = False
+                pengajuan.catatan_unor = catatan
+                pengajuan.save()
+                riwayat.catat(
+                    pengajuan, RiwayatPengajuan.Aksi.DIKEMBALIKAN_UNOR,
+                    request.user, status_dari, catatan=catatan,
+                )
             notify_reject_unor(pengajuan, catatan)
             messages.success(
                 request,
@@ -176,7 +184,9 @@ def preview(request, kode):
             )
             return redirect("unor:dashboard")
 
-    return render(request, "unor/preview.html", {"pengajuan": pengajuan})
+    return render(request, "unor/preview.html", {
+        "pengajuan": pengajuan, **riwayat.konteks(pengajuan, request.user),
+    })
 
 
 @role_required("admin_unor")
@@ -206,10 +216,16 @@ def upload_dokumen(request, kode):
             elif not request.POST.get("agree"):
                 messages.error(request, "Centang pernyataan kelengkapan dokumen terlebih dahulu.")
             else:
-                pengajuan.status = Pengajuan.Status.PROSES_PAKLN
-                pengajuan.tgl_masuk_pakln = timezone.now().date()
-                pengajuan.catatan_pakln = ""
-                pengajuan.save()
+                status_dari = pengajuan.status
+                with transaction.atomic():
+                    pengajuan.status = Pengajuan.Status.PROSES_PAKLN
+                    pengajuan.tgl_masuk_pakln = timezone.now().date()
+                    pengajuan.catatan_pakln = ""
+                    pengajuan.save()
+                    riwayat.catat(
+                        pengajuan, RiwayatPengajuan.Aksi.DITERUSKAN_PAKLN,
+                        request.user, status_dari,
+                    )
                 notify_approve_unor(pengajuan)
                 messages.success(request, f"Pengajuan {pengajuan.kode} diteruskan ke Admin Biro PAKLN.")
                 return redirect("unor:dashboard")
@@ -264,6 +280,7 @@ def upload_dokumen(request, kode):
         "pendukung_kategori": list(DokumenUnorPendukung.KATEGORI_LABELS.items()),
         "lengkap": lengkap,
         "templates": templates,
+        **riwayat.konteks(pengajuan, request.user),
     }
     return render(request, "unor/upload.html", context)
 
