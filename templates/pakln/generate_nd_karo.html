@@ -59,6 +59,7 @@
   .nd-pegawai-table th { text-align: center; font-weight: 700; background: #f3f3f3; }
   .nd-pegawai-table td.nd-pt-no { text-align: center; width: 26px; }
   .nd-sign-row { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 42px; }
+  .nd-sign-row.no-paraf { justify-content: flex-end; }
   .nd-sign-box { display: flex; width: 220px; border: 1px solid #111111; text-align: center; font-size: 11px; }
   .nd-sign-box > div { flex: 1 1 50%; }
   .nd-sign-box > div:first-child { border-right: 1px solid #111111; }
@@ -212,8 +213,8 @@
             </p>
           </div>
 
-          <div class="nd-sign-row">
-            <div class="nd-sign-box">
+          <div class="nd-sign-row" id="ndSignRow">
+            <div class="nd-sign-box" id="ndParafBox">
               <div>
                 <div class="nd-sign-box-head">Katim AKI</div>
                 <div class="nd-sign-box-body"></div>
@@ -335,6 +336,12 @@
           <label class="label">Tanggal ND</label>
           <div class="control"><input type="date" name="tanggal_nd" id="ndTanggalInput" class="input" value="{{ default_tanggal_nd }}"></div>
         </div>
+        <div class="field">
+          <label class="checkbox">
+            <input type="checkbox" name="tampilkan_paraf" id="ndTampilkanParaf" value="1" checked> Tampilkan Kolom Paraf
+          </label>
+          <p class="helptext">Kotak paraf "Katim AKI" &amp; "{{ label_paraf_kabag }}" tampil secara default — matikan centang ini untuk menyembunyikannya dari dokumen.</p>
+        </div>
 
         <p class="helptext">
           Data pada tabel "Data Pegawai" mengikuti field Nama/NIP/Jabatan di atas (baris tunggal — sesuai
@@ -359,6 +366,17 @@
       var parts = raw.split('-');
       $('#prev-tanggal').text(Number(parts[2]) + ' ' + BULAN_ID[Number(parts[1]) - 1] + ' ' + parts[0]);
     }
+
+    // Kotak paraf "Katim AKI"/"{{ label_paraf_kabag }}" tampil default
+    // (checkbox tercentang) — dimatikan manual lewat checkbox "Tampilkan
+    // Kolom Paraf".
+    function updateParafBox() {
+      var tampil = $('#ndTampilkanParaf').is(':checked');
+      $('#ndParafBox').toggle(tampil);
+      $('#ndSignRow').toggleClass('no-paraf', !tampil);
+    }
+    $('#ndKaroForm').on('change', '#ndTampilkanParaf', updateParafBox);
+    updateParafBox();
 
     function escapeHtml(str) {
       return String(str).replace(/[&<>"']/g, function (c) {

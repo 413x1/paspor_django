@@ -69,9 +69,9 @@ def _split_jabatan_dua_baris(jabatan):
 
 def _prefill_nd_dari_pengajuan(kode_terpilih):
     """Ambil data pegawai + detail perjalanan dari satu Pengajuan terpilih
-    (dari batch-select Dasbor) untuk mengisi awal form Generate ND — hanya
-    dipakai saat persis satu pengajuan yang dicentang, karena ND Kabag/Karo
-    ditujukan untuk satu pegawai. Field tetap bisa diedit manual di form."""
+    di Dasbor untuk mengisi awal form Generate ND — hanya dipakai saat
+    persis satu pengajuan yang dicentang, karena ND Kabag/Karo ditujukan
+    untuk satu pegawai. Field tetap bisa diedit manual di form."""
     if len(kode_terpilih) != 1:
         return None
     pengajuan = (
@@ -231,6 +231,7 @@ def download_nd_kabag_pdf(request):
         "jabatan_baris2": jabatan_baris2,
         "nama_pejabat": request.POST.get("nama_pejabat", "").strip() or "[Nama Pejabat]",
         "tanggal_nota_dinas": _parse_tanggal_display(request.POST.get("tanggal_nd", "")) or _tanggal_indonesia(timezone.now().date()),
+        "tampilkan_paraf": request.POST.get("tampilkan_paraf") == "1",
         "logo_data_uri": _logo_data_uri(),
     }
     html_string = render_to_string("pakln/pdf_template_nd_kabag.html", context)
@@ -304,6 +305,7 @@ def download_nd_karo_pdf(request):
         "nama_pejabat": request.POST.get("nama_pejabat", "").strip() or "[Nama Pejabat]",
         "tanggal_nota_dinas": _parse_tanggal_display(request.POST.get("tanggal_nd", "")) or _tanggal_indonesia(timezone.now().date()),
         "label_paraf_kabag": _label_kabag_paraf(pengaturan.jabatan_penandatangan_kabag),
+        "tampilkan_paraf": request.POST.get("tampilkan_paraf") == "1",
         "logo_data_uri": _logo_data_uri(),
     }
     html_string = render_to_string("pakln/pdf_template_nd_karo.html", context)

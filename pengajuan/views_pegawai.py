@@ -100,7 +100,7 @@ def riwayat_data(request):
             )
 
         data.append([
-            format_html("🌏 <strong>{}</strong>", p.tujuan_negara_display or "—"),
+            format_html("<strong>{}</strong>", p.tujuan_negara_display or "—"),
             escape(p.kategori.nama_kategori) if p.kategori else "—",
             p.tgl_pengajuan.strftime("%d %b %Y") if p.tgl_pengajuan else "—",
             "—",
