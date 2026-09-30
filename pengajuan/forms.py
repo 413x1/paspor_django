@@ -1,10 +1,13 @@
 import itertools
+from datetime import timedelta
 
 from django import forms
+from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.forms.models import ModelChoiceIterator
 
-from paspor.models import KategoriPerjalanan, Negara, SumberPembiayaan
+from paspor.kalender import AKHIR_PEKAN, hitung_hari_kerja
+from paspor.models import HariLibur, KategoriPerjalanan, Negara, SumberPembiayaan
 
 from .models import (
     DokumenPakln, DokumenPegawai, DokumenTemplate, DokumenUnor, Pengajuan, PengaturanDokumen,
@@ -61,7 +64,6 @@ class PengajuanForm(forms.ModelForm):
             "sumber_pembiayaan",
             "tgl_berangkat",
             "tgl_kembali",
-            "jumlah_hari_kerja",
         ]
         widgets = {
             "maksud": forms.Textarea(
@@ -73,7 +75,6 @@ class PengajuanForm(forms.ModelForm):
             "sumber_pembiayaan": forms.Select(),
             "tgl_berangkat": forms.DateInput(attrs={"type": "date", "class": "input"}),
             "tgl_kembali": forms.DateInput(attrs={"type": "date", "class": "input"}),
-            "jumlah_hari_kerja": forms.NumberInput(attrs={"class": "input", "placeholder": "cth. 5"}),
         }
 
     def __init__(self, *args, profile=None, **kwargs):
@@ -120,22 +121,24 @@ class PengajuanForm(forms.ModelForm):
         self.fields["kategori"].required = True
 
     def clean(self):
+        """Jumlah hari kerja selalu dihitung ulang di server dari tanggal &
+        kalender libur (nilai kiriman browser tidak dipercaya), lalu
+        divalidasi terhadap sisa cuti tahun berjalan."""
         cleaned = super().clean()
         berangkat = cleaned.get("tgl_berangkat")
         kembali = cleaned.get("tgl_kembali")
         if berangkat and kembali and kembali < berangkat:
             raise forms.ValidationError("Tanggal kembali tidak boleh sebelum tanggal keberangkatan.")
-        return cleaned
 
-    def clean_jumlah_hari_kerja(self):
-        hari_kerja = self.cleaned_data.get("jumlah_hari_kerja")
+        hari_kerja = hitung_hari_kerja(berangkat, kembali)
+        self.instance.jumlah_hari_kerja = hari_kerja
         if hari_kerja is not None and self.profile is not None:
             sisa = self.profile.sisa_cuti_tahun_berjalan
             if hari_kerja > sisa:
                 raise forms.ValidationError(
                     f"Jumlah hari kerja ({hari_kerja} hari) melebihi sisa cuti tahun berjalan ({sisa} hari)."
                 )
-        return hari_kerja
+        return cleaned
 
 
 class DokumenPegawaiForm(forms.ModelForm):
@@ -222,6 +225,89 @@ class NegaraForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["kode_negara"].required = False
+
+
+class TambahHariLiburForm(forms.Form):
+    """Form tambah Setting Kalender (Admin Biro PAKLN). Jika `tanggal_selesai`
+    diisi, satu baris `HariLibur` dibuat per tanggal dalam rentang (lihat
+    `simpan`)."""
+
+    MAKS_RENTANG = 31
+
+    tanggal = forms.DateField(
+        label="Tanggal Mulai", widget=forms.DateInput(attrs={"type": "date", "class": "input"}),
+    )
+    tanggal_selesai = forms.DateField(
+        label="Tanggal Selesai", required=False,
+        widget=forms.DateInput(attrs={"type": "date", "class": "input"}),
+        help_text="Opsional — isi untuk libur beberapa hari berturut-turut (maks. 31 hari).",
+    )
+    keterangan = forms.CharField(
+        label="Keterangan", max_length=150,
+        widget=forms.TextInput(attrs={"class": "input", "placeholder": "cth. Hari Kemerdekaan RI"}),
+    )
+    jenis = forms.ChoiceField(label="Jenis", choices=HariLibur.Jenis.choices)
+    lewati_akhir_pekan = forms.BooleanField(
+        label="Lewati Sabtu & Minggu dalam rentang", required=False, initial=True,
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        mulai = cleaned.get("tanggal")
+        selesai = cleaned.get("tanggal_selesai")
+        if mulai and selesai:
+            if selesai < mulai:
+                self.add_error("tanggal_selesai", "Tanggal selesai tidak boleh sebelum tanggal mulai.")
+            elif (selesai - mulai).days + 1 > self.MAKS_RENTANG:
+                self.add_error("tanggal_selesai", f"Rentang maksimal {self.MAKS_RENTANG} hari per input.")
+        return cleaned
+
+    def daftar_tanggal(self):
+        mulai = self.cleaned_data["tanggal"]
+        selesai = self.cleaned_data.get("tanggal_selesai") or mulai
+        rentang = selesai != mulai
+        tanggal_list = []
+        for i in range((selesai - mulai).days + 1):
+            d = mulai + timedelta(days=i)
+            if rentang and self.cleaned_data.get("lewati_akhir_pekan") and d.weekday() in AKHIR_PEKAN:
+                continue
+            tanggal_list.append(d)
+        return tanggal_list
+
+
+class ImporHariLiburForm(forms.Form):
+    """Form impor Setting Kalender dari Excel/CSV (lihat `paspor.impor_libur`)."""
+
+    MAKS_UKURAN = 2 * 1024 * 1024
+
+    berkas = forms.FileField(
+        label="Berkas Excel",
+        validators=[FileExtensionValidator(allowed_extensions=["xlsx", "csv"])],
+        widget=forms.ClearableFileInput(attrs={"accept": ".xlsx,.csv"}),
+        help_text="Format .xlsx (atau .csv), maks. 2 MB, kolom: tanggal, keterangan, jenis.",
+    )
+    timpa = forms.BooleanField(
+        label="Timpa keterangan & jenis untuk tanggal yang sudah ada", required=False,
+    )
+
+    def clean_berkas(self):
+        berkas = self.cleaned_data["berkas"]
+        if berkas.size > self.MAKS_UKURAN:
+            raise forms.ValidationError("Ukuran berkas maksimal 2 MB.")
+        return berkas
+
+
+class HariLiburForm(forms.ModelForm):
+    """Form edit satu tanggal pada Setting Kalender (Admin Biro PAKLN)."""
+
+    class Meta:
+        model = HariLibur
+        fields = ["tanggal", "keterangan", "jenis", "is_active"]
+        widgets = {
+            "tanggal": forms.DateInput(attrs={"type": "date", "class": "input"}, format="%Y-%m-%d"),
+            "keterangan": forms.TextInput(attrs={"class": "input", "placeholder": "cth. Hari Kemerdekaan RI"}),
+        }
+        labels = {"is_active": "Aktif (dihitung sebagai bukan hari kerja)"}
 
 
 class SumberPembiayaanForm(forms.ModelForm):

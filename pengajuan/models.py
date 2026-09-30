@@ -49,6 +49,8 @@ class Pengajuan(models.Model):
     )
     tgl_berangkat = models.DateField(null=True, blank=True)
     tgl_kembali = models.DateField(null=True, blank=True)
+    # Snapshot hasil hitung sistem (paspor.kalender), bukan input pegawai —
+    # lihat `hitung_ulang_hari`.
     jumlah_hari_kerja = models.PositiveIntegerField(null=True, blank=True)
 
     kanal = models.CharField(max_length=10, choices=Kanal.choices, default=Kanal.WEB)
@@ -109,10 +111,17 @@ class Pengajuan(models.Model):
 
     @property
     def jumlah_hari_kalender(self):
-        if self.tgl_berangkat and self.tgl_kembali:
-            delta = (self.tgl_kembali - self.tgl_berangkat).days + 1
-            return delta if delta > 0 else None
-        return None
+        from paspor.kalender import hitung_hari_kalender
+        return hitung_hari_kalender(self.tgl_berangkat, self.tgl_kembali)
+
+    def hitung_ulang_hari(self):
+        """Isi ulang `jumlah_hari_kerja` dari tanggal berangkat/kembali dan
+        kalender libur saat ini. Hanya dipanggil selama pengajuan masih
+        draft (status BELUM) — setelah dikirim angkanya dibekukan
+        (snapshot), walau Admin Biro PAKLN kemudian mengubah kalender."""
+        from paspor.kalender import hitung_hari_kerja
+        self.jumlah_hari_kerja = hitung_hari_kerja(self.tgl_berangkat, self.tgl_kembali)
+        return self.jumlah_hari_kerja
 
     @property
     def timeline(self):

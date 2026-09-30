@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}PASPOR{% endblock %} — Kementerian PU</title>
   <link rel="stylesheet" href="{% static 'vendors/bulma/css/versions/bulma-no-dark-mode.min.css' %}">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260925a">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260930a">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -43,6 +43,7 @@
               <a class="navbar-item {% if vn == 'pakln:kelola_negara' or vn == 'pakln:edit_negara' %}is-active{% endif %}" href="{% url 'pakln:kelola_negara' %}">Manajemen Negara</a>
               <a class="navbar-item {% if vn == 'pakln:kelola_sumber_pembiayaan' or vn == 'pakln:edit_sumber_pembiayaan' %}is-active{% endif %}" href="{% url 'pakln:kelola_sumber_pembiayaan' %}">Manajemen Sumber Pembiayaan</a>
               <a class="navbar-item {% if vn == 'pakln:kelola_kategori' or vn == 'pakln:edit_kategori' %}is-active{% endif %}" href="{% url 'pakln:kelola_kategori' %}">Manajemen Kategori Perjalanan</a>
+              <a class="navbar-item {% if vn == 'pakln:kelola_kalender' or vn == 'pakln:edit_hari_libur' %}is-active{% endif %}" href="{% url 'pakln:kelola_kalender' %}">Setting Kalender</a>
               <a class="navbar-item {% if vn == 'pakln:histori_generate' %}is-active{% endif %}" href="{% url 'pakln:histori_generate' %}">Histori Generate Dokumen</a>
             </div>
           </div>

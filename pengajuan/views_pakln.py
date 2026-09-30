@@ -19,12 +19,14 @@ from django.views.decorators.http import require_POST
 from accounts.forms import EditUserForm, TambahUserForm
 from accounts.models import User
 from notifications.services import notify_complete_pkln, notify_reject_pakln_to_unor
-from paspor.models import KategoriPerjalanan, Negara, SumberPembiayaan
+from paspor.impor_libur import ImporError, baca_berkas, buat_template_xlsx, simpan
+from paspor.kalender import AKHIR_PEKAN, hitung_hari_kalender
+from paspor.models import HariLibur, KategoriPerjalanan, Negara, SumberPembiayaan
 
 from .decorators import role_required
 from .forms import (
-    DokumenPaklnForm, DokumenTemplateForm, KategoriPerjalananForm, NegaraForm, PengaturanDokumenForm,
-    SumberPembiayaanForm,
+    DokumenPaklnForm, DokumenTemplateForm, HariLiburForm, ImporHariLiburForm, KategoriPerjalananForm,
+    NegaraForm, PengaturanDokumenForm, SumberPembiayaanForm, TambahHariLiburForm,
 )
 from .models import (
     DokumenGenerateLog, DokumenPakln, DokumenPaklnPendukung, DokumenTemplate, Pengajuan, PengaturanDokumen,
@@ -115,13 +117,14 @@ def _parse_tanggal_display(value):
 
 
 def _hitung_hari_kalender(tgl_berangkat, tgl_kembali):
+    """Versi string (YYYY-MM-DD dari form) dari
+    `paspor.kalender.hitung_hari_kalender`."""
     try:
         berangkat = datetime.strptime(tgl_berangkat, "%Y-%m-%d").date()
         kembali = datetime.strptime(tgl_kembali, "%Y-%m-%d").date()
     except (ValueError, TypeError):
         return None
-    delta = (kembali - berangkat).days + 1
-    return delta if delta > 0 else None
+    return hitung_hari_kalender(berangkat, kembali)
 
 
 def _rentang_tanggal_indonesia(berangkat, kembali):
@@ -1016,6 +1019,260 @@ def hapus_negara(request, negara_id):
     return JsonResponse({"ok": True})
 
 
+_HARI_ID = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
+
+
+def _tahun_kalender(request):
+    try:
+        return int(request.GET.get("tahun", ""))
+    except ValueError:
+        return timezone.localdate().year
+
+
+@role_required("admin_pakln")
+def kelola_kalender(request):
+    """Setting Kalender — Admin Biro PAKLN mengelola tanggal merah (libur
+    nasional & cuti bersama) yang dikecualikan dari perhitungan Jumlah Hari
+    Kerja (lihat `paspor.kalender`). Sabtu & Minggu tidak perlu diinput.
+    Satu input bisa berupa rentang: dibuat satu baris per tanggal, tanggal
+    yang sudah ada dilewati."""
+    tahun = _tahun_kalender(request)
+
+    if request.method == "POST":
+        form = TambahHariLiburForm(request.POST)
+        if form.is_valid():
+            tanggal_list = form.daftar_tanggal()
+            sudah_ada = set(
+                HariLibur.objects.filter(tanggal__in=tanggal_list).values_list("tanggal", flat=True)
+            )
+            baru = [d for d in tanggal_list if d not in sudah_ada]
+            with transaction.atomic():
+                HariLibur.objects.bulk_create([
+                    HariLibur(
+                        tanggal=d,
+                        keterangan=form.cleaned_data["keterangan"],
+                        jenis=form.cleaned_data["jenis"],
+                        dibuat_oleh=request.user,
+                    )
+                    for d in baru
+                ])
+
+            pesan = f"{len(baru)} tanggal libur ditambahkan."
+            if sudah_ada:
+                pesan += " {} dilewati karena sudah ada ({}).".format(
+                    len(sudah_ada), ", ".join(f"{d:%d-%m-%Y}" for d in sorted(sudah_ada)),
+                )
+            messages.success(request, pesan)
+            akhir_pekan = [d for d in baru if d.weekday() in AKHIR_PEKAN]
+            if akhir_pekan:
+                messages.info(
+                    request,
+                    "Tanggal {} jatuh pada akhir pekan sehingga tidak mengubah perhitungan hari kerja.".format(
+                        ", ".join(f"{d:%d-%m-%Y}" for d in akhir_pekan)
+                    ),
+                )
+            tahun_redirect = form.cleaned_data["tanggal"].year
+            return redirect(f"{reverse('pakln:kelola_kalender')}?tahun={tahun_redirect}")
+        messages.error(request, "Periksa kembali isian formulir.")
+    else:
+        form = TambahHariLiburForm()
+
+    tahun_sekarang = timezone.localdate().year
+    tahun_options = sorted(
+        {d.year for d in HariLibur.objects.dates("tanggal", "year")}
+        | {tahun_sekarang, tahun_sekarang + 1, tahun}
+    )
+    draft_terdampak = Pengajuan.objects.filter(
+        Q(tgl_berangkat__year=tahun) | Q(tgl_kembali__year=tahun),
+        status=Pengajuan.Status.BELUM,
+    ).count()
+
+    return render(request, "pakln/kalender.html", {
+        "form": form,
+        "impor_form": ImporHariLiburForm(),
+        "tahun": tahun,
+        "tahun_options": tahun_options,
+        "libur_count": HariLibur.objects.filter(tanggal__year=tahun).count(),
+        "draft_terdampak": draft_terdampak,
+    })
+
+
+# Kolom tabel "Daftar Hari Libur" (index sesuai urutan kolom pada
+# kalender.html) -> field untuk pengurutan di endpoint server-side DataTables.
+_KALENDER_DATA_ORDER_FIELDS = {
+    "0": "tanggal",
+    "2": "keterangan",
+    "3": "jenis",
+    "4": "is_active",
+}
+
+
+@role_required("admin_pakln")
+def kalender_data(request):
+    """Endpoint JSON server-side untuk tabel "Daftar Hari Libur" (protokol
+    DataTables), difilter per tahun (`?tahun=`), mengikuti pola
+    `negara_data`."""
+    qs = HariLibur.objects.filter(tanggal__year=_tahun_kalender(request))
+    records_total = qs.count()
+
+    search_value = request.GET.get("search[value]", "").strip()
+    if search_value:
+        qs = qs.filter(keterangan__icontains=search_value)
+    records_filtered = qs.count()
+
+    order_col = request.GET.get("order[0][column]")
+    order_field = _KALENDER_DATA_ORDER_FIELDS.get(order_col, "tanggal")
+    if request.GET.get("order[0][dir]") == "desc":
+        order_field = f"-{order_field}"
+    qs = qs.order_by(order_field, "tanggal")
+
+    try:
+        start = int(request.GET.get("start", 0))
+        length = int(request.GET.get("length", 25))
+    except ValueError:
+        start, length = 0, 25
+    page = qs[start:] if length == -1 else qs[start:start + length]
+
+    data = []
+    for h in page:
+        if h.is_active:
+            status_html = mark_safe(
+                '<span class="tag paspor-status is-selesai"><span class="dot"></span>Aktif</span>'
+            )
+            toggle_label = "🙏 Nonaktifkan"
+        else:
+            status_html = mark_safe(
+                '<span class="tag paspor-status is-belum"><span class="dot"></span>Nonaktif</span>'
+            )
+            toggle_label = "👁 Aktifkan"
+
+        hari = _HARI_ID[h.tanggal.weekday()]
+        if h.tanggal.weekday() in AKHIR_PEKAN:
+            hari_html = format_html('{} <span class="helptext">(akhir pekan)</span>', hari)
+        else:
+            hari_html = escape(hari)
+
+        aksi_html = format_html(
+            '<div class="table-actions">'
+            '<a href="{}" class="button is-small">✎ Edit</a>'
+            '<button type="button" class="button is-small" data-libur-toggle="{}">{}</button>'
+            '<button type="button" class="button is-small is-danger" data-libur-hapus="{}">🗑 Hapus</button>'
+            '</div>',
+            reverse("pakln:edit_hari_libur", args=[h.pk]),
+            reverse("pakln:toggle_hari_libur", args=[h.pk]),
+            toggle_label,
+            reverse("pakln:hapus_hari_libur", args=[h.pk]),
+        )
+        data.append([
+            format_html("<strong>{}</strong>", _tanggal_indonesia(h.tanggal)),
+            hari_html,
+            escape(h.keterangan),
+            escape(h.get_jenis_display()),
+            status_html,
+            aksi_html,
+        ])
+
+    return JsonResponse({
+        "draw": int(request.GET.get("draw", 1)),
+        "recordsTotal": records_total,
+        "recordsFiltered": records_filtered,
+        "data": data,
+    })
+
+
+@role_required("admin_pakln")
+def edit_hari_libur(request, libur_id):
+    """Sunting satu tanggal libur."""
+    libur = get_object_or_404(HariLibur, pk=libur_id)
+
+    if request.method == "POST":
+        form = HariLiburForm(request.POST, instance=libur)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Hari libur {libur.tanggal:%d-%m-%Y} berhasil diperbarui.")
+            return redirect(f"{reverse('pakln:kelola_kalender')}?tahun={libur.tanggal.year}")
+        messages.error(request, "Periksa kembali isian formulir.")
+    else:
+        form = HariLiburForm(instance=libur)
+
+    return render(request, "pakln/edit_hari_libur.html", {"form": form, "libur": libur})
+
+
+@role_required("admin_pakln")
+@require_POST
+def toggle_hari_libur(request, libur_id):
+    """Aktifkan/nonaktifkan tanggal libur (AJAX) — mis. ada revisi SKB —
+    tanpa kehilangan datanya. Pengajuan yang sudah dikirim tidak
+    terpengaruh (jumlah hari kerjanya snapshot)."""
+    libur = get_object_or_404(HariLibur, pk=libur_id)
+    libur.is_active = not libur.is_active
+    libur.save(update_fields=["is_active", "updated_at"])
+    return JsonResponse({"ok": True, "is_active": libur.is_active})
+
+
+@role_required("admin_pakln")
+@require_POST
+def hapus_hari_libur(request, libur_id):
+    """Hapus permanen satu tanggal libur (AJAX)."""
+    get_object_or_404(HariLibur, pk=libur_id).delete()
+    return JsonResponse({"ok": True})
+
+
+# Jumlah maksimal pesan kesalahan per baris yang ditampilkan setelah impor
+# gagal — sisanya diringkas agar halaman tidak dibanjiri pesan.
+_MAKS_PESAN_IMPOR = 10
+
+
+@role_required("admin_pakln")
+@require_POST
+def impor_kalender(request):
+    """Impor tanggal libur dari Excel/CSV (lihat `paspor.impor_libur`).
+    Semua-atau-tidak-sama-sekali: bila ada satu baris salah, tidak ada
+    yang disimpan dan seluruh kesalahan per baris ditampilkan."""
+    form = ImporHariLiburForm(request.POST, request.FILES)
+    if not form.is_valid():
+        for errors in form.errors.values():
+            for e in errors:
+                messages.error(request, f"Impor gagal: {e}")
+        return redirect("pakln:kelola_kalender")
+
+    try:
+        baris = baca_berkas(form.cleaned_data["berkas"])
+    except ImporError as e:
+        messages.error(request, "Impor gagal — tidak ada data yang disimpan. Perbaiki berkas lalu unggah ulang.")
+        for pesan in e.errors[:_MAKS_PESAN_IMPOR]:
+            messages.error(request, pesan)
+        if len(e.errors) > _MAKS_PESAN_IMPOR:
+            messages.error(request, f"… dan {len(e.errors) - _MAKS_PESAN_IMPOR} kesalahan lainnya.")
+        return redirect("pakln:kelola_kalender")
+
+    if not baris:
+        messages.warning(request, "Berkas tidak berisi data tanggal libur.")
+        return redirect("pakln:kelola_kalender")
+
+    hasil = simpan(baris, timpa=form.cleaned_data["timpa"], user=request.user)
+    messages.success(
+        request,
+        f"Impor selesai: {hasil['dibuat']} ditambahkan, {hasil['diperbarui']} diperbarui, "
+        f"{hasil['dilewati']} dilewati (sudah ada).",
+    )
+    # Tampilkan tahun yang paling banyak diimpor.
+    tahun_list = [b.tanggal.year for b in baris]
+    tahun = max(set(tahun_list), key=tahun_list.count)
+    return redirect(f"{reverse('pakln:kelola_kalender')}?tahun={tahun}")
+
+
+@role_required("admin_pakln")
+def template_kalender(request):
+    """Unduh template Excel untuk impor Setting Kalender."""
+    response = HttpResponse(
+        buat_template_xlsx(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = 'attachment; filename="template_hari_libur.xlsx"'
+    return response
+
+
 @role_required("admin_pakln")
 def kelola_sumber_pembiayaan(request):
     """Manajemen Sumber Pembiayaan — Admin Biro PAKLN mengelola daftar
@@ -1382,7 +1639,9 @@ def upload_dokumen(request, kode):
             else:
                 with transaction.atomic():
                     profile = getattr(pengajuan.pegawai, "profile", None)
-                    hari_terpakai = pengajuan.jumlah_hari_kalender or 0
+                    # Cuti yang terpakai = hari kerja (snapshot saat pengajuan
+                    # dikirim), konsisten dengan validasi sisa cuti di formulir.
+                    hari_terpakai = pengajuan.jumlah_hari_kerja or 0
                     if profile and hari_terpakai:
                         profile.sisa_cuti_tahun_berjalan = max(
                             profile.sisa_cuti_tahun_berjalan - hari_terpakai, 0

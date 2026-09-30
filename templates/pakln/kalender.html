@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Setting Kalender{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Setting Kalender — Hari Libur Nasional</h2>
+    <p class="sub">Sabtu &amp; Minggu otomatis bukan hari kerja; cukup input tanggal merah nasional &amp; cuti bersama. Data ini dipakai untuk menghitung "Jumlah Hari Kerja" pada Formulir Pengajuan.</p>
+  </div>
+  <a href="{% url 'pakln:dashboard' %}" class="button is-small">← Kembali ke Dasbor</a>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;margin-bottom:14px;">Tambah Hari Libur</div>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.tanggal.id_for_label }}">{{ form.tanggal.label }}</label>
+          <div class="control">{{ form.tanggal }}</div>
+          {% for e in form.tanggal.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.tanggal_selesai.id_for_label }}">{{ form.tanggal_selesai.label }}</label>
+          <div class="control">{{ form.tanggal_selesai }}</div>
+          <p class="helptext">{{ form.fields.tanggal_selesai.help_text }}</p>
+          {% for e in form.tanggal_selesai.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="columns">
+      <div class="column is-two-thirds">
+        <div class="field">
+          <label class="label" for="{{ form.keterangan.id_for_label }}">{{ form.keterangan.label }}</label>
+          <div class="control">{{ form.keterangan }}</div>
+          {% for e in form.keterangan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.jenis.id_for_label }}">{{ form.jenis.label }}</label>
+          <div class="control"><div class="select is-fullwidth">{{ form.jenis }}</div></div>
+          {% for e in form.jenis.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="checkbox" for="{{ form.lewati_akhir_pekan.id_for_label }}">
+        {{ form.lewati_akhir_pekan }} {{ form.lewati_akhir_pekan.label }}
+      </label>
+    </div>
+
+    <button type="submit" class="button is-primary">Simpan Hari Libur</button>
+  </form>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <span>Import dari Excel</span>
+    <a href="{% url 'pakln:template_kalender' %}" class="button is-small">⬇ Unduh Template Excel</a>
+  </div>
+  <p class="helptext" style="margin-bottom:14px;">
+    Isi satu baris per tanggal dengan kolom <strong>tanggal</strong>, <strong>keterangan</strong>, dan
+    <strong>jenis</strong> (Libur Nasional / Cuti Bersama). Jika ada baris yang salah, tidak ada data yang
+    disimpan dan daftar kesalahannya ditampilkan.
+  </p>
+
+  <form method="post" action="{% url 'pakln:impor_kalender' %}" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    <div class="field">
+      <label class="label" for="{{ impor_form.berkas.id_for_label }}">{{ impor_form.berkas.label }}</label>
+      <div class="control">{{ impor_form.berkas }}</div>
+      <p class="helptext">{{ impor_form.fields.berkas.help_text }}</p>
+    </div>
+    <div class="field">
+      <label class="checkbox" for="{{ impor_form.timpa.id_for_label }}">
+        {{ impor_form.timpa }} {{ impor_form.timpa.label }}
+      </label>
+      <p class="helptext">Jika tidak dicentang, tanggal yang sudah ada dilewati.</p>
+    </div>
+    <button type="submit" class="button is-primary">Import Excel</button>
+  </form>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <span>Daftar Hari Libur Tahun {{ tahun }} <span class="badge-auto" id="liburCount">{{ libur_count }}</span></span>
+    <form method="get">
+      <div class="select is-small">
+        <select name="tahun" onchange="this.form.submit()" aria-label="Pilih tahun">
+          {% for t in tahun_options %}<option value="{{ t }}" {% if t == tahun %}selected{% endif %}>{{ t }}</option>{% endfor %}
+        </select>
+      </div>
+    </form>
+  </div>
+
+  {% if not libur_count %}
+    <p class="help is-warning" style="margin-bottom:10px;">Kalender hari libur tahun {{ tahun }} belum diatur — perhitungan hari kerja pengajuan di tahun ini baru mengecualikan Sabtu &amp; Minggu.</p>
+  {% endif %}
+  <p class="helptext" style="margin-bottom:10px;">
+    Perubahan kalender berlaku untuk pengajuan draft saat pegawai menyimpan ulang formulir
+    {% if draft_terdampak %}(saat ini {{ draft_terdampak }} pengajuan draft bertanggal di tahun {{ tahun }}){% endif %};
+    pengajuan yang sudah dikirim tidak berubah.
+  </p>
+
+  <div class="table-wrap">
+    <table id="liburTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
+      <thead>
+        <tr><th>Tanggal</th><th>Hari</th><th>Keterangan</th><th>Jenis</th><th>Status</th><th>Aksi</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
+<script>
+  $(function () {
+    function csrfToken() {
+      var match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+      return match ? decodeURIComponent(match[1]) : '';
+    }
+
+    var $table = $('#liburTable').DataTable({
+      serverSide: true,
+      processing: true,
+      autoWidth: false,
+      ajax: {
+        url: '{% url "pakln:kalender_data" %}',
+        type: 'GET',
+        cache: false,
+        data: { tahun: {{ tahun }} },
+      },
+      columns: [
+        { data: 0, width: '18%' },
+        { data: 1, width: '12%', orderable: false },
+        { data: 2, width: '26%' },
+        { data: 3, width: '12%' },
+        { data: 4, width: '10%' },
+        { data: 5, width: '22%', orderable: false, searchable: false },
+      ],
+      order: [[0, 'asc']],
+      pageLength: 25,
+      lengthMenu: [10, 25, 50, 100],
+      dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
+      language: {
+        search: '',
+        searchPlaceholder: 'Cari keterangan...',
+        lengthMenu: 'Tampilkan _MENU_ tanggal',
+        info: 'Menampilkan _START_–_END_ dari _TOTAL_ tanggal',
+        infoEmpty: 'Tidak ada tanggal libur',
+        infoFiltered: '(disaring dari _MAX_ total tanggal)',
+        zeroRecords: 'Tidak ada tanggal libur yang cocok.',
+        processing: 'Memuat…',
+        paginate: { previous: '‹ Sebelumnya', next: 'Berikutnya ›' },
+      },
+    }).on('xhr.dt', function (e, settings, json) {
+      if (json) { $('#liburCount').text(json.recordsTotal); }
+    });
+
+    $('#liburTable tbody').on('click', '[data-libur-toggle]', function () {
+      var url = $(this).data('libur-toggle');
+      $.ajax({
+        url: url, type: 'POST', headers: { 'X-CSRFToken': csrfToken() },
+        success: function () { $table.ajax.reload(null, false); },
+      });
+    });
+
+    $('#liburTable tbody').on('click', '[data-libur-hapus]', function () {
+      if (!confirm('Hapus tanggal libur ini?')) { return; }
+      var url = $(this).data('libur-hapus');
+      $.ajax({
+        url: url, type: 'POST', headers: { 'X-CSRFToken': csrfToken() },
+        success: function () { $table.ajax.reload(null, false); },
+        error: function () { alert('Gagal menghapus tanggal libur.'); },
+      });
+    });
+  });
+</script>
+{% endblock %}

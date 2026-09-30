@@ -204,6 +204,28 @@ sendiri, bukan berbagi satu akun `admin.unor` seperti di §9.1).
   `admin.unor.setjen`
 - Password: `paspor123` (sama untuk semua)
 
+### 9.4 `seed_hari_libur` — kalender hari libur (Setting Kalender)
+
+```powershell
+python manage.py seed_hari_libur                  # muat semua CSV bawaan (2026 & 2027)
+python manage.py seed_hari_libur --tahun 2027     # hanya tahun tertentu
+python manage.py seed_hari_libur --file path.xlsx # berkas lain (.csv / .xlsx)
+python manage.py seed_hari_libur --timpa          # perbarui keterangan & jenis yang sudah ada
+```
+
+Mengisi tabel `HariLibur` (libur nasional + cuti bersama sesuai SKB 3
+Menteri) yang dipakai untuk menghitung **Jumlah Hari Kerja** pada Formulir
+Pengajuan — lihat
+[instructions/AUTO_CALCULATE_DAYS.MD](instructions/AUTO_CALCULATE_DAYS.MD).
+Data bawaan ada di `scripts/data/hari_libur_<tahun>.csv` (kolom
+`tanggal,keterangan,jenis`); untuk tahun baru, tambahkan CSV dengan pola
+nama yang sama. Idempoten — tanggal yang sudah ada dilewati. Data juga bisa
+diisi manual lewat menu **Setting Kalender** (Admin Biro PAKLN).
+
+Terkait: `python manage.py hitung_ulang_hari_kerja [--dry-run]` menghitung
+ulang Jumlah Hari Kerja pengajuan **draft** setelah kalender diubah
+(pengajuan yang sudah dikirim tidak disentuh).
+
 ### Urutan yang disarankan
 
 ```powershell
@@ -211,6 +233,7 @@ python manage.py migrate
 python manage.py seed_demo_data              # wajib — buat org_units + akun inti
 python manage.py seed_pegawai_org_units       # opsional — 33 akun pegawai per unit
 python manage.py seed_admin_unor_org_units    # opsional — 11 akun admin unor per unit
+python manage.py seed_hari_libur               # kalender libur nasional & cuti bersama
 ```
 
 > **Reset data seed:** command ini tidak menghapus data lama. Untuk mulai
