@@ -1,15 +1,57 @@
-from django import forms
-from django.db import models
+import itertools
+from datetime import timedelta
 
-from paspor.models import Negara, SumberPembiayaan
+from django import forms
+from django.core.validators import FileExtensionValidator
+from django.db import models
+from django.forms.models import ModelChoiceIterator
+
+from paspor.kalender import AKHIR_PEKAN, hitung_hari_kerja
+from paspor.models import HariLibur, KategoriPerjalanan, Negara, SumberPembiayaan
 
 from .models import DokumenPakln, DokumenPegawai, DokumenTemplate, DokumenUnor, Pengajuan
+
+
+class GroupedModelChoiceIterator(ModelChoiceIterator):
+    """Seperti ModelChoiceIterator bawaan, tapi mengelompokkan baris
+    menjadi <optgroup> berdasarkan `field.group_by(obj)`. Queryset WAJIB
+    terurut per hasil `group_by` (grouping hanya berlaku pada baris yang
+    berurutan, mengikuti perilaku `itertools.groupby`)."""
+
+    def __iter__(self):
+        if self.field.empty_label is not None:
+            yield ("", self.field.empty_label)
+        queryset = self.queryset
+        if not queryset._prefetch_related_lookups:
+            queryset = queryset.iterator()
+        for group, objs in itertools.groupby(queryset, key=self.field.group_by):
+            yield (group, [self.choice(obj) for obj in objs])
+
+
+class GroupedModelChoiceField(forms.ModelChoiceField):
+    """ModelChoiceField yang merender <optgroup> (mis. Kategori Perjalanan
+    dikelompokkan per Jenis Perjalanan)."""
+
+    iterator = GroupedModelChoiceIterator
+
+    def __init__(self, *args, group_by, **kwargs):
+        self.group_by = group_by
+        super().__init__(*args, **kwargs)
 
 
 class PengajuanForm(forms.ModelForm):
     """Formulir Pengajuan (bagian "Detail Perjalanan" yang diisi manual
     oleh pegawai — data pegawai lainnya ditampilkan read-only dari
     PegawaiProfile)."""
+
+    # Field eksplisit (bukan auto-generate dari Meta) supaya bisa memakai
+    # GroupedModelChoiceField — dropdown Kategori Perjalanan dikelompokkan
+    # per Jenis Perjalanan (<optgroup>). Queryset diisi ulang di __init__.
+    kategori = GroupedModelChoiceField(
+        queryset=KategoriPerjalanan.objects.none(),
+        group_by=lambda obj: obj.get_jenis_perjalanan_display(),
+        empty_label="— Pilih Kategori Perjalanan —",
+    )
 
     class Meta:
         model = Pengajuan
@@ -20,10 +62,8 @@ class PengajuanForm(forms.ModelForm):
             "sumber_pembiayaan",
             "tgl_berangkat",
             "tgl_kembali",
-            "jumlah_hari_kerja",
         ]
         widgets = {
-            "kategori": forms.Select(),
             "maksud": forms.Textarea(
                 attrs={"rows": 3, "class": "textarea", "placeholder": "Contoh: Menunaikan ibadah umrah bersama keluarga"}
             ),
@@ -33,7 +73,6 @@ class PengajuanForm(forms.ModelForm):
             "sumber_pembiayaan": forms.Select(),
             "tgl_berangkat": forms.DateInput(attrs={"type": "date", "class": "input"}),
             "tgl_kembali": forms.DateInput(attrs={"type": "date", "class": "input"}),
-            "jumlah_hari_kerja": forms.NumberInput(attrs={"class": "input", "placeholder": "cth. 5"}),
         }
 
     def __init__(self, *args, profile=None, **kwargs):
@@ -65,23 +104,39 @@ class PengajuanForm(forms.ModelForm):
         self.fields["sumber_pembiayaan"].queryset = sumber_queryset
         self.fields["sumber_pembiayaan"].required = True
 
+        # Formulir ini khusus alur Non-Kedinasan — tawarkan hanya kategori
+        # bertipe "Non-Dinas" (dikelompokkan per Jenis Perjalanan; saat ini
+        # praktis hanya satu grup terisi sampai alur PDLN dibangun).
+        kategori_queryset = KategoriPerjalanan.objects.filter(
+            jenis_perjalanan=KategoriPerjalanan.JenisPerjalanan.NON_DINAS, is_active=True,
+        )
+        if self.instance and self.instance.kategori_id:
+            kategori_queryset = KategoriPerjalanan.objects.filter(
+                models.Q(jenis_perjalanan=KategoriPerjalanan.JenisPerjalanan.NON_DINAS, is_active=True)
+                | models.Q(pk=self.instance.kategori_id)
+            )
+        self.fields["kategori"].queryset = kategori_queryset
+        self.fields["kategori"].required = True
+
     def clean(self):
+        """Jumlah hari kerja selalu dihitung ulang di server dari tanggal &
+        kalender libur (nilai kiriman browser tidak dipercaya), lalu
+        divalidasi terhadap sisa cuti tahun berjalan."""
         cleaned = super().clean()
         berangkat = cleaned.get("tgl_berangkat")
         kembali = cleaned.get("tgl_kembali")
         if berangkat and kembali and kembali < berangkat:
             raise forms.ValidationError("Tanggal kembali tidak boleh sebelum tanggal keberangkatan.")
-        return cleaned
 
-    def clean_jumlah_hari_kerja(self):
-        hari_kerja = self.cleaned_data.get("jumlah_hari_kerja")
+        hari_kerja = hitung_hari_kerja(berangkat, kembali)
+        self.instance.jumlah_hari_kerja = hari_kerja
         if hari_kerja is not None and self.profile is not None:
             sisa = self.profile.sisa_cuti_tahun_berjalan
             if hari_kerja > sisa:
                 raise forms.ValidationError(
                     f"Jumlah hari kerja ({hari_kerja} hari) melebihi sisa cuti tahun berjalan ({sisa} hari)."
                 )
-        return hari_kerja
+        return cleaned
 
 
 class DokumenPegawaiForm(forms.ModelForm):
@@ -135,7 +190,13 @@ class DokumenTemplateForm(forms.ModelForm):
         self.fields["file"].required = not (self.instance and self.instance.pk)
         self.fields["unit_organisasi"].required = False
         self.fields["kategori"].required = False
-        self.fields["kategori"].choices = [("", "— Semua kategori —")] + list(Pengajuan.Kategori.choices)
+        self.fields["kategori"].empty_label = "— Semua kategori —"
+        kategori_queryset = KategoriPerjalanan.objects.filter(is_active=True)
+        if self.instance and self.instance.kategori_id:
+            kategori_queryset = KategoriPerjalanan.objects.filter(
+                models.Q(is_active=True) | models.Q(pk=self.instance.kategori_id)
+            )
+        self.fields["kategori"].queryset = kategori_queryset
 
     def clean(self):
         cleaned = super().clean()
@@ -164,6 +225,89 @@ class NegaraForm(forms.ModelForm):
         self.fields["kode_negara"].required = False
 
 
+class TambahHariLiburForm(forms.Form):
+    """Form tambah Setting Kalender (Admin Biro PAKLN). Jika `tanggal_selesai`
+    diisi, satu baris `HariLibur` dibuat per tanggal dalam rentang (lihat
+    `simpan`)."""
+
+    MAKS_RENTANG = 31
+
+    tanggal = forms.DateField(
+        label="Tanggal Mulai", widget=forms.DateInput(attrs={"type": "date", "class": "input"}),
+    )
+    tanggal_selesai = forms.DateField(
+        label="Tanggal Selesai", required=False,
+        widget=forms.DateInput(attrs={"type": "date", "class": "input"}),
+        help_text="Opsional — isi untuk libur beberapa hari berturut-turut (maks. 31 hari).",
+    )
+    keterangan = forms.CharField(
+        label="Keterangan", max_length=150,
+        widget=forms.TextInput(attrs={"class": "input", "placeholder": "cth. Hari Kemerdekaan RI"}),
+    )
+    jenis = forms.ChoiceField(label="Jenis", choices=HariLibur.Jenis.choices)
+    lewati_akhir_pekan = forms.BooleanField(
+        label="Lewati Sabtu & Minggu dalam rentang", required=False, initial=True,
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        mulai = cleaned.get("tanggal")
+        selesai = cleaned.get("tanggal_selesai")
+        if mulai and selesai:
+            if selesai < mulai:
+                self.add_error("tanggal_selesai", "Tanggal selesai tidak boleh sebelum tanggal mulai.")
+            elif (selesai - mulai).days + 1 > self.MAKS_RENTANG:
+                self.add_error("tanggal_selesai", f"Rentang maksimal {self.MAKS_RENTANG} hari per input.")
+        return cleaned
+
+    def daftar_tanggal(self):
+        mulai = self.cleaned_data["tanggal"]
+        selesai = self.cleaned_data.get("tanggal_selesai") or mulai
+        rentang = selesai != mulai
+        tanggal_list = []
+        for i in range((selesai - mulai).days + 1):
+            d = mulai + timedelta(days=i)
+            if rentang and self.cleaned_data.get("lewati_akhir_pekan") and d.weekday() in AKHIR_PEKAN:
+                continue
+            tanggal_list.append(d)
+        return tanggal_list
+
+
+class ImporHariLiburForm(forms.Form):
+    """Form impor Setting Kalender dari Excel/CSV (lihat `paspor.impor_libur`)."""
+
+    MAKS_UKURAN = 2 * 1024 * 1024
+
+    berkas = forms.FileField(
+        label="Berkas Excel",
+        validators=[FileExtensionValidator(allowed_extensions=["xlsx", "csv"])],
+        widget=forms.ClearableFileInput(attrs={"accept": ".xlsx,.csv"}),
+        help_text="Format .xlsx (atau .csv), maks. 2 MB, kolom: tanggal, keterangan, jenis.",
+    )
+    timpa = forms.BooleanField(
+        label="Timpa keterangan & jenis untuk tanggal yang sudah ada", required=False,
+    )
+
+    def clean_berkas(self):
+        berkas = self.cleaned_data["berkas"]
+        if berkas.size > self.MAKS_UKURAN:
+            raise forms.ValidationError("Ukuran berkas maksimal 2 MB.")
+        return berkas
+
+
+class HariLiburForm(forms.ModelForm):
+    """Form edit satu tanggal pada Setting Kalender (Admin Biro PAKLN)."""
+
+    class Meta:
+        model = HariLibur
+        fields = ["tanggal", "keterangan", "jenis", "is_active"]
+        widgets = {
+            "tanggal": forms.DateInput(attrs={"type": "date", "class": "input"}, format="%Y-%m-%d"),
+            "keterangan": forms.TextInput(attrs={"class": "input", "placeholder": "cth. Hari Kemerdekaan RI"}),
+        }
+        labels = {"is_active": "Aktif (dihitung sebagai bukan hari kerja)"}
+
+
 class SumberPembiayaanForm(forms.ModelForm):
     """Form Manajemen Sumber Pembiayaan (Admin Biro PAKLN) — sumber data
     dropdown "Sumber Pembiayaan" pada Formulir Pengajuan."""
@@ -181,3 +325,17 @@ class SumberPembiayaanForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["keterangan"].required = False
+
+
+class KategoriPerjalananForm(forms.ModelForm):
+    """Form Manajemen Kategori Perjalanan (Admin Biro PAKLN) — sumber data
+    dropdown "Kategori Perjalanan" pada Formulir Pengajuan."""
+
+    class Meta:
+        model = KategoriPerjalanan
+        fields = ["jenis_perjalanan", "nama_kategori", "is_active"]
+        widgets = {
+            "jenis_perjalanan": forms.Select(),
+            "nama_kategori": forms.TextInput(attrs={"class": "input", "placeholder": "cth. Ibadah"}),
+        }
+        labels = {"is_active": "Tampilkan pada Formulir Pengajuan"}

@@ -4,6 +4,12 @@
 {% block wrap_extra_class %} narrow{% endblock %}
 
 {% block content %}
+{% if pengajuan.catatan_pakln %}
+  <div class="notification paspor-msg is-warning">
+    <strong>⚠ Dikembalikan oleh Admin PKLN untuk diperbaiki:</strong> {{ pengajuan.catatan_pakln }}
+  </div>
+{% endif %}
+
 {% if templates %}
 <div class="box" style="background:var(--blue-bg); border-color:#cfe0f2;">
   <div class="section-title" style="font-size:14px;margin-bottom:10px;">📄 Template Dokumen Tersedia</div>

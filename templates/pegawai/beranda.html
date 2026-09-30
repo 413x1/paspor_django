@@ -1,6 +1,11 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Beranda{% endblock %}
 {% block wrap_extra_class %} medium{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
+{% endblock %}
 
 {% block content %}
 <div class="page-head">
@@ -19,7 +24,9 @@
   </div>
 {% endif %}
 
-<div class="table-wrap">
+{% if aktif %}
+<div class="section-title" style="font-size:14px;">Pengajuan Aktif</div>
+<div class="table-wrap" style="margin-bottom:20px;">
   <table class="table data-table is-fullwidth is-hoverable">
     <thead>
       <tr>
@@ -27,44 +34,36 @@
       </tr>
     </thead>
     <tbody>
-      {% if aktif %}
-        <tr>
-          <td><strong>🌏 {{ aktif.tujuan_negara_display|default:"Belum diisi" }}</strong></td>
-          <td>{{ aktif.kategori|default:"—" }}</td>
-          <td>{{ aktif.tgl_pengajuan|date:"d M Y"|default:"—" }}</td>
-          <td>{{ aktif.get_kanal_display }}</td>
-          <td><span class="tag paspor-status is-{{ aktif.status }}"><span class="dot"></span>{{ aktif.get_status_display }}</span></td>
-          <td>
-            {% if aktif.status == "belum" %}
-              <a href="{% url 'pegawai:formulir_pengajuan' %}" class="button is-small">Lanjutkan Formulir</a>
-            {% elif not aktif.submitted %}
-              <a href="{% url 'pegawai:upload_dokumen' kode=aktif.kode %}" class="button is-small">Lanjutkan Unggah</a>
-            {% else %}
-              <a href="{% url 'pegawai:monitor_progres' kode=aktif.kode %}" class="button is-small">Lihat Progres</a>
-            {% endif %}
-          </td>
-        </tr>
-      {% endif %}
-      {% for p in riwayat %}
-        <tr>
-          <td><strong>🌏 {{ p.tujuan_negara_display|default:"—" }}</strong></td>
-          <td>{{ p.kategori|default:"—" }}</td>
-          <td>{{ p.tgl_pengajuan|date:"d M Y"|default:"—" }}</td>
-          <td>—</td>
-          <td><span class="tag paspor-status is-{{ p.status }}"><span class="dot"></span>{{ p.get_status_display }}</span></td>
-          <td>
-            {% if p.submitted %}
-              <a href="{% url 'pegawai:monitor_progres' kode=p.kode %}" class="button is-small">Lihat</a>
-            {% else %}
-              <a href="{% url 'pegawai:formulir_pengajuan' %}" class="button is-small">Lanjutkan</a>
-            {% endif %}
-          </td>
-        </tr>
-      {% endfor %}
-      {% if not aktif and not riwayat %}
-        <tr><td colspan="6" class="cell-muted">Belum ada riwayat pengajuan.</td></tr>
-      {% endif %}
+      <tr>
+        <td><strong>🌏 {{ aktif.tujuan_negara_display|default:"Belum diisi" }}</strong></td>
+        <td>{{ aktif.kategori|default:"—" }}</td>
+        <td>{{ aktif.tgl_pengajuan|date:"d M Y"|default:"—" }}</td>
+        <td>{{ aktif.get_kanal_display }}</td>
+        <td><span class="tag paspor-status is-{{ aktif.status }}"><span class="dot"></span>{{ aktif.get_status_display }}</span></td>
+        <td>
+          {% if aktif.status == "belum" %}
+            <a href="{% url 'pegawai:formulir_pengajuan' %}" class="button is-small">Lanjutkan Formulir</a>
+          {% elif not aktif.submitted %}
+            <a href="{% url 'pegawai:upload_dokumen' kode=aktif.kode %}" class="button is-small">Lanjutkan Unggah</a>
+          {% else %}
+            <a href="{% url 'pegawai:monitor_progres' kode=aktif.kode %}" class="button is-small">Lihat Progres</a>
+          {% endif %}
+        </td>
+      </tr>
     </tbody>
+  </table>
+</div>
+{% endif %}
+
+<div class="section-title" style="font-size:14px;">Riwayat</div>
+<div class="table-wrap">
+  <table id="riwayatTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
+    <thead>
+      <tr>
+        <th>Tujuan</th><th>Kategori</th><th>Tgl Pengajuan</th><th>Kanal</th><th>Status</th><th>Action</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
   </table>
 </div>
 
@@ -94,4 +93,41 @@
   </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
+<script>
+  $(function () {
+    $('#riwayatTable').DataTable({
+      serverSide: true,
+      processing: true,
+      autoWidth: false,
+      ajax: { url: '{% url "pegawai:riwayat_data" %}', type: 'GET', cache: false },
+      columns: [
+        { data: 0, orderable: false, searchable: false },
+        { data: 1 },
+        { data: 2 },
+        { data: 3, orderable: false, searchable: false },
+        { data: 4 },
+        { data: 5, orderable: false, searchable: false },
+      ],
+      order: [[2, 'desc']],
+      pageLength: 10,
+      lengthMenu: [10, 25, 50, 100],
+      dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
+      language: {
+        search: '',
+        searchPlaceholder: 'Cari riwayat...',
+        lengthMenu: 'Tampilkan _MENU_ riwayat',
+        info: 'Menampilkan _START_–_END_ dari _TOTAL_ riwayat',
+        infoEmpty: 'Belum ada riwayat pengajuan',
+        infoFiltered: '(disaring dari _MAX_ total riwayat)',
+        zeroRecords: 'Tidak ada riwayat yang cocok.',
+        processing: 'Memuat…',
+        paginate: { previous: '‹ Sebelumnya', next: 'Berikutnya ›' },
+      },
+    });
+  });
+</script>
 {% endblock %}

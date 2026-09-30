@@ -1,6 +1,11 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Manajemen Sumber Pembiayaan{% endblock %}
 {% block wrap_extra_class %} medium{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
+{% endblock %}
 
 {% block content %}
 <div class="page-head">
@@ -51,45 +56,79 @@
 
 <div class="box">
   <div class="section-title" style="font-size:14px;">
-    Daftar Sumber Pembiayaan <span class="badge-auto">{{ sumber_list|length }}</span>
+    Daftar Sumber Pembiayaan <span class="badge-auto" id="sumberCount">{{ sumber_count }}</span>
   </div>
   <div class="table-wrap">
-    <table class="table data-table is-fullwidth is-hoverable">
+    <table id="sumberTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
       <thead>
         <tr><th>Nama</th><th>Tipe Perjalanan</th><th>Keterangan</th><th>Status</th><th>Aksi</th></tr>
       </thead>
-      <tbody>
-        {% for s in sumber_list %}
-          <tr>
-            <td><strong>{{ s.nama }}</strong></td>
-            <td>{{ s.get_tipe_perjalanan_display }}</td>
-            <td>{{ s.keterangan|default:"—" }}</td>
-            <td>
-              {% if s.is_active %}
-                <span class="tag paspor-status is-selesai"><span class="dot"></span>Aktif</span>
-              {% else %}
-                <span class="tag paspor-status is-belum"><span class="dot"></span>Nonaktif</span>
-              {% endif %}
-            </td>
-            <td>
-              <div class="actions" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-                <a href="{% url 'pakln:edit_sumber_pembiayaan' sumber_id=s.pk %}" class="button is-small">✎ Edit</a>
-                <form method="post" action="{% url 'pakln:toggle_sumber_pembiayaan' sumber_id=s.pk %}" style="margin:0;">
-                  {% csrf_token %}
-                  <button type="submit" class="button is-small">{% if s.is_active %}🙈 Nonaktifkan{% else %}👁 Aktifkan{% endif %}</button>
-                </form>
-                <form method="post" action="{% url 'pakln:hapus_sumber_pembiayaan' sumber_id=s.pk %}" style="margin:0;" onsubmit="return confirm('Hapus sumber pembiayaan ini?');">
-                  {% csrf_token %}
-                  <button type="submit" class="button is-small is-danger">🗑 Hapus</button>
-                </form>
-              </div>
-            </td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="5" class="cell-muted" style="text-align:center;">Belum ada data sumber pembiayaan.</td></tr>
-        {% endfor %}
-      </tbody>
+      <tbody></tbody>
     </table>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
+<script>
+  $(function () {
+    function csrfToken() {
+      var match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+      return match ? decodeURIComponent(match[1]) : '';
+    }
+
+    var $table = $('#sumberTable').DataTable({
+      serverSide: true,
+      processing: true,
+      autoWidth: false,
+      ajax: { url: '{% url "pakln:sumber_pembiayaan_data" %}', type: 'GET', cache: false },
+      columns: [
+        { data: 0, width: '16%' },
+        { data: 1, width: '13%' },
+        { data: 2, width: '24%' },
+        { data: 3, width: '12%' },
+        { data: 4, width: '35%', orderable: false, searchable: false },
+      ],
+      order: [[0, 'asc']],
+      pageLength: 10,
+      lengthMenu: [10, 25, 50, 100],
+      dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
+      language: {
+        search: '',
+        searchPlaceholder: 'Cari sumber pembiayaan...',
+        lengthMenu: 'Tampilkan _MENU_ sumber pembiayaan',
+        info: 'Menampilkan _START_–_END_ dari _TOTAL_ sumber pembiayaan',
+        infoEmpty: 'Tidak ada sumber pembiayaan',
+        infoFiltered: '(disaring dari _MAX_ total sumber pembiayaan)',
+        zeroRecords: 'Tidak ada sumber pembiayaan yang cocok.',
+        processing: 'Memuat…',
+        paginate: { previous: '‹ Sebelumnya', next: 'Berikutnya ›' },
+      },
+    }).on('xhr.dt', function (e, settings, json) {
+      if (json) { $('#sumberCount').text(json.recordsTotal); }
+    });
+
+    $('#sumberTable tbody').on('click', '[data-sumber-toggle]', function () {
+      var url = $(this).data('sumber-toggle');
+      $.ajax({
+        url: url, type: 'POST', headers: { 'X-CSRFToken': csrfToken() },
+        success: function () { $table.ajax.reload(null, false); },
+      });
+    });
+
+    $('#sumberTable tbody').on('click', '[data-sumber-hapus]', function () {
+      if (!confirm('Hapus sumber pembiayaan ini?')) { return; }
+      var url = $(this).data('sumber-hapus');
+      $.ajax({
+        url: url, type: 'POST', headers: { 'X-CSRFToken': csrfToken() },
+        success: function () { $table.ajax.reload(null, false); },
+        error: function (xhr) {
+          var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Gagal menghapus sumber pembiayaan.';
+          alert(msg);
+        },
+      });
+    });
+  });
+</script>
 {% endblock %}

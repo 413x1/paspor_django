@@ -95,7 +95,30 @@
       <button type="submit" name="lanjutkan" class="button is-primary is-fullwidth">Lanjutkan ke Administrasi Biro PAKLN →</button>
     </form>
   {% endif %}
+
 </div>
+
+{% if pengajuan.status == "proses_pakln" %}
+<div class="box" style="background:#fdecea; border-color:#f3c6c2;">
+  <div class="section-title" style="font-size:14px;">↩ Kembalikan ke Admin Unor</div>
+  <p class="cell-muted" style="margin:-8px 0 14px;">
+    Gunakan ini jika ada kekurangan atau kesalahan pada rekomendasi/berkas administrasi Admin Unor yang perlu diperbaiki
+    sebelum dapat diproses lebih lanjut. Pengajuan akan berstatus <strong>Dalam Proses Unor</strong> kembali sampai
+    Admin Unor mengirim ulang.
+  </p>
+  <form method="post" onsubmit="return confirm('Kembalikan pengajuan ini ke Admin Unor beserta catatan?');">
+    {% csrf_token %}
+    <div class="field">
+      <label class="label" for="catatan_pakln">Catatan untuk Admin Unor</label>
+      <div class="control">
+        <textarea class="textarea" id="catatan_pakln" name="catatan" rows="3" required
+          placeholder="cth. Rekomendasi Nota Dinas Kepala Bagian belum sesuai format, mohon direvisi."></textarea>
+      </div>
+    </div>
+    <button type="submit" name="kembalikan" class="button is-danger is-fullwidth">↩ Kembalikan ke Admin Unor</button>
+  </form>
+</div>
+{% endif %}
 
 <a href="{% url 'pakln:dashboard' %}" class="button is-fullwidth">← Kembali ke Dasbor</a>
 {% endblock %}

@@ -21,6 +21,12 @@
     </div>
     <span class="tag paspor-status is-{{ pengajuan.status }}"><span class="dot"></span>{{ pengajuan.get_status_display }}</span>
   </div>
+
+  {% if pengajuan.status == "selesai" %}
+    <a href="{% url 'pegawai:download_iln' kode=pengajuan.kode %}" class="button is-primary is-fullwidth" style="margin-top:16px;">
+      ⬇ Unduh Dokumen ILN (Izin Luar Negeri)
+    </a>
+  {% endif %}
 </div>
 
 <div class="box">

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -74,3 +75,65 @@ class SumberPembiayaan(models.Model):
 
     def __str__(self):
         return self.nama
+
+
+class KategoriPerjalanan(models.Model):
+    """Data referensi kategori perjalanan luar negeri. Dikelola oleh Admin
+    Biro PAKLN (menu Manajemen Kategori Perjalanan) dan dipakai sebagai
+    sumber pilihan pada field "Kategori Perjalanan" di Formulir Pengajuan
+    (dikelompokkan pada dropdown berdasarkan `jenis_perjalanan`)."""
+
+    class JenisPerjalanan(models.TextChoices):
+        PDLN = "PDLN", "PDLN (Perjalanan Dinas Luar Negeri)"
+        NON_DINAS = "Non-Dinas", "Perjalanan Non Dinas Luar Negeri"
+
+    jenis_perjalanan = models.CharField(
+        "Jenis Perjalanan", max_length=20, choices=JenisPerjalanan.choices,
+        default=JenisPerjalanan.NON_DINAS,
+    )
+    nama_kategori = models.CharField("Nama Kategori", max_length=100)
+    is_active = models.BooleanField("Aktif", default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["jenis_perjalanan", "nama_kategori"]
+        verbose_name = "Kategori Perjalanan"
+        verbose_name_plural = "Kategori Perjalanan"
+
+    def __str__(self):
+        return self.nama_kategori
+
+
+class HariLibur(models.Model):
+    """Tanggal merah (libur nasional / cuti bersama) yang dikecualikan dari
+    perhitungan Jumlah Hari Kerja pada Formulir Pengajuan. Dikelola Admin
+    Biro PAKLN (menu Setting Kalender). Sabtu & Minggu TIDAK perlu diinput
+    di sini — sudah otomatis dianggap bukan hari kerja (lihat
+    `paspor.kalender`)."""
+
+    class Jenis(models.TextChoices):
+        LIBUR_NASIONAL = "libur_nasional", "Libur Nasional"
+        CUTI_BERSAMA = "cuti_bersama", "Cuti Bersama"
+
+    tanggal = models.DateField("Tanggal", unique=True)
+    keterangan = models.CharField("Keterangan", max_length=150)
+    jenis = models.CharField(
+        "Jenis", max_length=20, choices=Jenis.choices, default=Jenis.LIBUR_NASIONAL,
+    )
+    is_active = models.BooleanField("Aktif", default=True)
+
+    dibuat_oleh = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["tanggal"]
+        verbose_name = "Hari Libur"
+        verbose_name_plural = "Hari Libur"
+
+    def __str__(self):
+        return f"{self.tanggal:%d-%m-%Y} — {self.keterangan}"

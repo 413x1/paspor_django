@@ -3,6 +3,12 @@
 {% block wrap_extra_class %} narrow{% endblock %}
 
 {% block content %}
+{% if pengajuan.catatan_pakln %}
+  <div class="notification paspor-msg is-warning">
+    <strong>⚠ Dikembalikan oleh Admin PKLN untuk diperbaiki:</strong> {{ pengajuan.catatan_pakln }}
+  </div>
+{% endif %}
+
 <div class="box">
   <div class="section-title">Pratinjau Pengajuan dari Pegawai — {{ pengajuan.kode }}</div>
 

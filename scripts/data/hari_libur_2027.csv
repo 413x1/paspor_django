@@ -1,0 +1,30 @@
+# Hari Libur Nasional & Cuti Bersama 2027 (SKB 3 Menteri).
+# Kolom: tanggal (YYYY-MM-DD), keterangan, jenis (libur_nasional | cuti_bersama).
+# Baris yang diawali '#' diabaikan.
+tanggal,keterangan,jenis
+2027-01-01,Tahun Baru 2027 Masehi,libur_nasional
+2027-01-05,Isra Mikraj Nabi Muhammad SAW,libur_nasional
+2027-02-05,Cuti Bersama Tahun Baru Imlek 2578 Kongzili,cuti_bersama
+2027-02-06,Tahun Baru Imlek 2578 Kongzili,libur_nasional
+2027-03-08,"Hari Suci Nyepi, Tahun Baru Saka 1949",libur_nasional
+2027-03-09,Cuti Bersama Hari Raya Idulfitri 1448 H,cuti_bersama
+2027-03-10,Hari Raya Idulfitri 1448 H,libur_nasional
+2027-03-11,Hari Raya Idulfitri 1448 H,libur_nasional
+2027-03-12,Cuti Bersama Hari Raya Idulfitri 1448 H,cuti_bersama
+2027-03-15,Cuti Bersama Hari Raya Idulfitri 1448 H,cuti_bersama
+2027-03-25,Cuti Bersama Wafat Yesus Kristus,cuti_bersama
+2027-03-26,Wafat Yesus Kristus,libur_nasional
+2027-03-28,Hari Kebangkitan Yesus Kristus (Paskah),libur_nasional
+2027-05-01,Hari Buruh Internasional,libur_nasional
+2027-05-06,Kenaikan Yesus Kristus,libur_nasional
+2027-05-17,Hari Raya Iduladha 1448 H,libur_nasional
+2027-05-18,Cuti Bersama Hari Raya Iduladha 1448 H,cuti_bersama
+2027-05-19,Cuti Bersama Hari Raya Waisak 2571 BE,cuti_bersama
+2027-05-20,Hari Raya Waisak 2571 BE,libur_nasional
+2027-06-01,Hari Lahir Pancasila,libur_nasional
+2027-06-06,1 Muharam Tahun Baru Islam 1449 H,libur_nasional
+2027-08-15,Maulid Nabi Muhammad SAW,libur_nasional
+2027-08-17,Proklamasi Kemerdekaan,libur_nasional
+2027-12-24,Cuti Bersama Kelahiran Yesus Kristus (Natal),cuti_bersama
+2027-12-25,Kelahiran Yesus Kristus (Natal),libur_nasional
+2027-12-26,Isra Mikraj Nabi Muhammad SAW,libur_nasional

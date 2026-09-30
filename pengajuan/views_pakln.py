@@ -1,23 +1,297 @@
+import base64
 import csv
+from datetime import datetime
 
 from django.contrib import messages
+from django.contrib.staticfiles import finders
+from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import escape, format_html
 from django.utils.safestring import mark_safe
+from django.views.decorators.http import require_POST
 
 from accounts.forms import EditUserForm, TambahUserForm
 from accounts.models import User
-from notifications.services import notify_complete_pkln
-from paspor.models import Negara, SumberPembiayaan
+from notifications.services import notify_complete_pkln, notify_reject_pakln_to_unor
+from paspor.impor_libur import ImporError, baca_berkas, buat_template_xlsx, simpan
+from paspor.kalender import AKHIR_PEKAN, hitung_hari_kalender
+from paspor.models import HariLibur, KategoriPerjalanan, Negara, SumberPembiayaan
 
 from .decorators import role_required
-from .forms import DokumenPaklnForm, DokumenTemplateForm, NegaraForm, SumberPembiayaanForm
-from .models import DokumenPakln, DokumenTemplate, Pengajuan
+from .forms import (
+    DokumenPaklnForm, DokumenTemplateForm, HariLiburForm, ImporHariLiburForm, KategoriPerjalananForm,
+    NegaraForm, SumberPembiayaanForm, TambahHariLiburForm,
+)
+from .models import (
+    DokumenGenerateLog, DokumenPakln, DokumenPaklnPendukung, DokumenTemplate, Pengajuan,
+)
+
+_BULAN_ID = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+]
+
+
+def _tanggal_indonesia(tanggal):
+    return f"{tanggal.day} {_BULAN_ID[tanggal.month - 1]} {tanggal.year}"
+
+
+def _parse_tanggal_display(value):
+    """String tanggal dari <input type="date"> (YYYY-MM-DD) -> 'd Bulan
+    YYYY' berbahasa Indonesia, atau '' jika kosong/tidak valid."""
+    try:
+        tanggal = datetime.strptime(value, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return ""
+    return _tanggal_indonesia(tanggal)
+
+
+def _hitung_hari_kalender(tgl_berangkat, tgl_kembali):
+    """Versi string (YYYY-MM-DD dari form) dari
+    `paspor.kalender.hitung_hari_kalender`."""
+    try:
+        berangkat = datetime.strptime(tgl_berangkat, "%Y-%m-%d").date()
+        kembali = datetime.strptime(tgl_kembali, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return None
+    return hitung_hari_kalender(berangkat, kembali)
+
+
+def _logo_data_uri():
+    """Logo sebagai data URI (base64) — dipakai di template PDF supaya
+    WeasyPrint tidak perlu fetch balik ke server (menghindari risiko
+    deadlock/lambat saat render PDF dari dalam request yang sedang berjalan)."""
+    path = finders.find("images/logopu.png")
+    if not path:
+        return ""
+    with open(path, "rb") as f:
+        encoded = base64.b64encode(f.read()).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
+
+
+def _kode_terpilih(request):
+    """Daftar kode Pengajuan yang diteruskan lewat query string
+    `?pengajuan=KODE1,KODE2` dari tombol batch di Dasbor (lihat
+    dashboard.html), dipakai untuk mengisi field tersembunyi di form
+    generate supaya bisa dicatat ke riwayat saat PDF berhasil dibuat."""
+    raw = request.GET.get("pengajuan", "")
+    return [k.strip() for k in raw.split(",") if k.strip()]
+
+
+def _simpan_log_generate(request, jenis, pdf_bytes, filename):
+    """Catat satu baris Riwayat Generate Dokumen setiap kali PDF (ND
+    Kabag/ND Karo) berhasil dibuat — dipanggil hanya setelah
+    `HTML(...).write_pdf()` sukses."""
+    kode_list = [k.strip() for k in request.POST.get("pengajuan_kodes", "").split(",") if k.strip()]
+    pengajuan_qs = Pengajuan.objects.filter(kode__in=kode_list) if kode_list else Pengajuan.objects.none()
+
+    log = DokumenGenerateLog(
+        jenis=jenis,
+        jumlah_pengajuan=pengajuan_qs.count() or 1,
+        dibuat_oleh=request.user,
+    )
+    log.file.save(filename, ContentFile(pdf_bytes), save=False)
+    log.save()
+    if pengajuan_qs.exists():
+        log.pengajuan.set(pengajuan_qs)
+
+
+@role_required("admin_pakln")
+def generate_nd_kabag(request):
+    """Generate Dokumen — Nota Dinas Kepala Bagian (konsep ND dari Plt.
+    Kepala Bagian Kerja Sama Luar Negeri ke Kepala Biro PAKLN). Halaman
+    berisi form input + pratinjau langsung (live preview) yang diperbarui
+    lewat jQuery di sisi klien. Tombol "Unduh PDF" men-submit form ini
+    (POST biasa) ke `download_nd_kabag_pdf`."""
+    kode_terpilih = _kode_terpilih(request)
+    return render(request, "pakln/generate_nd_kabag.html", {
+        "kode_terpilih": kode_terpilih,
+        "kode_terpilih_csv": ",".join(kode_terpilih),
+    })
+
+
+@role_required("admin_pakln")
+@require_POST
+def download_nd_kabag_pdf(request):
+    """Cetak Nota Dinas Kepala Bagian jadi PDF (WeasyPrint) dari data form
+    Generate ND Kabag. Dikirim lewat submit form biasa (bukan AJAX) supaya
+    browser langsung menerima file unduhan dari response ini."""
+    context = {
+        "nama": request.POST.get("nama", "").strip() or "[nama]",
+        "negara_tujuan": request.POST.get("negara_tujuan", "").strip() or "[negara tujuan]",
+        "nip": request.POST.get("nip", "").strip(),
+        "pangkat_golongan": request.POST.get("pangkat_golongan", "").strip(),
+        "jabatan": request.POST.get("jabatan", "").strip(),
+        "unit_kerja": request.POST.get("unit_kerja", "").strip(),
+        "maksud_perjalanan": request.POST.get("maksud_perjalanan", "").strip(),
+        "sumber_pembiayaan": request.POST.get("sumber_pembiayaan", "").strip(),
+        "tgl_berangkat": request.POST.get("tgl_berangkat", "").strip(),
+        "tgl_kembali": request.POST.get("tgl_kembali", "").strip(),
+        "tanggal_nota_dinas": _tanggal_indonesia(timezone.now().date()),
+        "logo_data_uri": _logo_data_uri(),
+    }
+    html_string = render_to_string("pakln/pdf_template_nd_kabag.html", context)
+
+    try:
+        from weasyprint import HTML
+        pdf_bytes = HTML(string=html_string).write_pdf()
+    except ImportError:
+        messages.error(request, "Gagal membuat PDF: pustaka WeasyPrint belum terpasang di server ini.")
+        return redirect("pakln:generate_nd_kabag")
+    except OSError:
+        messages.error(
+            request,
+            "Gagal membuat PDF: WeasyPrint memerlukan pustaka native GTK/Pango yang belum "
+            "terpasang di server ini (lihat dokumentasi instalasi WeasyPrint untuk Windows/Linux).",
+        )
+        return redirect("pakln:generate_nd_kabag")
+
+    _simpan_log_generate(request, DokumenGenerateLog.Jenis.ND_KABAG, pdf_bytes, "Nota_Dinas_Kabag.pdf")
+
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="Nota_Dinas_Kabag.pdf"'
+    return response
+
+
+@role_required("admin_pakln")
+def generate_nd_karo(request):
+    """Generate Dokumen — Nota Dinas Kepala Biro (permohonan Persetujuan
+    Izin Perjalanan ke Luar Negeri dari Kepala Biro PAKLN ke Sekretaris
+    Jenderal), meniru struktur `generate_nd_kabag` — form input + live
+    preview jQuery, tombol "Unduh PDF" men-submit ke
+    `download_nd_karo_pdf`."""
+    kode_terpilih = _kode_terpilih(request)
+    return render(request, "pakln/generate_nd_karo.html", {
+        "kode_terpilih": kode_terpilih,
+        "kode_terpilih_csv": ",".join(kode_terpilih),
+    })
+
+
+@role_required("admin_pakln")
+@require_POST
+def download_nd_karo_pdf(request):
+    """Cetak Nota Dinas Kepala Biro jadi PDF (WeasyPrint) dari data form
+    Generate ND Karo."""
+    tgl_berangkat = request.POST.get("tgl_berangkat", "").strip()
+    tgl_kembali = request.POST.get("tgl_kembali", "").strip()
+    hari_kalender = _hitung_hari_kalender(tgl_berangkat, tgl_kembali)
+
+    context = {
+        "nama": request.POST.get("nama", "").strip() or "[nama]",
+        "negara_tujuan": request.POST.get("negara_tujuan", "").strip() or "[negara tujuan]",
+        "nip": request.POST.get("nip", "").strip() or "[nip]",
+        "pangkat_golongan": request.POST.get("pangkat_golongan", "").strip(),
+        "jabatan": request.POST.get("jabatan", "").strip() or "[jabatan]",
+        "unit_kerja": request.POST.get("unit_kerja", "").strip() or "[nama unor]",
+        "maksud_perjalanan": request.POST.get("maksud_perjalanan", "").strip() or "[keperluan]",
+        "sumber_pembiayaan": request.POST.get("sumber_pembiayaan", "").strip() or "[sumber biaya]",
+        "tgl_berangkat_display": _parse_tanggal_display(tgl_berangkat) or "[tanggal berangkat]",
+        "tgl_kembali_display": _parse_tanggal_display(tgl_kembali) or "[tanggal pulang]",
+        "jumlah_hari_kerja": request.POST.get("jumlah_hari_kerja", "").strip() or "[h_kerja]",
+        "jumlah_hari_kalender": hari_kalender if hari_kalender is not None else "[h_kalender]",
+        "tanggal_nota_dinas": _tanggal_indonesia(timezone.now().date()),
+        "logo_data_uri": _logo_data_uri(),
+    }
+    html_string = render_to_string("pakln/pdf_template_nd_karo.html", context)
+
+    try:
+        from weasyprint import HTML
+        pdf_bytes = HTML(string=html_string).write_pdf()
+    except ImportError:
+        messages.error(request, "Gagal membuat PDF: pustaka WeasyPrint belum terpasang di server ini.")
+        return redirect("pakln:generate_nd_karo")
+    except OSError:
+        messages.error(
+            request,
+            "Gagal membuat PDF: WeasyPrint memerlukan pustaka native GTK/Pango yang belum "
+            "terpasang di server ini (lihat dokumentasi instalasi WeasyPrint untuk Windows/Linux).",
+        )
+        return redirect("pakln:generate_nd_karo")
+
+    _simpan_log_generate(request, DokumenGenerateLog.Jenis.ND_KARO, pdf_bytes, "Nota_Dinas_Karo.pdf")
+
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="Nota_Dinas_Karo.pdf"'
+    return response
+
+
+@role_required("admin_pakln")
+def histori_generate(request):
+    """Histori Generate Dokumen — riwayat seluruh PDF (ND Kabag/ND Karo)
+    yang pernah berhasil digenerate Admin Biro PAKLN, dengan tautan unduh
+    ulang. Daftarnya ditampilkan sebagai Data Table Server-Side (lihat
+    `histori_generate_data`)."""
+    return render(
+        request, "pakln/histori_generate.html",
+        {"histori_count": DokumenGenerateLog.objects.count()},
+    )
+
+
+# Kolom tabel "Histori Generate Dokumen" (index sesuai urutan kolom pada
+# histori_generate.html) -> field untuk pengurutan (ORDER BY) di endpoint
+# server-side DataTables. Kolom No. (posisi baris) dan Aksi sengaja tidak
+# disertakan — tidak diurutkan di JS (orderable:false).
+_HISTORI_GENERATE_ORDER_FIELDS = {
+    "1": "created_at",
+    "2": "jenis",
+    "3": "jumlah_pengajuan",
+}
+
+
+@role_required("admin_pakln")
+def histori_generate_data(request):
+    """Endpoint JSON server-side untuk tabel "Histori Generate Dokumen"
+    (protokol DataTables: draw/start/length/search/order pada GET),
+    mengikuti pola `users_data` (Manajemen User)."""
+    qs = DokumenGenerateLog.objects.select_related("dibuat_oleh")
+    records_total = qs.count()
+
+    search_value = request.GET.get("search[value]", "").strip()
+    if search_value:
+        qs = qs.filter(
+            Q(jenis__icontains=search_value) | Q(dibuat_oleh__username__icontains=search_value)
+        )
+    records_filtered = qs.count()
+
+    order_col = request.GET.get("order[0][column]")
+    order_field = _HISTORI_GENERATE_ORDER_FIELDS.get(order_col, "-created_at")
+    if request.GET.get("order[0][dir]") == "desc":
+        order_field = f"-{order_field}"
+    qs = qs.order_by(order_field, "-created_at")
+
+    try:
+        start = int(request.GET.get("start", 0))
+        length = int(request.GET.get("length", 10))
+    except ValueError:
+        start, length = 0, 10
+    page = qs[start:] if length == -1 else qs[start:start + length]
+
+    data = []
+    for idx, log in enumerate(page):
+        aksi_html = format_html(
+            '<a href="{}" download class="button is-small">⬇ Unduh</a>', log.file.url,
+        ) if log.file else mark_safe('<span class="cell-muted">Berkas tidak tersedia</span>')
+
+        data.append([
+            start + idx + 1,
+            log.created_at.strftime("%d %b %Y %H:%M"),
+            log.get_jenis_display(),
+            log.jumlah_pengajuan,
+            aksi_html,
+        ])
+
+    return JsonResponse({
+        "draw": int(request.GET.get("draw", 1)),
+        "recordsTotal": records_total,
+        "recordsFiltered": records_filtered,
+        "data": data,
+    })
 
 
 @role_required("admin_pakln")
@@ -37,7 +311,123 @@ def dashboard(request):
         "proses_pakln": pengajuan_list.filter(status=Pengajuan.Status.PROSES_PAKLN).count(),
         "selesai": pengajuan_list.filter(status=Pengajuan.Status.SELESAI).count(),
     }
-    return render(request, "pakln/dashboard.html", {"pengajuan_list": pengajuan_list, "summary": summary})
+    return render(request, "pakln/dashboard.html", {"summary": summary})
+
+
+# Kolom tabel "Tabel Rincian Pengajuan" (index sesuai urutan kolom pada
+# pakln/dashboard.html) -> field untuk pengurutan (ORDER BY) di endpoint
+# server-side DataTables. Kolom Checkbox (0, statis), Jenis (statis),
+# Tujuan (M2M), dan Action sengaja tidak disertakan — tidak diurutkan di
+# JS (orderable:false).
+_PAKLN_DASHBOARD_ORDER_FIELDS = {
+    "1": "pegawai__profile__nama",
+    "2": "pegawai__profile__unit_organisasi__name",
+    "4": "kategori__nama_kategori",
+    "6": "tgl_berangkat",
+    "7": "tgl_kembali",
+    "8": "tgl_masuk_pakln",
+    "9": "status",
+}
+
+
+@role_required("admin_pakln")
+def dashboard_data(request):
+    """Endpoint JSON server-side untuk "Tabel Rincian Pengajuan" pada
+    Dasbor Admin Biro PAKLN (protokol DataTables: draw/start/length/
+    search/order pada GET), mengikuti pola `users_data` (Manajemen User)."""
+    qs = (
+        Pengajuan.objects.exclude(status=Pengajuan.Status.BELUM)
+        .select_related("pegawai__profile__unit_organisasi", "kategori")
+    )
+    records_total = qs.count()
+
+    search_value = request.GET.get("search[value]", "").strip()
+    if search_value:
+        qs = qs.filter(
+            Q(pegawai__profile__nama__icontains=search_value)
+            | Q(pegawai__profile__nip__icontains=search_value)
+            | Q(pegawai__profile__unit_organisasi__name__icontains=search_value)
+            | Q(kategori__nama_kategori__icontains=search_value)
+            | Q(tujuan_negara__nama_negara__icontains=search_value)
+        ).distinct()
+    records_filtered = qs.count()
+
+    order_col = request.GET.get("order[0][column]")
+    order_field = _PAKLN_DASHBOARD_ORDER_FIELDS.get(order_col, "-created_at")
+    if request.GET.get("order[0][dir]") == "desc":
+        order_field = f"-{order_field}"
+    qs = qs.order_by(order_field, "-created_at")
+
+    try:
+        start = int(request.GET.get("start", 0))
+        length = int(request.GET.get("length", 10))
+    except ValueError:
+        start, length = 0, 10
+    page = qs[start:] if length == -1 else qs[start:start + length]
+
+    data = []
+    for p in page:
+        pegawai_html = format_html(
+            "<strong>{}</strong><br><span class=\"cell-muted\">{}</span>",
+            p.pegawai.profile.nama, p.pegawai.profile.nip,
+        )
+        unit = p.pegawai.profile.unit_organisasi
+        status_html = format_html(
+            '<span class="tag paspor-status is-{}"><span class="dot"></span>{}</span>',
+            p.status, p.get_status_display(),
+        )
+
+        if p.status == Pengajuan.Status.PROSES:
+            aksi_html = mark_safe('<span class="cell-muted">Menunggu Admin Unor</span>')
+        elif p.status == Pengajuan.Status.PROSES_PAKLN and not p.preview_pakln_agree:
+            aksi_html = format_html(
+                '<a href="{}" class="button is-warning is-small">TL →</a>',
+                reverse("pakln:preview", args=[p.kode]),
+            )
+        elif p.status == Pengajuan.Status.PROSES_PAKLN:
+            aksi_html = format_html(
+                '<a href="{}" class="button is-warning is-small">TL →</a>',
+                reverse("pakln:upload_dokumen", args=[p.kode]),
+            )
+        else:
+            aksi_html = format_html(
+                '<a href="{}" class="button is-small">Lihat</a>',
+                reverse("pakln:preview", args=[p.kode]),
+            )
+
+        # Checkbox seleksi batch (untuk Generate ND Kabag/Karo) — hanya
+        # bisa dicentang saat pengajuan sedang "Dalam Proses Biro PAKLN";
+        # status lain (mis. Selesai, Dalam Proses Unor) checkbox-nya
+        # disabled supaya tidak ikut terpilih.
+        if p.status == Pengajuan.Status.PROSES_PAKLN:
+            checkbox_html = format_html(
+                '<input type="checkbox" class="pengajuan-select-checkbox" value="{}">', p.kode,
+            )
+        else:
+            checkbox_html = format_html(
+                '<input type="checkbox" class="pengajuan-select-checkbox" value="{}" disabled>', p.kode,
+            )
+
+        data.append([
+            checkbox_html,
+            pegawai_html,
+            escape(unit.name if unit else "—"),
+            "Non-Kedinasan",
+            escape(p.kategori.nama_kategori) if p.kategori else "—",
+            escape(p.tujuan_negara_display or "—"),
+            p.tgl_berangkat.strftime("%d %b %Y") if p.tgl_berangkat else "—",
+            p.tgl_kembali.strftime("%d %b %Y") if p.tgl_kembali else "—",
+            p.tgl_masuk_pakln.strftime("%d %b %Y") if p.tgl_masuk_pakln else "—",
+            status_html,
+            aksi_html,
+        ])
+
+    return JsonResponse({
+        "draw": int(request.GET.get("draw", 1)),
+        "recordsTotal": records_total,
+        "recordsFiltered": records_filtered,
+        "data": data,
+    })
 
 
 @role_required("admin_pakln")
@@ -201,8 +591,111 @@ def kelola_template(request):
     else:
         form = DokumenTemplateForm()
 
-    templates = DokumenTemplate.objects.prefetch_related("unit_organisasi").all()
-    return render(request, "pakln/templates.html", {"form": form, "templates": templates})
+    return render(
+        request, "pakln/templates.html",
+        {"form": form, "template_count": DokumenTemplate.objects.count()},
+    )
+
+
+# Kolom tabel "Daftar Template" (index sesuai urutan kolom pada
+# templates.html) -> field untuk pengurutan (ORDER BY) di endpoint
+# server-side DataTables. Kolom Target/Unit Organisasi (M2M/kombinasi
+# boolean) sengaja tidak disertakan — tidak diurutkan di JS (orderable:false).
+_TEMPLATES_DATA_ORDER_FIELDS = {
+    "0": "nama",
+    "3": "kategori__nama_kategori",
+    "4": "aktif",
+}
+
+
+@role_required("admin_pakln")
+def templates_data(request):
+    """Endpoint JSON server-side untuk tabel "Daftar Template" (protokol
+    DataTables: draw/start/length/search/order pada GET), mengikuti pola
+    `users_data` (Manajemen User)."""
+    qs = DokumenTemplate.objects.select_related("kategori").prefetch_related("unit_organisasi")
+    records_total = qs.count()
+
+    search_value = request.GET.get("search[value]", "").strip()
+    if search_value:
+        qs = qs.filter(
+            Q(nama__icontains=search_value)
+            | Q(keterangan__icontains=search_value)
+            | Q(kategori__nama_kategori__icontains=search_value)
+            | Q(unit_organisasi__name__icontains=search_value)
+        ).distinct()
+    records_filtered = qs.count()
+
+    order_col = request.GET.get("order[0][column]")
+    order_field = _TEMPLATES_DATA_ORDER_FIELDS.get(order_col, "nama")
+    if request.GET.get("order[0][dir]") == "desc":
+        order_field = f"-{order_field}"
+    qs = qs.order_by(order_field, "nama")
+
+    try:
+        start = int(request.GET.get("start", 0))
+        length = int(request.GET.get("length", 10))
+    except ValueError:
+        start, length = 0, 10
+    page = qs[start:] if length == -1 else qs[start:start + length]
+
+    data = []
+    for t in page:
+        nama_html = format_html("<strong>{}</strong>", t.nama)
+        if t.keterangan:
+            nama_html = format_html("{}<br><span class=\"cell-muted\">{}</span>", nama_html, t.keterangan)
+
+        target_parts = []
+        if t.untuk_pegawai:
+            target_parts.append('<span class="badge-auto">Pegawai</span>')
+        if t.untuk_admin_unor:
+            target_parts.append('<span class="badge-auto">Admin Unor</span>')
+        target_html = mark_safe("".join(target_parts))
+
+        units = list(t.unit_organisasi.all())
+        if units:
+            unit_html = mark_safe("".join(
+                format_html('<span class="badge-auto">{}</span>', u.alias) for u in units
+            ))
+        else:
+            unit_html = mark_safe('<span class="cell-muted">Semua unit</span>')
+
+        kategori_html = escape(t.kategori.nama_kategori) if t.kategori else mark_safe(
+            '<span class="cell-muted">Semua kategori</span>'
+        )
+
+        if t.aktif:
+            status_html = mark_safe(
+                '<span class="tag paspor-status is-selesai"><span class="dot"></span>Aktif</span>'
+            )
+            toggle_label = "🙈 Sembunyikan"
+        else:
+            status_html = mark_safe(
+                '<span class="tag paspor-status is-belum"><span class="dot"></span>Disembunyikan</span>'
+            )
+            toggle_label = "👁 Tampilkan"
+
+        aksi_html = format_html(
+            '<div class="table-actions">'
+            '<a href="{}" target="_blank" rel="noopener" class="button is-small">⬇ Unduh</a>'
+            '<a href="{}" class="button is-small">✎ Edit</a>'
+            '<button type="button" class="button is-small" data-template-toggle="{}">{}</button>'
+            '<button type="button" class="button is-small is-danger" data-template-hapus="{}">🗑 Hapus</button>'
+            '</div>',
+            t.file.url,
+            reverse("pakln:edit_template", args=[t.pk]),
+            reverse("pakln:toggle_template", args=[t.pk]),
+            toggle_label,
+            reverse("pakln:hapus_template", args=[t.pk]),
+        )
+        data.append([nama_html, target_html, unit_html, kategori_html, status_html, aksi_html])
+
+    return JsonResponse({
+        "draw": int(request.GET.get("draw", 1)),
+        "recordsTotal": records_total,
+        "recordsFiltered": records_filtered,
+        "data": data,
+    })
 
 
 @role_required("admin_pakln")
@@ -224,30 +717,24 @@ def edit_template(request, template_id):
 
 
 @role_required("admin_pakln")
+@require_POST
 def toggle_template(request, template_id):
-    """Tampilkan/sembunyikan template dengan satu klik dari Daftar
-    Template, tanpa membuka form edit."""
+    """Tampilkan/sembunyikan template (AJAX, dipanggil dari tabel Data
+    Table Server-Side) tanpa membuka form edit."""
     template = get_object_or_404(DokumenTemplate, pk=template_id)
-    if request.method == "POST":
-        template.aktif = not template.aktif
-        template.save(update_fields=["aktif"])
-        messages.success(
-            request,
-            f"Template '{template.nama}' kini {'ditampilkan' if template.aktif else 'disembunyikan'}.",
-        )
-    return redirect("pakln:kelola_template")
+    template.aktif = not template.aktif
+    template.save(update_fields=["aktif"])
+    return JsonResponse({"ok": True, "aktif": template.aktif})
 
 
 @role_required("admin_pakln")
+@require_POST
 def hapus_template(request, template_id):
-    """Hapus template beserta berkasnya."""
+    """Hapus template beserta berkasnya (AJAX)."""
     template = get_object_or_404(DokumenTemplate, pk=template_id)
-    if request.method == "POST":
-        nama = template.nama
-        template.file.delete(save=False)
-        template.delete()
-        messages.success(request, f"Template '{nama}' berhasil dihapus.")
-    return redirect("pakln:kelola_template")
+    template.file.delete(save=False)
+    template.delete()
+    return JsonResponse({"ok": True})
 
 
 @role_required("admin_pakln")
@@ -265,8 +752,85 @@ def kelola_negara(request):
     else:
         form = NegaraForm()
 
-    negara_list = Negara.objects.all()
-    return render(request, "pakln/negara.html", {"form": form, "negara_list": negara_list})
+    return render(
+        request, "pakln/negara.html", {"form": form, "negara_count": Negara.objects.count()},
+    )
+
+
+# Kolom tabel "Daftar Negara" (index sesuai urutan kolom pada negara.html)
+# -> field untuk pengurutan (ORDER BY) di endpoint server-side DataTables.
+_NEGARA_DATA_ORDER_FIELDS = {
+    "0": "nama_negara",
+    "1": "kode_negara",
+    "2": "is_active",
+}
+
+
+@role_required("admin_pakln")
+def negara_data(request):
+    """Endpoint JSON server-side untuk tabel "Daftar Negara" (protokol
+    DataTables: draw/start/length/search/order pada GET), mengikuti pola
+    `users_data` (Manajemen User)."""
+    qs = Negara.objects.all()
+    records_total = qs.count()
+
+    search_value = request.GET.get("search[value]", "").strip()
+    if search_value:
+        qs = qs.filter(
+            Q(nama_negara__icontains=search_value) | Q(kode_negara__icontains=search_value)
+        )
+    records_filtered = qs.count()
+
+    order_col = request.GET.get("order[0][column]")
+    order_field = _NEGARA_DATA_ORDER_FIELDS.get(order_col, "nama_negara")
+    if request.GET.get("order[0][dir]") == "desc":
+        order_field = f"-{order_field}"
+    qs = qs.order_by(order_field, "nama_negara")
+
+    try:
+        start = int(request.GET.get("start", 0))
+        length = int(request.GET.get("length", 10))
+    except ValueError:
+        start, length = 0, 10
+    page = qs[start:] if length == -1 else qs[start:start + length]
+
+    data = []
+    for n in page:
+        if n.is_active:
+            status_html = mark_safe(
+                '<span class="tag paspor-status is-selesai"><span class="dot"></span>Aktif</span>'
+            )
+            toggle_label = "🙏 Nonaktifkan"
+        else:
+            status_html = mark_safe(
+                '<span class="tag paspor-status is-belum"><span class="dot"></span>Nonaktif</span>'
+            )
+            toggle_label = "👁 Aktifkan"
+
+        aksi_html = format_html(
+            '<div class="table-actions">'
+            '<a href="{}" class="button is-small">✎ Edit</a>'
+            '<button type="button" class="button is-small" data-negara-toggle="{}">{}</button>'
+            '<button type="button" class="button is-small is-danger" data-negara-hapus="{}">🗑 Hapus</button>'
+            '</div>',
+            reverse("pakln:edit_negara", args=[n.pk]),
+            reverse("pakln:toggle_negara", args=[n.pk]),
+            toggle_label,
+            reverse("pakln:hapus_negara", args=[n.pk]),
+        )
+        data.append([
+            format_html("<strong>{}</strong>", n.nama_negara),
+            escape(n.kode_negara or "—"),
+            status_html,
+            aksi_html,
+        ])
+
+    return JsonResponse({
+        "draw": int(request.GET.get("draw", 1)),
+        "recordsTotal": records_total,
+        "recordsFiltered": records_filtered,
+        "data": data,
+    })
 
 
 @role_required("admin_pakln")
@@ -288,40 +852,289 @@ def edit_negara(request, negara_id):
 
 
 @role_required("admin_pakln")
+@require_POST
 def toggle_negara(request, negara_id):
-    """Aktifkan/nonaktifkan negara dengan satu klik dari Daftar Negara,
-    tanpa membuka form edit. Negara nonaktif tidak lagi ditawarkan pada
-    Formulir Pengajuan, tapi pengajuan lama yang sudah memilihnya tidak
-    terpengaruh."""
+    """Aktifkan/nonaktifkan negara (AJAX, dipanggil dari tabel Data Table
+    Server-Side) tanpa membuka form edit. Negara nonaktif tidak lagi
+    ditawarkan pada Formulir Pengajuan, tapi pengajuan lama yang sudah
+    memilihnya tidak terpengaruh."""
     negara = get_object_or_404(Negara, pk=negara_id)
-    if request.method == "POST":
-        negara.is_active = not negara.is_active
-        negara.save(update_fields=["is_active"])
-        messages.success(
-            request,
-            f"Negara '{negara.nama_negara}' kini {'aktif' if negara.is_active else 'nonaktif'}.",
-        )
-    return redirect("pakln:kelola_negara")
+    negara.is_active = not negara.is_active
+    negara.save(update_fields=["is_active"])
+    return JsonResponse({"ok": True, "is_active": negara.is_active})
 
 
 @role_required("admin_pakln")
+@require_POST
 def hapus_negara(request, negara_id):
-    """Hapus permanen data negara. Ditolak jika negara ini masih dipakai
-    pada satu atau lebih pengajuan (riwayat/jejak audit) — gunakan
+    """Hapus permanen data negara (AJAX). Ditolak jika negara ini masih
+    dipakai pada satu atau lebih pengajuan (riwayat/jejak audit) — gunakan
     nonaktifkan untuk kasus itu."""
     negara = get_object_or_404(Negara, pk=negara_id)
-    if request.method == "POST":
-        if negara.pengajuan_list.exists():
-            messages.error(
-                request,
+    if negara.pengajuan_list.exists():
+        return JsonResponse({
+            "ok": False,
+            "error": (
                 f"Negara '{negara.nama_negara}' tidak dapat dihapus karena masih dipakai pada "
-                f"pengajuan yang sudah ada. Nonaktifkan saja agar tidak lagi ditawarkan.",
+                f"pengajuan yang sudah ada. Nonaktifkan saja agar tidak lagi ditawarkan."
+            ),
+        }, status=400)
+    negara.delete()
+    return JsonResponse({"ok": True})
+
+
+_HARI_ID = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
+
+
+def _tahun_kalender(request):
+    try:
+        return int(request.GET.get("tahun", ""))
+    except ValueError:
+        return timezone.localdate().year
+
+
+@role_required("admin_pakln")
+def kelola_kalender(request):
+    """Setting Kalender — Admin Biro PAKLN mengelola tanggal merah (libur
+    nasional & cuti bersama) yang dikecualikan dari perhitungan Jumlah Hari
+    Kerja (lihat `paspor.kalender`). Sabtu & Minggu tidak perlu diinput.
+    Satu input bisa berupa rentang: dibuat satu baris per tanggal, tanggal
+    yang sudah ada dilewati."""
+    tahun = _tahun_kalender(request)
+
+    if request.method == "POST":
+        form = TambahHariLiburForm(request.POST)
+        if form.is_valid():
+            tanggal_list = form.daftar_tanggal()
+            sudah_ada = set(
+                HariLibur.objects.filter(tanggal__in=tanggal_list).values_list("tanggal", flat=True)
             )
+            baru = [d for d in tanggal_list if d not in sudah_ada]
+            with transaction.atomic():
+                HariLibur.objects.bulk_create([
+                    HariLibur(
+                        tanggal=d,
+                        keterangan=form.cleaned_data["keterangan"],
+                        jenis=form.cleaned_data["jenis"],
+                        dibuat_oleh=request.user,
+                    )
+                    for d in baru
+                ])
+
+            pesan = f"{len(baru)} tanggal libur ditambahkan."
+            if sudah_ada:
+                pesan += " {} dilewati karena sudah ada ({}).".format(
+                    len(sudah_ada), ", ".join(f"{d:%d-%m-%Y}" for d in sorted(sudah_ada)),
+                )
+            messages.success(request, pesan)
+            akhir_pekan = [d for d in baru if d.weekday() in AKHIR_PEKAN]
+            if akhir_pekan:
+                messages.info(
+                    request,
+                    "Tanggal {} jatuh pada akhir pekan sehingga tidak mengubah perhitungan hari kerja.".format(
+                        ", ".join(f"{d:%d-%m-%Y}" for d in akhir_pekan)
+                    ),
+                )
+            tahun_redirect = form.cleaned_data["tanggal"].year
+            return redirect(f"{reverse('pakln:kelola_kalender')}?tahun={tahun_redirect}")
+        messages.error(request, "Periksa kembali isian formulir.")
+    else:
+        form = TambahHariLiburForm()
+
+    tahun_sekarang = timezone.localdate().year
+    tahun_options = sorted(
+        {d.year for d in HariLibur.objects.dates("tanggal", "year")}
+        | {tahun_sekarang, tahun_sekarang + 1, tahun}
+    )
+    draft_terdampak = Pengajuan.objects.filter(
+        Q(tgl_berangkat__year=tahun) | Q(tgl_kembali__year=tahun),
+        status=Pengajuan.Status.BELUM,
+    ).count()
+
+    return render(request, "pakln/kalender.html", {
+        "form": form,
+        "impor_form": ImporHariLiburForm(),
+        "tahun": tahun,
+        "tahun_options": tahun_options,
+        "libur_count": HariLibur.objects.filter(tanggal__year=tahun).count(),
+        "draft_terdampak": draft_terdampak,
+    })
+
+
+# Kolom tabel "Daftar Hari Libur" (index sesuai urutan kolom pada
+# kalender.html) -> field untuk pengurutan di endpoint server-side DataTables.
+_KALENDER_DATA_ORDER_FIELDS = {
+    "0": "tanggal",
+    "2": "keterangan",
+    "3": "jenis",
+    "4": "is_active",
+}
+
+
+@role_required("admin_pakln")
+def kalender_data(request):
+    """Endpoint JSON server-side untuk tabel "Daftar Hari Libur" (protokol
+    DataTables), difilter per tahun (`?tahun=`), mengikuti pola
+    `negara_data`."""
+    qs = HariLibur.objects.filter(tanggal__year=_tahun_kalender(request))
+    records_total = qs.count()
+
+    search_value = request.GET.get("search[value]", "").strip()
+    if search_value:
+        qs = qs.filter(keterangan__icontains=search_value)
+    records_filtered = qs.count()
+
+    order_col = request.GET.get("order[0][column]")
+    order_field = _KALENDER_DATA_ORDER_FIELDS.get(order_col, "tanggal")
+    if request.GET.get("order[0][dir]") == "desc":
+        order_field = f"-{order_field}"
+    qs = qs.order_by(order_field, "tanggal")
+
+    try:
+        start = int(request.GET.get("start", 0))
+        length = int(request.GET.get("length", 25))
+    except ValueError:
+        start, length = 0, 25
+    page = qs[start:] if length == -1 else qs[start:start + length]
+
+    data = []
+    for h in page:
+        if h.is_active:
+            status_html = mark_safe(
+                '<span class="tag paspor-status is-selesai"><span class="dot"></span>Aktif</span>'
+            )
+            toggle_label = "🙏 Nonaktifkan"
         else:
-            nama = negara.nama_negara
-            negara.delete()
-            messages.success(request, f"Negara '{nama}' berhasil dihapus.")
-    return redirect("pakln:kelola_negara")
+            status_html = mark_safe(
+                '<span class="tag paspor-status is-belum"><span class="dot"></span>Nonaktif</span>'
+            )
+            toggle_label = "👁 Aktifkan"
+
+        hari = _HARI_ID[h.tanggal.weekday()]
+        if h.tanggal.weekday() in AKHIR_PEKAN:
+            hari_html = format_html('{} <span class="helptext">(akhir pekan)</span>', hari)
+        else:
+            hari_html = escape(hari)
+
+        aksi_html = format_html(
+            '<div class="table-actions">'
+            '<a href="{}" class="button is-small">✎ Edit</a>'
+            '<button type="button" class="button is-small" data-libur-toggle="{}">{}</button>'
+            '<button type="button" class="button is-small is-danger" data-libur-hapus="{}">🗑 Hapus</button>'
+            '</div>',
+            reverse("pakln:edit_hari_libur", args=[h.pk]),
+            reverse("pakln:toggle_hari_libur", args=[h.pk]),
+            toggle_label,
+            reverse("pakln:hapus_hari_libur", args=[h.pk]),
+        )
+        data.append([
+            format_html("<strong>{}</strong>", _tanggal_indonesia(h.tanggal)),
+            hari_html,
+            escape(h.keterangan),
+            escape(h.get_jenis_display()),
+            status_html,
+            aksi_html,
+        ])
+
+    return JsonResponse({
+        "draw": int(request.GET.get("draw", 1)),
+        "recordsTotal": records_total,
+        "recordsFiltered": records_filtered,
+        "data": data,
+    })
+
+
+@role_required("admin_pakln")
+def edit_hari_libur(request, libur_id):
+    """Sunting satu tanggal libur."""
+    libur = get_object_or_404(HariLibur, pk=libur_id)
+
+    if request.method == "POST":
+        form = HariLiburForm(request.POST, instance=libur)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Hari libur {libur.tanggal:%d-%m-%Y} berhasil diperbarui.")
+            return redirect(f"{reverse('pakln:kelola_kalender')}?tahun={libur.tanggal.year}")
+        messages.error(request, "Periksa kembali isian formulir.")
+    else:
+        form = HariLiburForm(instance=libur)
+
+    return render(request, "pakln/edit_hari_libur.html", {"form": form, "libur": libur})
+
+
+@role_required("admin_pakln")
+@require_POST
+def toggle_hari_libur(request, libur_id):
+    """Aktifkan/nonaktifkan tanggal libur (AJAX) — mis. ada revisi SKB —
+    tanpa kehilangan datanya. Pengajuan yang sudah dikirim tidak
+    terpengaruh (jumlah hari kerjanya snapshot)."""
+    libur = get_object_or_404(HariLibur, pk=libur_id)
+    libur.is_active = not libur.is_active
+    libur.save(update_fields=["is_active", "updated_at"])
+    return JsonResponse({"ok": True, "is_active": libur.is_active})
+
+
+@role_required("admin_pakln")
+@require_POST
+def hapus_hari_libur(request, libur_id):
+    """Hapus permanen satu tanggal libur (AJAX)."""
+    get_object_or_404(HariLibur, pk=libur_id).delete()
+    return JsonResponse({"ok": True})
+
+
+# Jumlah maksimal pesan kesalahan per baris yang ditampilkan setelah impor
+# gagal — sisanya diringkas agar halaman tidak dibanjiri pesan.
+_MAKS_PESAN_IMPOR = 10
+
+
+@role_required("admin_pakln")
+@require_POST
+def impor_kalender(request):
+    """Impor tanggal libur dari Excel/CSV (lihat `paspor.impor_libur`).
+    Semua-atau-tidak-sama-sekali: bila ada satu baris salah, tidak ada
+    yang disimpan dan seluruh kesalahan per baris ditampilkan."""
+    form = ImporHariLiburForm(request.POST, request.FILES)
+    if not form.is_valid():
+        for errors in form.errors.values():
+            for e in errors:
+                messages.error(request, f"Impor gagal: {e}")
+        return redirect("pakln:kelola_kalender")
+
+    try:
+        baris = baca_berkas(form.cleaned_data["berkas"])
+    except ImporError as e:
+        messages.error(request, "Impor gagal — tidak ada data yang disimpan. Perbaiki berkas lalu unggah ulang.")
+        for pesan in e.errors[:_MAKS_PESAN_IMPOR]:
+            messages.error(request, pesan)
+        if len(e.errors) > _MAKS_PESAN_IMPOR:
+            messages.error(request, f"… dan {len(e.errors) - _MAKS_PESAN_IMPOR} kesalahan lainnya.")
+        return redirect("pakln:kelola_kalender")
+
+    if not baris:
+        messages.warning(request, "Berkas tidak berisi data tanggal libur.")
+        return redirect("pakln:kelola_kalender")
+
+    hasil = simpan(baris, timpa=form.cleaned_data["timpa"], user=request.user)
+    messages.success(
+        request,
+        f"Impor selesai: {hasil['dibuat']} ditambahkan, {hasil['diperbarui']} diperbarui, "
+        f"{hasil['dilewati']} dilewati (sudah ada).",
+    )
+    # Tampilkan tahun yang paling banyak diimpor.
+    tahun_list = [b.tanggal.year for b in baris]
+    tahun = max(set(tahun_list), key=tahun_list.count)
+    return redirect(f"{reverse('pakln:kelola_kalender')}?tahun={tahun}")
+
+
+@role_required("admin_pakln")
+def template_kalender(request):
+    """Unduh template Excel untuk impor Setting Kalender."""
+    response = HttpResponse(
+        buat_template_xlsx(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = 'attachment; filename="template_hari_libur.xlsx"'
+    return response
 
 
 @role_required("admin_pakln")
@@ -340,10 +1153,91 @@ def kelola_sumber_pembiayaan(request):
     else:
         form = SumberPembiayaanForm()
 
-    sumber_list = SumberPembiayaan.objects.all()
     return render(
-        request, "pakln/sumber_pembiayaan.html", {"form": form, "sumber_list": sumber_list}
+        request, "pakln/sumber_pembiayaan.html",
+        {"form": form, "sumber_count": SumberPembiayaan.objects.count()},
     )
+
+
+# Kolom tabel "Daftar Sumber Pembiayaan" (index sesuai urutan kolom pada
+# sumber_pembiayaan.html) -> field untuk pengurutan (ORDER BY) di endpoint
+# server-side DataTables.
+_SUMBER_PEMBIAYAAN_DATA_ORDER_FIELDS = {
+    "0": "nama",
+    "1": "tipe_perjalanan",
+    "2": "keterangan",
+    "3": "is_active",
+}
+
+
+@role_required("admin_pakln")
+def sumber_pembiayaan_data(request):
+    """Endpoint JSON server-side untuk tabel "Daftar Sumber Pembiayaan"
+    (protokol DataTables: draw/start/length/search/order pada GET),
+    mengikuti pola `users_data` (Manajemen User)."""
+    qs = SumberPembiayaan.objects.all()
+    records_total = qs.count()
+
+    search_value = request.GET.get("search[value]", "").strip()
+    if search_value:
+        qs = qs.filter(
+            Q(nama__icontains=search_value)
+            | Q(tipe_perjalanan__icontains=search_value)
+            | Q(keterangan__icontains=search_value)
+        )
+    records_filtered = qs.count()
+
+    order_col = request.GET.get("order[0][column]")
+    order_field = _SUMBER_PEMBIAYAAN_DATA_ORDER_FIELDS.get(order_col, "nama")
+    if request.GET.get("order[0][dir]") == "desc":
+        order_field = f"-{order_field}"
+    qs = qs.order_by(order_field, "nama")
+
+    try:
+        start = int(request.GET.get("start", 0))
+        length = int(request.GET.get("length", 10))
+    except ValueError:
+        start, length = 0, 10
+    page = qs[start:] if length == -1 else qs[start:start + length]
+
+    data = []
+    for s in page:
+        if s.is_active:
+            status_html = mark_safe(
+                '<span class="tag paspor-status is-selesai"><span class="dot"></span>Aktif</span>'
+            )
+            toggle_label = "🙏 Nonaktifkan"
+        else:
+            status_html = mark_safe(
+                '<span class="tag paspor-status is-belum"><span class="dot"></span>Nonaktif</span>'
+            )
+            toggle_label = "👁 Aktifkan"
+
+        aksi_html = format_html(
+            '<div class="table-actions">'
+            '<a href="{}" class="button is-small">✎ Edit</a>'
+            '<button type="button" class="button is-small" data-sumber-toggle="{}">{}</button>'
+            '<button type="button" class="button is-small is-danger" data-sumber-hapus="{}">🗑 Hapus</button>'
+            '</div>',
+            reverse("pakln:edit_sumber_pembiayaan", args=[s.pk]),
+            reverse("pakln:toggle_sumber_pembiayaan", args=[s.pk]),
+            toggle_label,
+            reverse("pakln:hapus_sumber_pembiayaan", args=[s.pk]),
+        )
+        data.append([
+            format_html("<strong>{}</strong>", s.nama),
+            s.get_tipe_perjalanan_display(),
+            escape(s.keterangan or "—"),
+            status_html,
+            aksi_html,
+        ])
+
+    return JsonResponse({
+        "draw": int(request.GET.get("draw", 1)),
+        "recordsTotal": records_total,
+        "recordsFiltered": records_filtered,
+        "data": data,
+    })
 
 
 @role_required("admin_pakln")
@@ -365,40 +1259,185 @@ def edit_sumber_pembiayaan(request, sumber_id):
 
 
 @role_required("admin_pakln")
+@require_POST
 def toggle_sumber_pembiayaan(request, sumber_id):
-    """Aktifkan/nonaktifkan sumber pembiayaan dengan satu klik dari
-    Daftar Sumber Pembiayaan, tanpa membuka form edit. Sumber nonaktif
-    tidak lagi ditawarkan pada Formulir Pengajuan, tapi pengajuan lama
-    yang sudah memilihnya tidak terpengaruh."""
+    """Aktifkan/nonaktifkan sumber pembiayaan (AJAX, dipanggil dari tabel
+    Data Table Server-Side) tanpa membuka form edit. Sumber nonaktif tidak
+    lagi ditawarkan pada Formulir Pengajuan, tapi pengajuan lama yang
+    sudah memilihnya tidak terpengaruh."""
     sumber = get_object_or_404(SumberPembiayaan, pk=sumber_id)
-    if request.method == "POST":
-        sumber.is_active = not sumber.is_active
-        sumber.save(update_fields=["is_active"])
-        messages.success(
-            request,
-            f"Sumber pembiayaan '{sumber.nama}' kini {'aktif' if sumber.is_active else 'nonaktif'}.",
-        )
-    return redirect("pakln:kelola_sumber_pembiayaan")
+    sumber.is_active = not sumber.is_active
+    sumber.save(update_fields=["is_active"])
+    return JsonResponse({"ok": True, "is_active": sumber.is_active})
 
 
 @role_required("admin_pakln")
+@require_POST
 def hapus_sumber_pembiayaan(request, sumber_id):
-    """Hapus permanen data sumber pembiayaan. Ditolak jika masih dipakai
-    pada satu atau lebih pengajuan (riwayat/jejak audit) — gunakan
+    """Hapus permanen data sumber pembiayaan (AJAX). Ditolak jika masih
+    dipakai pada satu atau lebih pengajuan (riwayat/jejak audit) — gunakan
     nonaktifkan untuk kasus itu."""
     sumber = get_object_or_404(SumberPembiayaan, pk=sumber_id)
-    if request.method == "POST":
-        if sumber.pengajuan_list.exists():
-            messages.error(
-                request,
+    if sumber.pengajuan_list.exists():
+        return JsonResponse({
+            "ok": False,
+            "error": (
                 f"Sumber pembiayaan '{sumber.nama}' tidak dapat dihapus karena masih dipakai pada "
-                f"pengajuan yang sudah ada. Nonaktifkan saja agar tidak lagi ditawarkan.",
+                f"pengajuan yang sudah ada. Nonaktifkan saja agar tidak lagi ditawarkan."
+            ),
+        }, status=400)
+    sumber.delete()
+    return JsonResponse({"ok": True})
+
+
+@role_required("admin_pakln")
+def kelola_kategori(request):
+    """Manajemen Kategori Perjalanan — Admin Biro PAKLN mengelola daftar
+    kategori yang menjadi pilihan pada dropdown "Kategori Perjalanan" di
+    Formulir Pengajuan (hanya `is_active=True` yang ditawarkan ke pegawai).
+    Daftarnya ditampilkan sebagai Data Table Server-Side (lihat
+    `kategori_data`)."""
+    if request.method == "POST":
+        form = KategoriPerjalananForm(request.POST)
+        if form.is_valid():
+            kategori = form.save()
+            messages.success(request, f"Kategori '{kategori.nama_kategori}' berhasil ditambahkan.")
+            return redirect("pakln:kelola_kategori")
+        messages.error(request, "Periksa kembali isian formulir.")
+    else:
+        form = KategoriPerjalananForm()
+
+    return render(
+        request, "pakln/kategori.html",
+        {"form": form, "kategori_count": KategoriPerjalanan.objects.count()},
+    )
+
+
+# Kolom tabel "Daftar Kategori Perjalanan" (index sesuai urutan kolom pada
+# kategori.html) -> field untuk pengurutan (ORDER BY) di endpoint
+# server-side DataTables.
+_KATEGORI_DATA_ORDER_FIELDS = {
+    "0": "nama_kategori",
+    "1": "jenis_perjalanan",
+    "2": "is_active",
+}
+
+
+@role_required("admin_pakln")
+def kategori_data(request):
+    """Endpoint JSON server-side untuk tabel "Daftar Kategori Perjalanan"
+    (protokol DataTables: draw/start/length/search/order pada GET) —
+    dipanggil oleh field dropdown Kategori Perjalanan pada Formulir
+    Pengajuan secara tidak langsung (lewat `KategoriPerjalanan.objects
+    .filter(is_active=True)` di form), dan langsung oleh tabel admin ini."""
+    qs = KategoriPerjalanan.objects.all()
+    records_total = qs.count()
+
+    search_value = request.GET.get("search[value]", "").strip()
+    if search_value:
+        qs = qs.filter(
+            Q(nama_kategori__icontains=search_value) | Q(jenis_perjalanan__icontains=search_value)
+        )
+    records_filtered = qs.count()
+
+    order_col = request.GET.get("order[0][column]")
+    order_field = _KATEGORI_DATA_ORDER_FIELDS.get(order_col, "nama_kategori")
+    if request.GET.get("order[0][dir]") == "desc":
+        order_field = f"-{order_field}"
+    qs = qs.order_by(order_field, "nama_kategori")
+
+    try:
+        start = int(request.GET.get("start", 0))
+        length = int(request.GET.get("length", 10))
+    except ValueError:
+        start, length = 0, 10
+    page = qs[start:] if length == -1 else qs[start:start + length]
+
+    data = []
+    for k in page:
+        if k.is_active:
+            status_html = mark_safe(
+                '<span class="tag paspor-status is-selesai"><span class="dot"></span>Aktif</span>'
             )
+            toggle_label = "🙏 Nonaktifkan"
         else:
-            nama = sumber.nama
-            sumber.delete()
-            messages.success(request, f"Sumber pembiayaan '{nama}' berhasil dihapus.")
-    return redirect("pakln:kelola_sumber_pembiayaan")
+            status_html = mark_safe(
+                '<span class="tag paspor-status is-belum"><span class="dot"></span>Nonaktif</span>'
+            )
+            toggle_label = "👁 Aktifkan"
+
+        aksi_html = format_html(
+            '<div class="table-actions">'
+            '<a href="{}" class="button is-small">✎ Edit</a>'
+            '<button type="button" class="button is-small" data-kategori-toggle="{}">{}</button>'
+            '<button type="button" class="button is-small is-danger" data-kategori-hapus="{}">🗑 Hapus</button>'
+            '</div>',
+            reverse("pakln:edit_kategori", args=[k.pk]),
+            reverse("pakln:toggle_kategori", args=[k.pk]),
+            toggle_label,
+            reverse("pakln:hapus_kategori", args=[k.pk]),
+        )
+        data.append([
+            format_html("<strong>{}</strong>", k.nama_kategori),
+            k.get_jenis_perjalanan_display(),
+            status_html,
+            aksi_html,
+        ])
+
+    return JsonResponse({
+        "draw": int(request.GET.get("draw", 1)),
+        "recordsTotal": records_total,
+        "recordsFiltered": records_filtered,
+        "data": data,
+    })
+
+
+@role_required("admin_pakln")
+def edit_kategori(request, kategori_id):
+    """Sunting kategori perjalanan yang sudah ada."""
+    kategori = get_object_or_404(KategoriPerjalanan, pk=kategori_id)
+
+    if request.method == "POST":
+        form = KategoriPerjalananForm(request.POST, instance=kategori)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Kategori '{kategori.nama_kategori}' berhasil diperbarui.")
+            return redirect("pakln:kelola_kategori")
+        messages.error(request, "Periksa kembali isian formulir.")
+    else:
+        form = KategoriPerjalananForm(instance=kategori)
+
+    return render(request, "pakln/edit_kategori.html", {"form": form, "kategori": kategori})
+
+
+@role_required("admin_pakln")
+@require_POST
+def toggle_kategori(request, kategori_id):
+    """Aktifkan/nonaktifkan kategori perjalanan (AJAX, dipanggil dari
+    tabel Data Table Server-Side) tanpa membuka form edit."""
+    kategori = get_object_or_404(KategoriPerjalanan, pk=kategori_id)
+    kategori.is_active = not kategori.is_active
+    kategori.save(update_fields=["is_active"])
+    return JsonResponse({"ok": True, "is_active": kategori.is_active})
+
+
+@role_required("admin_pakln")
+@require_POST
+def hapus_kategori(request, kategori_id):
+    """Hapus permanen data kategori perjalanan (AJAX). Ditolak jika masih
+    dipakai pada satu atau lebih pengajuan/template dokumen (riwayat/jejak
+    audit serta penargetan template) — gunakan nonaktifkan untuk kasus itu."""
+    kategori = get_object_or_404(KategoriPerjalanan, pk=kategori_id)
+    if kategori.pengajuan_list.exists() or kategori.dokumen_template_list.exists():
+        return JsonResponse({
+            "ok": False,
+            "error": (
+                f"Kategori '{kategori.nama_kategori}' tidak dapat dihapus karena masih dipakai pada "
+                f"pengajuan atau template dokumen yang sudah ada. Nonaktifkan saja agar tidak lagi ditawarkan."
+            ),
+        }, status=400)
+    kategori.delete()
+    return JsonResponse({"ok": True})
 
 
 @role_required("admin_pakln")
@@ -413,6 +1452,25 @@ def preview(request, kode):
         pengajuan.save(update_fields=["preview_pakln_agree"])
         return redirect("pakln:upload_dokumen", kode=pengajuan.kode)
 
+    if request.method == "POST" and "kembalikan" in request.POST:
+        catatan = request.POST.get("catatan", "").strip()
+        if not catatan:
+            messages.error(request, "Isi catatan perbaikan untuk Admin Unor sebelum mengembalikan pengajuan.")
+        elif pengajuan.status != Pengajuan.Status.PROSES_PAKLN:
+            messages.error(request, "Pengajuan yang sudah selesai tidak dapat dikembalikan.")
+        else:
+            pengajuan.status = Pengajuan.Status.PROSES
+            pengajuan.preview_unor_agree = False
+            pengajuan.preview_pakln_agree = False
+            pengajuan.catatan_pakln = catatan
+            pengajuan.save()
+            notify_reject_pakln_to_unor(pengajuan, catatan)
+            messages.success(
+                request,
+                f"Pengajuan {pengajuan.kode} dikembalikan ke Admin Unor beserta catatan.",
+            )
+            return redirect("pakln:dashboard")
+
     return render(request, "pakln/preview.html", {"pengajuan": pengajuan})
 
 
@@ -426,12 +1484,17 @@ def upload_dokumen(request, kode):
 
     jenis_choices = DokumenPakln.Jenis.choices
     dokumen_map = {d.jenis: d for d in pengajuan.dokumen_pakln.all()}
+    pendukung, _ = DokumenPaklnPendukung.objects.get_or_create(pengajuan=pengajuan)
+
+    # Dokumen Izin Luar Negeri (TTD Sekjen) wajib; dokumen pendukung
+    # (Nota Dinas Kepala Bagian/Kepala Biro) opsional — tidak menjadi
+    # syarat kelengkapan untuk menyelesaikan proses.
     lengkap = len(dokumen_map) >= len(jenis_choices)
 
     if request.method == "POST":
         if "selesaikan" in request.POST:
             if not lengkap:
-                messages.error(request, "Lengkapi seluruh dokumen administrasi Biro PAKLN sebelum menyelesaikan proses.")
+                messages.error(request, "Lengkapi dokumen Izin Luar Negeri (TTD Sekjen a.n. Menteri) sebelum menyelesaikan proses.")
             elif not request.POST.get("agree"):
                 messages.error(request, "Centang pernyataan kelengkapan dokumen terlebih dahulu.")
             elif pengajuan.status == Pengajuan.Status.SELESAI:
@@ -440,7 +1503,9 @@ def upload_dokumen(request, kode):
             else:
                 with transaction.atomic():
                     profile = getattr(pengajuan.pegawai, "profile", None)
-                    hari_terpakai = pengajuan.jumlah_hari_kalender or 0
+                    # Cuti yang terpakai = hari kerja (snapshot saat pengajuan
+                    # dikirim), konsisten dengan validasi sisa cuti di formulir.
+                    hari_terpakai = pengajuan.jumlah_hari_kerja or 0
                     if profile and hari_terpakai:
                         profile.sisa_cuti_tahun_berjalan = max(
                             profile.sisa_cuti_tahun_berjalan - hari_terpakai, 0
@@ -457,6 +1522,35 @@ def upload_dokumen(request, kode):
                     f"Sisa cuti tahun berjalan pegawai berkurang {hari_terpakai} hari.",
                 )
                 return redirect("pakln:dashboard")
+        elif "pendukung_upload" in request.POST:
+            # Proses unggah berkas pendukung — berdiri sendiri, tidak
+            # memerlukan checklist jenis sudah dicentang lebih dulu.
+            file_obj = request.FILES.get("file")
+            if not file_obj:
+                messages.error(request, "Pilih berkas dokumen pendukung terlebih dahulu.")
+            else:
+                pendukung.file = file_obj
+                pendukung.uploaded_at = timezone.now()
+                pendukung.save(update_fields=["file", "uploaded_at"])
+                messages.success(request, "Dokumen pendukung berhasil diunggah.")
+                return redirect("pakln:upload_dokumen", kode=kode)
+        elif "pendukung_hapus" in request.POST:
+            pendukung.file.delete(save=False)
+            pendukung.file = ""
+            pendukung.uploaded_at = None
+            pendukung.save(update_fields=["file", "uploaded_at"])
+            messages.success(request, "Berkas dokumen pendukung dihapus.")
+            return redirect("pakln:upload_dokumen", kode=kode)
+        elif "toggle_pendukung" in request.POST:
+            # Proses mencentang jenis — berdiri sendiri, tidak memerlukan
+            # berkas diunggah ulang.
+            kategori = request.POST.get("kategori")
+            if kategori not in DokumenPaklnPendukung.KATEGORI_LABELS:
+                messages.error(request, "Jenis dokumen pendukung tidak valid.")
+            else:
+                setattr(pendukung, kategori, not getattr(pendukung, kategori))
+                pendukung.save(update_fields=[kategori])
+                return redirect("pakln:upload_dokumen", kode=kode)
         else:
             jenis = request.POST.get("jenis")
             existing = dokumen_map.get(jenis)
@@ -475,6 +1569,8 @@ def upload_dokumen(request, kode):
         "pengajuan": pengajuan,
         "jenis_choices": jenis_choices,
         "dokumen_map": dokumen_map,
+        "pendukung": pendukung,
+        "pendukung_kategori": list(DokumenPaklnPendukung.KATEGORI_LABELS.items()),
         "lengkap": lengkap,
     }
     return render(request, "pakln/upload.html", context)
@@ -495,11 +1591,13 @@ def hapus_dokumen(request, kode, jenis):
 
 @role_required("admin_pakln")
 def export_database(request):
-    """Tahap 5: Export Database untuk Admin Biro PAKLN."""
-    pengajuan_list = (
-        Pengajuan.objects.filter(status__in=[Pengajuan.Status.PROSES_PAKLN, Pengajuan.Status.SELESAI])
-        .select_related("pegawai__profile")
-    )
+    """Tahap 5: Export Database untuk Admin Biro PAKLN. Tabel pratinjau
+    di halaman ditampilkan lewat Data Table Server-Side (lihat
+    `export_data`) — CSV tetap mengekspor seluruh baris yang cocok,
+    bukan hanya satu halaman tabel."""
+    pengajuan_list = Pengajuan.objects.filter(
+        status__in=[Pengajuan.Status.PROSES_PAKLN, Pengajuan.Status.SELESAI]
+    ).select_related("pegawai__profile")
 
     if request.GET.get("format") == "csv":
         response = HttpResponse(content_type="text/csv")
@@ -511,4 +1609,69 @@ def export_database(request):
             writer.writerow([p.kode, nama, p.kategori, p.tujuan_negara_display, p.tgl_masuk_pakln or "", p.get_status_display()])
         return response
 
-    return render(request, "pakln/export.html", {"pengajuan_list": pengajuan_list})
+    return render(request, "pakln/export.html", {})
+
+
+# Kolom tabel pratinjau "Export Database" (index sesuai urutan kolom pada
+# pakln/export.html) -> field untuk pengurutan (ORDER BY) di endpoint
+# server-side DataTables. Kolom Tujuan (M2M) sengaja tidak disertakan.
+_PAKLN_EXPORT_ORDER_FIELDS = {
+    "0": "pegawai__profile__nama",
+    "1": "kategori__nama_kategori",
+    "3": "tgl_masuk_pakln",
+    "4": "status",
+}
+
+
+@role_required("admin_pakln")
+def export_data(request):
+    """Endpoint JSON server-side untuk tabel pratinjau "Export Database"
+    (protokol DataTables: draw/start/length/search/order pada GET),
+    mengikuti pola `users_data` (Manajemen User)."""
+    qs = Pengajuan.objects.filter(
+        status__in=[Pengajuan.Status.PROSES_PAKLN, Pengajuan.Status.SELESAI]
+    ).select_related("pegawai__profile", "kategori")
+    records_total = qs.count()
+
+    search_value = request.GET.get("search[value]", "").strip()
+    if search_value:
+        qs = qs.filter(
+            Q(pegawai__profile__nama__icontains=search_value)
+            | Q(kategori__nama_kategori__icontains=search_value)
+            | Q(tujuan_negara__nama_negara__icontains=search_value)
+        ).distinct()
+    records_filtered = qs.count()
+
+    order_col = request.GET.get("order[0][column]")
+    order_field = _PAKLN_EXPORT_ORDER_FIELDS.get(order_col, "-tgl_masuk_pakln")
+    if request.GET.get("order[0][dir]") == "desc":
+        order_field = f"-{order_field}"
+    qs = qs.order_by(order_field, "-created_at")
+
+    try:
+        start = int(request.GET.get("start", 0))
+        length = int(request.GET.get("length", 10))
+    except ValueError:
+        start, length = 0, 10
+    page = qs[start:] if length == -1 else qs[start:start + length]
+
+    data = []
+    for p in page:
+        status_html = format_html(
+            '<span class="tag paspor-status is-{}"><span class="dot"></span>{}</span>',
+            p.status, p.get_status_display(),
+        )
+        data.append([
+            format_html("<strong>{}</strong>", p.pegawai.profile.nama),
+            escape(p.kategori.nama_kategori) if p.kategori else "—",
+            escape(p.tujuan_negara_display or "—"),
+            p.tgl_masuk_pakln.strftime("%d %b %Y") if p.tgl_masuk_pakln else "—",
+            status_html,
+        ])
+
+    return JsonResponse({
+        "draw": int(request.GET.get("draw", 1)),
+        "recordsTotal": records_total,
+        "recordsFiltered": records_filtered,
+        "data": data,
+    })

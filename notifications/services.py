@@ -42,7 +42,7 @@ def _unit_organisasi(pengajuan):
 
 
 def _perihal(pengajuan):
-    return pengajuan.maksud or pengajuan.get_kategori_display() or "-"
+    return pengajuan.maksud or (pengajuan.kategori.nama_kategori if pengajuan.kategori_id else None) or "-"
 
 
 def _admin_unor_recipients(pengajuan):
@@ -161,6 +161,35 @@ def notify_approve_unor(pengajuan):
             f'perihal "{perihal}".'
         ),
         redirect_url=reverse("pakln:preview", args=[pengajuan.kode]),
+    )
+
+
+def notify_reject_pakln_to_unor(pengajuan, catatan):
+    """Event 3B: Admin PKLN mengembalikan pengajuan ke Admin Unor (kesalahan
+    rekomendasi/berkas administrasi Unor)."""
+    nama = _nama_pegawai(pengajuan)
+    perihal = _perihal(pengajuan)
+
+    _create(
+        _admin_unor_recipients(pengajuan),
+        pengajuan=pengajuan,
+        event=Notification.Event.REJECT_PKLN_UNOR,
+        level=Notification.Level.WARNING,
+        title="Berkas Surat Dikembalikan oleh Admin PKLN",
+        body=(
+            f'Surat pengajuan {nama} dikembalikan oleh PKLN. '
+            f'Catatan PKLN: "{catatan}". Mohon diperbaiki.'
+        ),
+        redirect_url=reverse("unor:preview", args=[pengajuan.kode]),
+    )
+    _create(
+        [pengajuan.pegawai],
+        pengajuan=pengajuan,
+        event=Notification.Event.REJECT_PKLN_UNOR,
+        level=Notification.Level.INFO,
+        title="Status Pengajuan Surat (Dalam Penanganan Unor)",
+        body=f'Pengajuan surat Anda perihal "{perihal}" membutuhkan penyesuaian dari Admin Unor.',
+        redirect_url=reverse("pegawai:monitor_progres", args=[pengajuan.kode]),
     )
 
 

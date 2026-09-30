@@ -1,5 +1,10 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Export Database{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
+{% endblock %}
 
 {% block content %}
 <div class="box">
@@ -14,24 +19,48 @@
 
 <div class="box">
   <div class="table-wrap">
-    <table class="table data-table is-fullwidth is-hoverable">
+    <table id="exportTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
       <thead>
         <tr><th>Pegawai</th><th>Kategori</th><th>Tujuan</th><th>Tgl Pengajuan</th><th>Status</th></tr>
       </thead>
-      <tbody>
-        {% for p in pengajuan_list %}
-          <tr>
-            <td><strong>{{ p.pegawai.profile.nama }}</strong></td>
-            <td>{{ p.kategori|default:"—" }}</td>
-            <td>{{ p.tujuan_negara_display|default:"—" }}</td>
-            <td>{{ p.tgl_pengajuan|date:"d M Y"|default:"—" }}</td>
-            <td><span class="tag paspor-status is-{{ p.status }}"><span class="dot"></span>{{ p.get_status_display }}</span></td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="5" class="cell-muted" style="text-align:center;">Belum ada data.</td></tr>
-        {% endfor %}
-      </tbody>
+      <tbody></tbody>
     </table>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
+<script>
+  $(function () {
+    $('#exportTable').DataTable({
+      serverSide: true,
+      processing: true,
+      autoWidth: false,
+      ajax: { url: '{% url "unor:export_data" %}', type: 'GET', cache: false },
+      columns: [
+        { data: 0 },
+        { data: 1 },
+        { data: 2, orderable: false, searchable: false },
+        { data: 3 },
+        { data: 4 },
+      ],
+      order: [[3, 'desc']],
+      pageLength: 10,
+      lengthMenu: [10, 25, 50, 100],
+      dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
+      language: {
+        search: '',
+        searchPlaceholder: 'Cari data...',
+        lengthMenu: 'Tampilkan _MENU_ data',
+        info: 'Menampilkan _START_–_END_ dari _TOTAL_ data',
+        infoEmpty: 'Tidak ada data',
+        infoFiltered: '(disaring dari _MAX_ total data)',
+        zeroRecords: 'Tidak ada data yang cocok.',
+        processing: 'Memuat…',
+        paginate: { previous: '‹ Sebelumnya', next: 'Berikutnya ›' },
+      },
+    });
+  });
+</script>
 {% endblock %}

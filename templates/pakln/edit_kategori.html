@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Edit Kategori Perjalanan{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Edit Kategori Perjalanan</h2>
+    <p class="sub">{{ kategori.nama_kategori }}</p>
+  </div>
+  <a href="{% url 'pakln:kelola_kategori' %}" class="button is-small">← Kembali ke Manajemen Kategori Perjalanan</a>
+</div>
+
+<div class="box">
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.nama_kategori.id_for_label }}">Nama Kategori</label>
+          <div class="control">{{ form.nama_kategori }}</div>
+          {% for e in form.nama_kategori.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.jenis_perjalanan.id_for_label }}">Jenis Perjalanan</label>
+          <div class="control"><div class="select is-fullwidth">{{ form.jenis_perjalanan }}</div></div>
+          {% for e in form.jenis_perjalanan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="checkbox" for="{{ form.is_active.id_for_label }}">
+        {{ form.is_active }} {{ form.fields.is_active.label }}
+      </label>
+    </div>
+
+    <div class="actions-bar">
+      <a href="{% url 'pakln:kelola_kategori' %}" class="button">Batal</a>
+      <button type="submit" class="button is-primary">Simpan Perubahan</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

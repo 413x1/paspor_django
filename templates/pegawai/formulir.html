@@ -128,11 +128,15 @@
     {% endif %}
 
     <div class="field" style="max-width:260px;">
-      <label class="label" for="{{ form.jumlah_hari_kerja.id_for_label }}">Jumlah Hari Kerja</label>
-      <div class="control">{{ form.jumlah_hari_kerja }}</div>
+      <label class="label">Jumlah Hari Kerja <span class="badge-auto">Otomatis</span></label>
+      <div class="control">
+        <input type="text" id="hari_kerja" class="input" value="{{ form.instance.jumlah_hari_kerja|default_if_none:'' }}" disabled>
+      </div>
       {% if profile %}<p class="helptext">Tidak boleh melebihi sisa cuti tahun berjalan ({{ profile.sisa_cuti_tahun_berjalan }} hari).</p>{% endif %}
-      {% for error in form.jumlah_hari_kerja.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
     </div>
+    <p class="helptext" id="rincian_hari"></p>
+    <p class="help is-warning" id="peringatan_kalender" style="display:none;"></p>
+    <p class="help is-danger" id="peringatan_cuti" style="display:none;"></p>
 
     <button type="submit" class="button is-primary">Simpan &amp; Lanjutkan →</button>
   </form>
@@ -144,13 +148,65 @@
   $(function () {
     var $b = $('#{{ form.tgl_berangkat.id_for_label }}');
     var $k = $('#{{ form.tgl_kembali.id_for_label }}');
-    var $out = $('#hari_kalender');
+    var $kalender = $('#hari_kalender');
+    var $kerja = $('#hari_kerja');
+    var $rincian = $('#rincian_hari');
+    var $peringatanKalender = $('#peringatan_kalender');
+    var $peringatanCuti = $('#peringatan_cuti');
+    var sisaCuti = {% if profile %}{{ profile.sisa_cuti_tahun_berjalan }}{% else %}null{% endif %};
+    var bulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+    function formatTanggal(iso) {
+      var p = iso.split('-');
+      return parseInt(p[2], 10) + ' ' + bulan[parseInt(p[1], 10) - 1];
+    }
+
+    function kosongkan() {
+      $kalender.val('');
+      $kerja.val('');
+      $rincian.text('');
+      $peringatanKalender.hide();
+      $peringatanCuti.hide();
+    }
+
+    // Hanya pratinjau — nilai final dihitung ulang server saat disimpan.
     function hitung() {
-      if (!$b.val() || !$k.val()) { return; }
-      var d = (new Date($k.val()) - new Date($b.val())) / 86400000 + 1;
-      $out.val(d > 0 ? d : '');
+      if (!$b.val() || !$k.val()) { kosongkan(); return; }
+      $.getJSON('{% url "pegawai:hitung_hari" %}', { berangkat: $b.val(), kembali: $k.val() })
+        .done(function (r) {
+          $kalender.val(r.hari_kalender);
+          $kerja.val(r.hari_kerja);
+
+          var teks = r.hari_kalender + ' hari kalender, ' + r.akhir_pekan + ' hari akhir pekan, '
+            + r.libur.length + ' hari libur';
+          if (r.libur.length) {
+            teks += ' (' + r.libur.map(function (l) {
+              return formatTanggal(l.tanggal) + ': ' + l.keterangan;
+            }).join('; ') + ')';
+          }
+          $rincian.text(teks + '.');
+
+          if (r.tahun_belum_diatur.length) {
+            $peringatanKalender.text('Kalender hari libur tahun ' + r.tahun_belum_diatur.join(', ')
+              + ' belum diatur Admin Biro PAKLN. Jumlah hari kerja sementara hanya mengecualikan Sabtu & Minggu.').show();
+          } else {
+            $peringatanKalender.hide();
+          }
+
+          if (sisaCuti !== null && r.hari_kerja > sisaCuti) {
+            $peringatanCuti.text('Jumlah hari kerja (' + r.hari_kerja + ' hari) melebihi sisa cuti tahun berjalan ('
+              + sisaCuti + ' hari).').show();
+          } else {
+            $peringatanCuti.hide();
+          }
+        })
+        .fail(function (xhr) {
+          kosongkan();
+          if (xhr.responseJSON && xhr.responseJSON.error) { $rincian.text(xhr.responseJSON.error); }
+        });
     }
     $b.add($k).on('change', hitung);
+    hitung();
   });
 </script>
 {% endblock %}

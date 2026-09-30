@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Nota Dinas Kepala Bagian</title>
+<style>
+  /* Template cetak — dirender server-side lewat WeasyPrint, TIDAK
+     dipakai di browser langsung. Sengaja bersih dari Bulma/jQuery/CSS
+     framework apa pun agar tata letak cetak stabil dan tidak bergantung
+     pada aset eksternal (logo di-embed sebagai data URI, lihat view). */
+  @page {
+    size: A4;
+    margin: 2.5cm 2cm;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 12.5pt;
+    line-height: 1.55;
+    color: #111111;
+  }
+  .nd-head { display: flex; align-items: flex-start; gap: 14px; }
+  .nd-head img { width: 58px; height: 58px; object-fit: contain; flex-shrink: 0; margin-top: 4px; }
+  .nd-head-text { flex: 1 1 auto; text-align: center; }
+  .nd-head-text .nd-org1 { font-size: 15pt; font-weight: 700; letter-spacing: .3px; }
+  .nd-head-text .nd-org2 { font-size: 13pt; font-weight: 700; margin-top: 1px; }
+  .nd-head-text .nd-addr { font-size: 9pt; margin-top: 3px; }
+  .nd-rule { border: none; border-top: 2px solid #111111; margin: 8px 0 20px; }
+  .nd-title { text-align: center; font-weight: 700; text-decoration: underline; font-size: 12.5pt; margin-bottom: 16px; }
+  .nd-meta { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+  .nd-meta td { padding: 1px 0; vertical-align: top; font-size: 12.5pt; }
+  .nd-meta td.nd-meta-label { width: 70px; white-space: nowrap; }
+  .nd-meta td.nd-meta-colon { width: 12px; }
+  .nd-rule-thin { border: none; border-top: 1px solid #111111; margin: 10px 0 18px; }
+  .nd-body p { margin: 0 0 14px; text-align: justify; text-indent: 32px; }
+  .nd-sign-row { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 40px; }
+  .nd-sign-box { width: 140px; border: 1px solid #111111; text-align: center; font-size: 10pt; }
+  .nd-sign-box .nd-sign-box-head { border-bottom: 1px solid #111111; padding: 4px 2px; }
+  .nd-sign-box .nd-sign-box-body { height: 42px; }
+  .nd-sign-block { text-align: left; }
+  .nd-sign-block .nd-sign-name { margin-top: 52px; font-weight: 700; text-decoration: underline; }
+  .nd-dyn { font-weight: 700; }
+</style>
+</head>
+<body>
+  <div class="nd-head">
+    {% if logo_data_uri %}<img src="{{ logo_data_uri }}" alt="Logo Kementerian PU">{% endif %}
+    <div class="nd-head-text">
+      <div class="nd-org1">KEMENTERIAN PEKERJAAN UMUM</div>
+      <div class="nd-org2">SEKRETARIAT JENDERAL</div>
+      <div class="nd-addr">Jalan Pattimura Nomor 20, Kebayoran Baru, Jakarta Selatan 12110, Telepon (021)7392681, Surel: bpakln@pu.go.id</div>
+    </div>
+  </div>
+  <hr class="nd-rule">
+
+  <div class="nd-title">NOTA DINAS</div>
+
+  <table class="nd-meta">
+    <tr>
+      <td class="nd-meta-label">Yth.</td>
+      <td class="nd-meta-colon">:</td>
+      <td>Kepala Biro Perencanaan Anggaran dan Kerja Sama Luar Negeri</td>
+    </tr>
+    <tr>
+      <td class="nd-meta-label">Dari</td>
+      <td class="nd-meta-colon">:</td>
+      <td>Plt. Kepala Bagian Kerja Sama Luar Negeri</td>
+    </tr>
+    <tr>
+      <td class="nd-meta-label">Hal</td>
+      <td class="nd-meta-colon">:</td>
+      <td>
+        Penyampaian Konsep Permohonan Izin Melakukan Perjalanan Luar Negeri a.n.
+        <span class="nd-dyn">{{ nama }}</span>
+        ke
+        <span class="nd-dyn">{{ negara_tujuan }}</span>
+      </td>
+    </tr>
+    <tr>
+      <td class="nd-meta-label">Tanggal</td>
+      <td class="nd-meta-colon">:</td>
+      <td><span class="nd-dyn">{{ tanggal_nota_dinas }}</span></td>
+    </tr>
+  </table>
+  <hr class="nd-rule-thin">
+
+  <div class="nd-body">
+    <p>
+      Sehubungan dengan keperluan administrasi pegawai dalam melakukan perjalanan ke luar negeri
+      non-dinas, bersama ini kami sampaikan dengan hormat konsep Nota Dinas Permohonan Izin
+      Melakukan Perjalanan Luar Negeri a.n. <span class="nd-dyn">{{ nama }}</span> ke
+      <span class="nd-dyn">{{ negara_tujuan }}</span>, dari Kepala Biro Perencanaan Anggaran dan
+      Kerja Sama Luar Negeri kepada Sekretaris Jenderal, untuk kami mohonkan perkenan arahan dan
+      petunjuk lebih lanjut.
+    </p>
+    <p>
+      Demikian kami sampaikan, atas perhatian dan perkenan arahan lebih lanjut, kami ucapkan
+      terima kasih.
+    </p>
+  </div>
+
+  <div class="nd-sign-row">
+    <div class="nd-sign-box">
+      <div class="nd-sign-box-head">Ketua Tim AKI</div>
+      <div class="nd-sign-box-body"></div>
+    </div>
+    <div class="nd-sign-block">
+      <div>Plt. Kepala Bagian</div>
+      <div>Kerja Sama Luar Negeri,</div>
+      <div class="nd-sign-name">[Nama Pejabat]</div>
+    </div>
+  </div>
+</body>
+</html>
