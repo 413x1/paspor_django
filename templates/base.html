@@ -90,6 +90,24 @@
       $(this).closest('[data-sidebar-group]').toggleClass('is-open');
     });
 
+    // Dropdown generik berbasis klik: [data-nav-dropdown] + [data-nav-dropdown-toggle]
+    // (mis. tombol "Generate ND" di Dasbor Admin PAKLN). Tertutup lagi saat
+    // klik di luar area-nya atau menekan Esc.
+    $(document).on('click', '[data-nav-dropdown-toggle]', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var $item = $(this).closest('[data-nav-dropdown]');
+      var wasActive = $item.hasClass('is-active');
+      $('[data-nav-dropdown].is-active').removeClass('is-active');
+      if (!wasActive) { $item.addClass('is-active'); }
+    });
+    $(document).on('click', function () {
+      $('[data-nav-dropdown].is-active').removeClass('is-active');
+    });
+    $(document).on('keydown', function (e) {
+      if (e.key === 'Escape') { $('[data-nav-dropdown].is-active').removeClass('is-active'); }
+    });
+
     // Dropdown akun pengguna di header.
     $(document).on('click', '[data-user-menu-toggle]', function (e) {
       e.stopPropagation();
