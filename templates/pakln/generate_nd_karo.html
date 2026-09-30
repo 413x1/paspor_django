@@ -59,6 +59,7 @@
   .nd-pegawai-table th { text-align: center; font-weight: 700; background: #f3f3f3; }
   .nd-pegawai-table td.nd-pt-no { text-align: center; width: 26px; }
   .nd-sign-row { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 42px; }
+  .nd-sign-row.no-paraf { justify-content: flex-end; }
   .nd-sign-box { display: flex; width: 220px; border: 1px solid #111111; text-align: center; font-size: 11px; }
   .nd-sign-box > div { flex: 1 1 50%; }
   .nd-sign-box > div:first-child { border-right: 1px solid #111111; }
@@ -66,6 +67,7 @@
   .nd-sign-box .nd-sign-box-body { height: 42px; }
   .nd-sign-block { text-align: center; }
   .nd-sign-block .nd-sign-name { margin-top: 52px; font-weight: 700; text-decoration: underline; }
+  .nd-sign-block > div:first-child .nd-dyn { font-weight: 400; }
   .nd-dyn { font-weight: 700; }
   .nd-dyn.is-placeholder { font-weight: 400; font-style: italic; color: #8a8f9a; }
 
@@ -192,9 +194,7 @@
                 </td>
                 <td><span id="prev-t-jabatan" data-field="jabatan" class="nd-dyn is-placeholder">[jabatan]</span></td>
                 <td>
-                  <span id="prev-t-berangkat" class="nd-dyn is-placeholder">[tanggal berangkat]</span>
-                  s.d.
-                  <span id="prev-t-kembali" class="nd-dyn is-placeholder">[tanggal pulang]</span><br>
+                  <span id="prev-t-periode" class="nd-dyn is-placeholder">[periode perjalanan]</span><br>
                   <span id="prev-t-hkerja" data-field="jumlah_hari_kerja" class="nd-dyn is-placeholder">[h_kerja]</span> hari kerja /
                   <span id="prev-t-hkalender" class="nd-dyn is-placeholder">[h_kalender]</span> hari kalender
                 </td>
@@ -213,21 +213,20 @@
             </p>
           </div>
 
-          <div class="nd-sign-row">
-            <div class="nd-sign-box">
+          <div class="nd-sign-row" id="ndSignRow">
+            <div class="nd-sign-box" id="ndParafBox">
               <div>
                 <div class="nd-sign-box-head">Katim AKI</div>
                 <div class="nd-sign-box-body"></div>
               </div>
               <div>
-                <div class="nd-sign-box-head">Plt. Kabag KLN</div>
+                <div class="nd-sign-box-head">{{ label_paraf_kabag }}</div>
                 <div class="nd-sign-box-body"></div>
               </div>
             </div>
             <div class="nd-sign-block">
-              <div>Kepala Biro Perencanaan Anggaran</div>
-              <div>dan Kerja Sama Luar Negeri</div>
-              <div class="nd-sign-name">Reiza Setiawan</div>
+              <div><span id="prev-jabatan-ttd" class="nd-dyn is-placeholder">[jabatan]</span></div>
+              <div class="nd-sign-name"><span id="prev-nama-pejabat" data-field="nama_pejabat" class="nd-dyn is-placeholder">[Nama Pejabat]</span></div>
             </div>
           </div>
         </div>
@@ -255,60 +254,93 @@
         <input type="hidden" name="pengajuan_kodes" value="{{ kode_terpilih_csv }}">
         <div class="field">
           <label class="label">Nama</label>
-          <div class="control"><input type="text" name="nama" class="input" placeholder="cth. Muhammad Faris Al Bassam, S.E."></div>
+          <div class="control"><input type="text" name="nama" class="input" value="{{ prefill.nama|default:'' }}" placeholder="cth. Muhammad Faris Al Bassam, S.E."></div>
         </div>
         <div class="columns">
           <div class="column">
             <div class="field">
               <label class="label">NIP</label>
-              <div class="control"><input type="text" name="nip" class="input" placeholder="cth. 199605072019031006"></div>
+              <div class="control"><input type="text" name="nip" class="input" value="{{ prefill.nip|default:'' }}" placeholder="cth. 199605072019031006"></div>
             </div>
           </div>
           <div class="column">
             <div class="field">
               <label class="label">Pangkat/Golongan</label>
-              <div class="control"><input type="text" name="pangkat_golongan" class="input" placeholder="cth. III/b, Penata Muda Tk. I"></div>
+              <div class="control"><input type="text" name="pangkat_golongan" class="input" value="{{ prefill.pangkat_golongan|default:'' }}" placeholder="cth. III/b, Penata Muda Tk. I"></div>
             </div>
           </div>
         </div>
         <div class="field">
           <label class="label">Jabatan</label>
-          <div class="control"><input type="text" name="jabatan" class="input" placeholder="cth. Analis Kebijakan Pertama Bagian Kerja Sama Luar Negeri"></div>
+          <div class="control"><input type="text" name="jabatan" class="input" value="{{ prefill.jabatan|default:'' }}" placeholder="cth. Analis Kebijakan Pertama Bagian Kerja Sama Luar Negeri"></div>
         </div>
         <div class="field">
           <label class="label">Unit Kerja</label>
-          <div class="control"><input type="text" name="unit_kerja" class="input" placeholder="cth. Sekretariat Jenderal"></div>
+          <div class="control"><input type="text" name="unit_kerja" class="input" value="{{ prefill.unit_kerja|default:'' }}" placeholder="cth. Sekretariat Jenderal"></div>
         </div>
         <div class="field">
           <label class="label">Negara Tujuan</label>
-          <div class="control"><input type="text" name="negara_tujuan" class="input" placeholder="cth. Arab Saudi"></div>
+          <div class="control"><input type="text" name="negara_tujuan" class="input" value="{{ prefill.negara_tujuan|default:'' }}" placeholder="cth. Arab Saudi"></div>
         </div>
         <div class="field">
           <label class="label">Maksud Perjalanan</label>
-          <div class="control"><textarea name="maksud_perjalanan" class="textarea" rows="2" placeholder="cth. Non Dinas — Ibadah Umrah"></textarea></div>
+          <div class="control"><textarea name="maksud_perjalanan" class="textarea" rows="2" placeholder="cth. Non Dinas — Ibadah Umrah">{{ prefill.maksud_perjalanan|default:'' }}</textarea></div>
         </div>
         <div class="field">
           <label class="label">Sumber Pembiayaan</label>
-          <div class="control"><input type="text" name="sumber_pembiayaan" class="input" placeholder="cth. Biaya Sendiri"></div>
+          <div class="control"><input type="text" name="sumber_pembiayaan" class="input" value="{{ prefill.sumber_pembiayaan|default:'' }}" placeholder="cth. Biaya Sendiri"></div>
         </div>
         <div class="columns">
           <div class="column">
             <div class="field">
               <label class="label">Tanggal Berangkat</label>
-              <div class="control"><input type="date" name="tgl_berangkat" class="input"></div>
+              <div class="control"><input type="date" name="tgl_berangkat" class="input" value="{{ prefill.tgl_berangkat|default:'' }}"></div>
             </div>
           </div>
           <div class="column">
             <div class="field">
               <label class="label">Tanggal Kembali</label>
-              <div class="control"><input type="date" name="tgl_kembali" class="input"></div>
+              <div class="control"><input type="date" name="tgl_kembali" class="input" value="{{ prefill.tgl_kembali|default:'' }}"></div>
             </div>
           </div>
         </div>
         <div class="field" style="max-width:220px;">
           <label class="label">Jumlah Hari Kerja</label>
-          <div class="control"><input type="number" min="0" name="jumlah_hari_kerja" class="input" placeholder="cth. 5"></div>
+          <div class="control"><input type="number" min="0" name="jumlah_hari_kerja" class="input" value="{{ prefill.jumlah_hari_kerja|default_if_none:'' }}" placeholder="cth. 5"></div>
           <p class="helptext">Jumlah hari kalender dihitung otomatis dari tanggal berangkat &amp; kembali. Jumlah hari kerja diisi otomatis dari Setting Kalender saat tanggal diubah, dan tetap bisa disunting.</p>
+        </div>
+
+        {% if kode_terpilih and not prefill %}
+          <p class="help is-danger">
+            Data pegawai/perjalanan tidak dapat dimuat otomatis dari pengajuan terpilih — isi manual di bawah.
+          </p>
+        {% endif %}
+
+        <hr>
+        <div class="section-title" style="font-size:13px;">Pejabat Penandatangan</div>
+        <div class="field">
+          <label class="label">Nama Jabatan</label>
+          <div class="control"><input type="text" name="jabatan_penandatangan" class="input" value="{{ pengaturan.jabatan_penandatangan_karo|default:'' }}" placeholder="cth. Kepala Biro Perencanaan Anggaran dan Kerja Sama Luar Negeri"></div>
+        </div>
+        <div class="field">
+          <label class="label">Nama Pejabat</label>
+          <div class="control"><input type="text" name="nama_pejabat" class="input" value="{{ pengaturan.nama_pejabat_karo|default:'' }}" placeholder="cth. Reiza Setiawan"></div>
+          <p class="helptext">
+            Nilai awal diambil dari <a href="{% url 'pakln:pengaturan_dokumen' %}">Setting</a> — ubah di sini hanya
+            berlaku untuk dokumen ini saja.
+          </p>
+        </div>
+
+        <hr>
+        <div class="field">
+          <label class="label">Tanggal ND</label>
+          <div class="control"><input type="date" name="tanggal_nd" id="ndTanggalInput" class="input" value="{{ default_tanggal_nd }}"></div>
+        </div>
+        <div class="field">
+          <label class="checkbox">
+            <input type="checkbox" name="tampilkan_paraf" id="ndTampilkanParaf" value="1" checked> Tampilkan Kolom Paraf
+          </label>
+          <p class="helptext">Kotak paraf "Katim AKI" &amp; "{{ label_paraf_kabag }}" tampil secara default — matikan centang ini untuk menyembunyikannya dari dokumen.</p>
         </div>
 
         <p class="helptext">
@@ -326,10 +358,55 @@
   $(function () {
     var BULAN_ID = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
-    // Tanggal Nota Dinas mengikuti tanggal hari ini secara otomatis
-    // (tidak ada field form untuk ini — bukan bagian dari spesifikasi form).
-    var today = new Date();
-    $('#prev-tanggal').text(today.getDate() + ' ' + BULAN_ID[today.getMonth()] + ' ' + today.getFullYear());
+    // Tanggal Nota Dinas mengikuti field "Tanggal ND" pada form (default
+    // hari ini, lihat value awal input, tetap bisa diubah manual).
+    function updateTanggalNd() {
+      var raw = $('#ndTanggalInput').val();
+      if (!raw) { $('#prev-tanggal').text(''); return; }
+      var parts = raw.split('-');
+      $('#prev-tanggal').text(Number(parts[2]) + ' ' + BULAN_ID[Number(parts[1]) - 1] + ' ' + parts[0]);
+    }
+
+    // Kotak paraf "Katim AKI"/"{{ label_paraf_kabag }}" tampil default
+    // (checkbox tercentang) — dimatikan manual lewat checkbox "Tampilkan
+    // Kolom Paraf".
+    function updateParafBox() {
+      var tampil = $('#ndTampilkanParaf').is(':checked');
+      $('#ndParafBox').toggle(tampil);
+      $('#ndSignRow').toggleClass('no-paraf', !tampil);
+    }
+    $('#ndKaroForm').on('change', '#ndTampilkanParaf', updateParafBox);
+    updateParafBox();
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    // Pecah "Jabatan Pejabat Penandatangan" jadi 2 baris sebelum frasa
+    // "(dan) Kerja Sama Luar Negeri" — supaya blok tanda tangan tidak
+    // melebar panjang ke kiri (meniru pola judul jabatan Kementerian PU).
+    // Cerminan persis dari `_split_jabatan_dua_baris` di sisi server.
+    function splitJabatanDuaBaris(jabatan) {
+      var lower = jabatan.toLowerCase();
+      var idx = lower.indexOf('dan kerja sama luar negeri');
+      if (idx === -1) { idx = lower.indexOf('kerja sama luar negeri'); }
+      if (idx === -1) { return [jabatan, '']; }
+      return [jabatan.slice(0, idx).trim(), jabatan.slice(idx).trim()];
+    }
+
+    function updateJabatanTtd() {
+      var raw = ($('input[name="jabatan_penandatangan"]').val() || '').trim();
+      var $el = $('#prev-jabatan-ttd');
+      if (!raw) {
+        $el.text('[jabatan]').addClass('is-placeholder');
+        return;
+      }
+      var parts = splitJabatanDuaBaris(raw);
+      var html = escapeHtml(parts[0]) + (parts[1] ? '<br>' + escapeHtml(parts[1]) : '');
+      $el.html(html).removeClass('is-placeholder');
+    }
 
     var PLACEHOLDERS = {
       nama: { 'prev-nama-1': '[nama]', 'prev-t-nama': '[nama]' },
@@ -340,6 +417,7 @@
       nip: { 'prev-t-nip': '[nip]' },
       jabatan: { 'prev-t-jabatan': '[jabatan]' },
       jumlah_hari_kerja: { 'prev-t-hkerja': '[h_kerja]' },
+      nama_pejabat: { 'prev-nama-pejabat': '[Nama Pejabat]' },
     };
 
     // Satu handler generik (delegasi event) untuk semua field teks — setiap
@@ -357,25 +435,34 @@
       });
     }
 
-    function formatTanggalIndo(isoValue) {
-      if (!isoValue) { return null; }
-      var parts = isoValue.split('-');
-      if (parts.length !== 3) { return null; }
-      var d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-      return d.getDate() + ' ' + BULAN_ID[d.getMonth()] + ' ' + d.getFullYear();
+    // Rentang tanggal ringkas diturunkan dari field Tanggal
+    // Berangkat/Kembali — tidak ada input form terpisah untuk ini, supaya
+    // tidak ada dua sumber data yang bisa saling tidak sinkron.
+    // "1 - 13 Agustus 2026" jika bulan & tahun berangkat/kembali sama,
+    // "30 Agustus - 10 September 2026" jika bulan beda (tahun sama), atau
+    // "d Bulan YYYY - d Bulan YYYY" penuh jika tahunnya beda.
+    function rentangTanggal(berangkatVal, kembaliVal) {
+      if (!berangkatVal || !kembaliVal) { return null; }
+      var b = berangkatVal.split('-');
+      var k = kembaliVal.split('-');
+      if (b.length !== 3 || k.length !== 3) { return null; }
+      var bHari = Number(b[2]), bBulan = Number(b[1]), bTahun = b[0];
+      var kHari = Number(k[2]), kBulan = Number(k[1]), kTahun = k[0];
+      if (bTahun === kTahun && bBulan === kBulan) {
+        return bHari + ' - ' + kHari + ' ' + BULAN_ID[bBulan - 1] + ' ' + bTahun;
+      }
+      if (bTahun === kTahun) {
+        return bHari + ' ' + BULAN_ID[bBulan - 1] + ' - ' + kHari + ' ' + BULAN_ID[kBulan - 1] + ' ' + bTahun;
+      }
+      return bHari + ' ' + BULAN_ID[bBulan - 1] + ' ' + bTahun + ' - ' + kHari + ' ' + BULAN_ID[kBulan - 1] + ' ' + kTahun;
     }
 
-    // Periode Perjalanan pada tabel Data Pegawai — tanggal ditampilkan
-    // dalam format Indonesia, dan "hari kalender" dihitung otomatis dari
-    // selisih tanggal berangkat & kembali (bukan input manual).
     function updatePeriode() {
       var berangkatVal = $('#ndKaroForm input[name="tgl_berangkat"]').val();
       var kembaliVal = $('#ndKaroForm input[name="tgl_kembali"]').val();
-      var berangkatFmt = formatTanggalIndo(berangkatVal);
-      var kembaliFmt = formatTanggalIndo(kembaliVal);
 
-      $('#prev-t-berangkat').text(berangkatFmt || '[tanggal berangkat]').toggleClass('is-placeholder', !berangkatFmt);
-      $('#prev-t-kembali').text(kembaliFmt || '[tanggal pulang]').toggleClass('is-placeholder', !kembaliFmt);
+      var rentang = rentangTanggal(berangkatVal, kembaliVal);
+      $('#prev-t-periode').text(rentang || '[periode perjalanan]').toggleClass('is-placeholder', !rentang);
 
       var hariKalender = null;
       if (berangkatVal && kembaliVal) {
@@ -407,12 +494,16 @@
         if (e.type === 'change') { isiHariKerja(); }
       }
     });
+    $('#ndKaroForm').on('input change', '#ndTanggalInput', updateTanggalNd);
+    $('#ndKaroForm').on('input change', 'input[name="jabatan_penandatangan"]', updateJabatanTtd);
 
     // Isi awal (kalau form sudah punya nilai, mis. hasil back/forward browser).
     $('#ndKaroForm').find('input[name], textarea[name]').each(function () {
       updatePreview($(this));
     });
     updatePeriode();
+    updateTanggalNd();
+    updateJabatanTtd();
   });
 </script>
 {% endblock %}

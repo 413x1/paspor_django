@@ -11,7 +11,7 @@
 <div class="page-head">
   <div>
     <h2>Beranda</h2>
-    <p class="sub">Halo, {{ profile.nama|default:user.get_full_name }} 👋 — kelola pengajuan perjalanan luar negeri Anda di sini.</p>
+    <p class="sub">Halo, {{ profile.nama|default:user.get_full_name }} — kelola pengajuan perjalanan luar negeri Anda di sini.</p>
   </div>
   {% if not aktif %}
     <button type="button" class="button is-warning" data-modal-open="jenisModal">✚ Tambah Usulan Baru</button>
@@ -35,7 +35,7 @@
     </thead>
     <tbody>
       <tr>
-        <td><strong>🌏 {{ aktif.tujuan_negara_display|default:"Belum diisi" }}</strong></td>
+        <td><strong>{{ aktif.tujuan_negara_display|default:"Belum diisi" }}</strong></td>
         <td>{{ aktif.kategori|default:"—" }}</td>
         <td>{{ aktif.tgl_pengajuan|date:"d M Y"|default:"—" }}</td>
         <td>{{ aktif.get_kanal_display }}</td>

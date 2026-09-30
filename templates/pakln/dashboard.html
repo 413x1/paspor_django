@@ -36,7 +36,7 @@
     </div>
   </div>
   <p class="helptext" style="margin:-6px 0 10px;">
-    Centang baris berstatus <strong>Dalam Proses Biro PAKLN</strong> untuk membuat dokumen ND Kabag/ND Karo sekaligus (batch) lewat tombol Dropdown di kanan atas tabel.
+    Centang satu baris berstatus <strong>Dalam Proses Biro PAKLN</strong> untuk membuat dokumen ND Kabag/ND Karo lewat tombol Dropdown di kanan atas tabel.
   </p>
   <div class="table-wrap">
     <table id="dashboardTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
@@ -58,8 +58,10 @@
 <script>
   $(function () {
     // State: kode pengajuan (identifier yang dipakai di seluruh proyek ini,
-    // bukan primary key numerik) yang sedang dicentang untuk digenerate
-    // secara batch — dipertahankan lintas halaman/pencarian/pengurutan tabel.
+    // bukan primary key numerik) yang sedang dicentang untuk digenerate —
+    // hanya SATU pengajuan sekaligus (mencentang baris baru otomatis
+    // melepas centang baris lain, walau elemennya checkbox biasa) —
+    // dipertahankan lintas halaman/pencarian/pengurutan tabel.
     var selectedPengajuanIds = [];
 
     function updateGenerateButtons() {
@@ -112,12 +114,11 @@
     });
 
     $('#dashboardTable tbody').on('change', '.pengajuan-select-checkbox', function () {
-      var kode = this.value;
-      var idx = selectedPengajuanIds.indexOf(kode);
-      if (this.checked && idx === -1) {
-        selectedPengajuanIds.push(kode);
-      } else if (!this.checked && idx !== -1) {
-        selectedPengajuanIds.splice(idx, 1);
+      if (this.checked) {
+        selectedPengajuanIds = [this.value];
+        $('.pengajuan-select-checkbox').not(this).prop('checked', false);
+      } else {
+        selectedPengajuanIds = [];
       }
       updateGenerateButtons();
     });

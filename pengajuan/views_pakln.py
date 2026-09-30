@@ -26,10 +26,10 @@ from paspor.models import HariLibur, KategoriPerjalanan, Negara, SumberPembiayaa
 from .decorators import role_required
 from .forms import (
     DokumenPaklnForm, DokumenTemplateForm, HariLiburForm, ImporHariLiburForm, KategoriPerjalananForm,
-    NegaraForm, SumberPembiayaanForm, TambahHariLiburForm,
+    NegaraForm, PengaturanDokumenForm, SumberPembiayaanForm, TambahHariLiburForm,
 )
 from .models import (
-    DokumenGenerateLog, DokumenPakln, DokumenPaklnPendukung, DokumenTemplate, Pengajuan,
+    DokumenGenerateLog, DokumenPakln, DokumenPaklnPendukung, DokumenTemplate, Pengajuan, PengaturanDokumen,
 )
 
 _BULAN_ID = [
@@ -40,6 +40,70 @@ _BULAN_ID = [
 
 def _tanggal_indonesia(tanggal):
     return f"{tanggal.day} {_BULAN_ID[tanggal.month - 1]} {tanggal.year}"
+
+
+def _label_kabag_paraf(jabatan_kabag):
+    """Label kotak paraf kedua pada ND Karo ("Kabag KLN") — mengikuti
+    status Plt./definitif jabatan Kabag KLN yang berlaku saat ini (Setting
+    > Jabatan Pejabat Penandatangan ND Kabag), bukan teks statis."""
+    if jabatan_kabag and jabatan_kabag.strip().lower().startswith("plt"):
+        return "Plt. Kabag KLN"
+    return "Kabag KLN"
+
+
+def _split_jabatan_dua_baris(jabatan):
+    """Pecah teks "Jabatan Pejabat Penandatangan" jadi 2 baris di titik
+    yang wajar secara bahasa (sebelum frasa "(dan) Kerja Sama Luar
+    Negeri") supaya blok tanda tangan tidak melebar panjang ke kiri pada
+    dokumen — meniru pola judul jabatan Kementerian PU ("<struktur> /
+    Kerja Sama Luar Negeri"). Kalau frasa itu tidak ditemukan (jabatan
+    lain di luar pola ini), dikembalikan sebagai satu baris saja."""
+    if not jabatan:
+        return jabatan or "", ""
+    lower = jabatan.lower()
+    idx = lower.find("dan kerja sama luar negeri")
+    if idx == -1:
+        idx = lower.find("kerja sama luar negeri")
+    if idx == -1:
+        return jabatan, ""
+    return jabatan[:idx].strip(), jabatan[idx:].strip()
+
+
+def _prefill_nd_dari_pengajuan(kode_terpilih):
+    """Ambil data pegawai + detail perjalanan dari satu Pengajuan terpilih
+    di Dasbor untuk mengisi awal form Generate ND — hanya dipakai saat
+    persis satu pengajuan yang dicentang, karena ND Kabag/Karo ditujukan
+    untuk satu pegawai. Field tetap bisa diedit manual di form."""
+    if len(kode_terpilih) != 1:
+        return None
+    pengajuan = (
+        Pengajuan.objects
+        .select_related("pegawai", "pegawai__profile", "sumber_pembiayaan")
+        .prefetch_related("tujuan_negara")
+        .filter(kode=kode_terpilih[0])
+        .first()
+    )
+    if not pengajuan:
+        return None
+    profile = getattr(pengajuan.pegawai, "profile", None)
+    return {
+        "nama": profile.nama if profile else pengajuan.pegawai.get_full_name(),
+        "nip": profile.nip if profile else "",
+        "pangkat_golongan": profile.pangkat_golongan if profile else "",
+        "jabatan": profile.jabatan if profile else "",
+        "unit_kerja": profile.unit_kerja if profile else pengajuan.pegawai.unit_kerja,
+        "negara_tujuan": pengajuan.tujuan_negara_display,
+        "maksud_perjalanan": pengajuan.maksud,
+        "sumber_pembiayaan": pengajuan.sumber_pembiayaan.nama if pengajuan.sumber_pembiayaan else "",
+        "tgl_berangkat": pengajuan.tgl_berangkat.isoformat() if pengajuan.tgl_berangkat else "",
+        "tgl_kembali": pengajuan.tgl_kembali.isoformat() if pengajuan.tgl_kembali else "",
+        "rentang_tanggal": _rentang_tanggal_indonesia(pengajuan.tgl_berangkat, pengajuan.tgl_kembali),
+        "jumlah_hari_kerja": pengajuan.jumlah_hari_kerja,
+        "jumlah_hari_kalender": _hitung_hari_kalender(
+            pengajuan.tgl_berangkat.isoformat() if pengajuan.tgl_berangkat else "",
+            pengajuan.tgl_kembali.isoformat() if pengajuan.tgl_kembali else "",
+        ),
+    }
 
 
 def _parse_tanggal_display(value):
@@ -61,6 +125,33 @@ def _hitung_hari_kalender(tgl_berangkat, tgl_kembali):
     except (ValueError, TypeError):
         return None
     return hitung_hari_kalender(berangkat, kembali)
+
+
+def _rentang_tanggal_indonesia(berangkat, kembali):
+    """Format ringkas rentang tanggal perjalanan (dipakai ND Karo, tabel
+    "Periode Perjalanan"): "1 - 13 Agustus 2026" jika bulan & tahun sama,
+    "30 Agustus - 10 September 2026" jika bulan beda (tahun sama), atau
+    "d Bulan YYYY - d Bulan YYYY" penuh jika tahunnya beda."""
+    if not berangkat or not kembali:
+        return ""
+    if berangkat.year == kembali.year and berangkat.month == kembali.month:
+        return f"{berangkat.day} - {kembali.day} {_BULAN_ID[berangkat.month - 1]} {berangkat.year}"
+    if berangkat.year == kembali.year:
+        return (
+            f"{berangkat.day} {_BULAN_ID[berangkat.month - 1]} - "
+            f"{kembali.day} {_BULAN_ID[kembali.month - 1]} {berangkat.year}"
+        )
+    return f"{_tanggal_indonesia(berangkat)} - {_tanggal_indonesia(kembali)}"
+
+
+def _parse_rentang_tanggal_display(tgl_berangkat, tgl_kembali):
+    """Versi string YYYY-MM-DD (dari POST form) dari `_rentang_tanggal_indonesia`."""
+    try:
+        berangkat = datetime.strptime(tgl_berangkat, "%Y-%m-%d").date()
+        kembali = datetime.strptime(tgl_kembali, "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        return ""
+    return _rentang_tanggal_indonesia(berangkat, kembali)
 
 
 def _logo_data_uri():
@@ -113,6 +204,9 @@ def generate_nd_kabag(request):
     return render(request, "pakln/generate_nd_kabag.html", {
         "kode_terpilih": kode_terpilih,
         "kode_terpilih_csv": ",".join(kode_terpilih),
+        "prefill": _prefill_nd_dari_pengajuan(kode_terpilih),
+        "pengaturan": PengaturanDokumen.get_current(),
+        "default_tanggal_nd": timezone.now().date().isoformat(),
     })
 
 
@@ -122,6 +216,9 @@ def download_nd_kabag_pdf(request):
     """Cetak Nota Dinas Kepala Bagian jadi PDF (WeasyPrint) dari data form
     Generate ND Kabag. Dikirim lewat submit form biasa (bukan AJAX) supaya
     browser langsung menerima file unduhan dari response ini."""
+    jabatan_raw = request.POST.get("jabatan_penandatangan", "").strip()
+    jabatan_baris1, jabatan_baris2 = _split_jabatan_dua_baris(jabatan_raw) if jabatan_raw else ("[jabatan]", "")
+
     context = {
         "nama": request.POST.get("nama", "").strip() or "[nama]",
         "negara_tujuan": request.POST.get("negara_tujuan", "").strip() or "[negara tujuan]",
@@ -133,7 +230,11 @@ def download_nd_kabag_pdf(request):
         "sumber_pembiayaan": request.POST.get("sumber_pembiayaan", "").strip(),
         "tgl_berangkat": request.POST.get("tgl_berangkat", "").strip(),
         "tgl_kembali": request.POST.get("tgl_kembali", "").strip(),
-        "tanggal_nota_dinas": _tanggal_indonesia(timezone.now().date()),
+        "jabatan_baris1": jabatan_baris1,
+        "jabatan_baris2": jabatan_baris2,
+        "nama_pejabat": request.POST.get("nama_pejabat", "").strip() or "[Nama Pejabat]",
+        "tanggal_nota_dinas": _parse_tanggal_display(request.POST.get("tanggal_nd", "")) or _tanggal_indonesia(timezone.now().date()),
+        "tampilkan_paraf": request.POST.get("tampilkan_paraf") == "1",
         "logo_data_uri": _logo_data_uri(),
     }
     html_string = render_to_string("pakln/pdf_template_nd_kabag.html", context)
@@ -167,9 +268,14 @@ def generate_nd_karo(request):
     preview jQuery, tombol "Unduh PDF" men-submit ke
     `download_nd_karo_pdf`."""
     kode_terpilih = _kode_terpilih(request)
+    pengaturan = PengaturanDokumen.get_current()
     return render(request, "pakln/generate_nd_karo.html", {
         "kode_terpilih": kode_terpilih,
         "kode_terpilih_csv": ",".join(kode_terpilih),
+        "prefill": _prefill_nd_dari_pengajuan(kode_terpilih),
+        "pengaturan": pengaturan,
+        "default_tanggal_nd": timezone.now().date().isoformat(),
+        "label_paraf_kabag": _label_kabag_paraf(pengaturan.jabatan_penandatangan_kabag),
     })
 
 
@@ -181,6 +287,9 @@ def download_nd_karo_pdf(request):
     tgl_berangkat = request.POST.get("tgl_berangkat", "").strip()
     tgl_kembali = request.POST.get("tgl_kembali", "").strip()
     hari_kalender = _hitung_hari_kalender(tgl_berangkat, tgl_kembali)
+    pengaturan = PengaturanDokumen.get_current()
+    jabatan_raw = request.POST.get("jabatan_penandatangan", "").strip()
+    jabatan_baris1, jabatan_baris2 = _split_jabatan_dua_baris(jabatan_raw) if jabatan_raw else ("[jabatan]", "")
 
     context = {
         "nama": request.POST.get("nama", "").strip() or "[nama]",
@@ -191,11 +300,15 @@ def download_nd_karo_pdf(request):
         "unit_kerja": request.POST.get("unit_kerja", "").strip() or "[nama unor]",
         "maksud_perjalanan": request.POST.get("maksud_perjalanan", "").strip() or "[keperluan]",
         "sumber_pembiayaan": request.POST.get("sumber_pembiayaan", "").strip() or "[sumber biaya]",
-        "tgl_berangkat_display": _parse_tanggal_display(tgl_berangkat) or "[tanggal berangkat]",
-        "tgl_kembali_display": _parse_tanggal_display(tgl_kembali) or "[tanggal pulang]",
+        "rentang_tanggal": _parse_rentang_tanggal_display(tgl_berangkat, tgl_kembali) or "[periode perjalanan]",
         "jumlah_hari_kerja": request.POST.get("jumlah_hari_kerja", "").strip() or "[h_kerja]",
         "jumlah_hari_kalender": hari_kalender if hari_kalender is not None else "[h_kalender]",
-        "tanggal_nota_dinas": _tanggal_indonesia(timezone.now().date()),
+        "jabatan_baris1": jabatan_baris1,
+        "jabatan_baris2": jabatan_baris2,
+        "nama_pejabat": request.POST.get("nama_pejabat", "").strip() or "[Nama Pejabat]",
+        "tanggal_nota_dinas": _parse_tanggal_display(request.POST.get("tanggal_nd", "")) or _tanggal_indonesia(timezone.now().date()),
+        "label_paraf_kabag": _label_kabag_paraf(pengaturan.jabatan_penandatangan_kabag),
+        "tampilkan_paraf": request.POST.get("tampilkan_paraf") == "1",
         "logo_data_uri": _logo_data_uri(),
     }
     html_string = render_to_string("pakln/pdf_template_nd_karo.html", context)
@@ -219,6 +332,29 @@ def download_nd_karo_pdf(request):
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename="Nota_Dinas_Karo.pdf"'
     return response
+
+
+@role_required("admin_pakln")
+def pengaturan_dokumen(request):
+    """Menu "Setting" — Admin Biro PAKLN mengatur default "Jabatan Pejabat
+    Penandatangan" & "Nama Pejabat" yang dipakai form Generate ND Kabag
+    (lihat `_prefill_nd_dari_pengajuan` / `generate_nd_kabag`). Disimpan di
+    DB (bukan localStorage) supaya nilainya juga tersedia saat PDF
+    dirender di server, bukan cuma di satu browser."""
+    pengaturan = PengaturanDokumen.get_current()
+    if request.method == "POST":
+        form = PengaturanDokumenForm(request.POST, instance=pengaturan)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.updated_oleh = request.user
+            obj.save()
+            messages.success(request, "Pengaturan dokumen berhasil disimpan.")
+            return redirect("pakln:pengaturan_dokumen")
+        messages.error(request, "Periksa kembali isian formulir.")
+    else:
+        form = PengaturanDokumenForm(instance=pengaturan)
+
+    return render(request, "pakln/pengaturan.html", {"form": form, "pengaturan": pengaturan})
 
 
 @role_required("admin_pakln")

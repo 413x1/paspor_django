@@ -10,48 +10,52 @@
      sebagai data URI (lihat view), ukuran kertas diatur lewat @page. */
   @page {
     size: A4;
-    margin: 2.5cm 2cm;
+    margin: 1.8cm 2cm;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     font-family: "Times New Roman", Times, serif;
-    font-size: 12.5pt;
-    line-height: 1.55;
+    font-size: 11.5pt;
+    line-height: 1.4;
     color: #111111;
   }
   .nd-head { display: flex; align-items: flex-start; gap: 14px; }
-  .nd-head img { width: 58px; height: 58px; object-fit: contain; flex-shrink: 0; margin-top: 4px; }
+  .nd-head img { width: 50px; height: 50px; object-fit: contain; flex-shrink: 0; margin-top: 2px; }
   .nd-head-text { flex: 1 1 auto; text-align: center; }
-  .nd-head-text .nd-org1 { font-size: 15pt; font-weight: 700; letter-spacing: .3px; }
-  .nd-head-text .nd-org2 { font-size: 13pt; font-weight: 700; margin-top: 1px; }
-  .nd-head-text .nd-addr { font-size: 9pt; margin-top: 3px; }
-  .nd-rule { border: none; border-top: 2px solid #111111; margin: 8px 0 4px; }
-  .nd-title { text-align: center; font-weight: 700; text-decoration: underline; font-size: 12.5pt; margin-bottom: 0; }
-  .nd-nomor { text-align: center; font-size: 11.5pt; margin-bottom: 16px; }
-  .nd-meta { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
-  .nd-meta td { padding: 1px 0; vertical-align: top; font-size: 12.5pt; }
-  .nd-meta td.nd-meta-label { width: 70px; white-space: nowrap; }
-  .nd-meta td.nd-meta-colon { width: 12px; }
-  .nd-rule-thin { border: none; border-top: 1px solid #111111; margin: 10px 0 18px; }
-  .nd-body p { margin: 0 0 12px; text-align: justify; text-indent: 32px; }
-  .nd-list { width: 100%; border-collapse: collapse; margin: 0 0 12px; font-size: 12.5pt; }
+  .nd-head-text .nd-org1 { font-size: 14pt; font-weight: 700; letter-spacing: .3px; }
+  .nd-head-text .nd-org2 { font-size: 12pt; font-weight: 700; margin-top: 1px; }
+  .nd-head-text .nd-addr { font-size: 8.5pt; margin-top: 2px; }
+  .nd-rule { border: none; border-top: 2px solid #111111; margin: 6px 0 3px; }
+  .nd-title { text-align: center; font-weight: 700; text-decoration: underline; font-size: 11.5pt; margin-bottom: 0; }
+  .nd-nomor { text-align: center; font-size: 10.5pt; margin-bottom: 10px; }
+  .nd-meta { width: 100%; border-collapse: collapse; margin-bottom: 3px; }
+  .nd-meta td { padding: 1px 0; vertical-align: top; font-size: 11.5pt; }
+  .nd-meta td.nd-meta-label { width: 64px; white-space: nowrap; }
+  .nd-meta td.nd-meta-colon { width: 10px; }
+  .nd-rule-thin { border: none; border-top: 1px solid #111111; margin: 8px 0 10px; }
+  .nd-body p { margin: 0 0 8px; text-align: justify; text-indent: 28px; }
+  .nd-list { width: 100%; border-collapse: collapse; margin: 0 0 8px; font-size: 11.5pt; }
   .nd-list td { padding: 1px 4px 1px 0; vertical-align: top; }
   .nd-list td.nd-list-no { width: 20px; }
   .nd-list td.nd-list-label { width: 135px; }
   .nd-list td.nd-list-colon { width: 12px; }
-  .nd-pegawai-table { width: 100%; border-collapse: collapse; margin: 6px 0 14px; font-size: 11pt; }
-  .nd-pegawai-table th, .nd-pegawai-table td { border: 1px solid #111111; padding: 5px 7px; vertical-align: top; }
+  .nd-pegawai-table { width: 100%; border-collapse: collapse; margin: 4px 0 10px; font-size: 10.5pt; }
+  .nd-pegawai-table th, .nd-pegawai-table td { border: 1px solid #111111; padding: 4px 6px; vertical-align: top; }
   .nd-pegawai-table th { text-align: center; font-weight: 700; }
   .nd-pegawai-table td.nd-pt-no { text-align: center; width: 24px; }
-  .nd-sign-row { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 38px; }
-  .nd-sign-box { display: flex; width: 200px; border: 1px solid #111111; text-align: center; font-size: 9.5pt; }
+  .nd-sign-row {
+    display: flex; justify-content: space-between; align-items: flex-end; margin-top: 20px;
+    page-break-inside: avoid; break-inside: avoid;
+  }
+  .nd-sign-row.no-paraf { justify-content: flex-end; }
+  .nd-sign-box { display: flex; width: 180px; border: 1px solid #111111; text-align: center; font-size: 9pt; }
   .nd-sign-box > div { flex: 1 1 50%; }
   .nd-sign-box > div:first-child { border-right: 1px solid #111111; }
-  .nd-sign-box .nd-sign-box-head { border-bottom: 1px solid #111111; padding: 4px 2px; }
-  .nd-sign-box .nd-sign-box-body { height: 38px; }
+  .nd-sign-box .nd-sign-box-head { border-bottom: 1px solid #111111; padding: 3px 2px; }
+  .nd-sign-box .nd-sign-box-body { height: 32px; }
   .nd-sign-block { text-align: center; }
-  .nd-sign-block .nd-sign-name { margin-top: 48px; font-weight: 700; text-decoration: underline; }
+  .nd-sign-block .nd-sign-name { margin-top: 30px; font-weight: 700; text-decoration: underline; }
   .nd-dyn { font-weight: 700; }
 </style>
 </head>
@@ -159,8 +163,7 @@
         </td>
         <td><span class="nd-dyn">{{ jabatan }}</span></td>
         <td>
-          <span class="nd-dyn">{{ tgl_berangkat_display }}</span> s.d.
-          <span class="nd-dyn">{{ tgl_kembali_display }}</span><br>
+          <span class="nd-dyn">{{ rentang_tanggal }}</span><br>
           <span class="nd-dyn">{{ jumlah_hari_kerja }}</span> hari kerja /
           <span class="nd-dyn">{{ jumlah_hari_kalender }}</span> hari kalender
         </td>
@@ -179,21 +182,22 @@
     </p>
   </div>
 
-  <div class="nd-sign-row">
+  <div class="nd-sign-row{% if not tampilkan_paraf %} no-paraf{% endif %}">
+    {% if tampilkan_paraf %}
     <div class="nd-sign-box">
       <div>
         <div class="nd-sign-box-head">Katim AKI</div>
         <div class="nd-sign-box-body"></div>
       </div>
       <div>
-        <div class="nd-sign-box-head">Plt. Kabag KLN</div>
+        <div class="nd-sign-box-head">{{ label_paraf_kabag }}</div>
         <div class="nd-sign-box-body"></div>
       </div>
     </div>
+    {% endif %}
     <div class="nd-sign-block">
-      <div>Kepala Biro Perencanaan Anggaran</div>
-      <div>dan Kerja Sama Luar Negeri</div>
-      <div class="nd-sign-name">Reiza Setiawan</div>
+      <div>{{ jabatan_baris1 }}{% if jabatan_baris2 %}<br>{{ jabatan_baris2 }}{% endif %}</div>
+      <div class="nd-sign-name">{{ nama_pejabat }}</div>
     </div>
   </div>
 </body>
