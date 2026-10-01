@@ -144,22 +144,31 @@ class PengajuanForm(forms.ModelForm):
 class DokumenPegawaiForm(forms.ModelForm):
     class Meta:
         model = DokumenPegawai
-        fields = ["file"]
-        widgets = {"file": forms.ClearableFileInput(attrs={"class": "form-control"})}
+        fields = ["file", "tanggal_surat"]
+        widgets = {
+            "file": forms.ClearableFileInput(attrs={"class": "form-control"}),
+            "tanggal_surat": forms.DateInput(attrs={"type": "date"}),
+        }
 
 
 class DokumenUnorForm(forms.ModelForm):
     class Meta:
         model = DokumenUnor
-        fields = ["file"]
-        widgets = {"file": forms.ClearableFileInput(attrs={"class": "form-control"})}
+        fields = ["file", "tanggal_surat"]
+        widgets = {
+            "file": forms.ClearableFileInput(attrs={"class": "form-control"}),
+            "tanggal_surat": forms.DateInput(attrs={"type": "date"}),
+        }
 
 
 class DokumenPaklnForm(forms.ModelForm):
     class Meta:
         model = DokumenPakln
-        fields = ["file"]
-        widgets = {"file": forms.ClearableFileInput(attrs={"class": "form-control"})}
+        fields = ["file", "tanggal_surat"]
+        widgets = {
+            "file": forms.ClearableFileInput(attrs={"class": "form-control"}),
+            "tanggal_surat": forms.DateInput(attrs={"type": "date"}),
+        }
 
 
 class DokumenTemplateForm(forms.ModelForm):

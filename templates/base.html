@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}PASPOR{% endblock %} — Kementerian PU</title>
   <link rel="stylesheet" href="{% static 'vendors/bulma/css/versions/bulma-no-dark-mode.min.css' %}">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260930e">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20261001h">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -66,6 +66,38 @@
   </div>
 </div>
 
+<div id="tanggalSuratModal" class="modal paspor-modal">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <div class="modal-card-body">
+      <h3>Tanggal Surat</h3>
+      <p class="modal-intro">Isi tanggal surat pada dokumen yang baru saja Anda pilih, sebelum berkasnya diunggah.</p>
+      <div class="field">
+        <label class="label">Tanggal Surat</label>
+        <div class="control"><input type="date" id="tanggalSuratInput" class="input"></div>
+      </div>
+      <button type="button" id="tanggalSuratSimpan" class="button is-primary is-fullwidth">Simpan</button>
+      <button type="button" class="button is-fullwidth" style="margin-top:8px;" data-modal-close>Batal</button>
+    </div>
+  </div>
+</div>
+
+{# Modal konfirmasi "Keluar" — dipicu tombol Keluar di sidebar maupun
+   dropdown profil (lihat .logout-trigger di script bawah). #}
+<div id="logoutConfirmModal" class="modal paspor-modal">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <div class="modal-card-body">
+      <h3>Konfirmasi Keluar</h3>
+      <p class="modal-intro">Apakah Anda yakin ingin keluar dari akun ini?</p>
+      <div style="display:flex; gap:8px; justify-content:flex-end;">
+        <button type="button" class="button" data-modal-close>Batal</button>
+        <button type="button" id="logoutConfirmBtn" class="button btn-logout-confirm">Keluar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="{% static 'vendors/JQuery/jquery-4.0.0.min.js' %}"></script>
 <script>
   $(function () {
@@ -90,37 +122,33 @@
       $(this).closest('[data-sidebar-group]').toggleClass('is-open');
     });
 
-    // Dropdown generik berbasis klik: [data-nav-dropdown] + [data-nav-dropdown-toggle]
-    // (mis. tombol "Generate ND" di Dasbor Admin PAKLN). Tertutup lagi saat
-    // klik di luar area-nya atau menekan Esc.
-    $(document).on('click', '[data-nav-dropdown-toggle]', function (e) {
+    // Dropdown generik berbasis klik: [data-dropdown] (wadah) +
+    // [data-dropdown-toggle] (tombol pemicu) + [data-dropdown-panel]
+    // (opsional, panel yang klik di dalamnya tidak boleh ikut menutup
+    // dropdown-nya) — satu pola dipakai bersama oleh "Generate ND" di
+    // Dasbor, Notification Center, dan menu akun di header. CSS sudah
+    // menangani animasi masuk/keluar lewat opacity+visibility begitu class
+    // `is-active` di-toggle (lihat style.css), jadi di sini cukup
+    // tambah/lepas satu class — tidak perlu pentahapan atau setTimeout.
+    function closeDropdowns(except) {
+      $('[data-dropdown].is-active').not(except || [])
+        .removeClass('is-active')
+        .find('[data-dropdown-toggle]').attr('aria-expanded', 'false');
+    }
+    $(document).on('click', '[data-dropdown-toggle]', function (e) {
       e.preventDefault();
       e.stopPropagation();
-      var $item = $(this).closest('[data-nav-dropdown]');
-      var wasActive = $item.hasClass('is-active');
-      $('[data-nav-dropdown].is-active').removeClass('is-active');
-      if (!wasActive) { $item.addClass('is-active'); }
+      var $item = $(this).closest('[data-dropdown]');
+      var willOpen = !$item.hasClass('is-active');
+      closeDropdowns($item);
+      $item.toggleClass('is-active', willOpen);
+      $(this).attr('aria-expanded', willOpen ? 'true' : 'false');
     });
-    $(document).on('click', function () {
-      $('[data-nav-dropdown].is-active').removeClass('is-active');
-    });
-    $(document).on('keydown', function (e) {
-      if (e.key === 'Escape') { $('[data-nav-dropdown].is-active').removeClass('is-active'); }
-    });
-
-    // Dropdown akun pengguna di header.
-    $(document).on('click', '[data-user-menu-toggle]', function (e) {
-      e.stopPropagation();
-      var open = $(this).closest('[data-user-menu]').toggleClass('is-active').hasClass('is-active');
-      $(this).attr('aria-expanded', open ? 'true' : 'false');
-    });
-    $(document).on('click', '[data-user-menu] .header-user-menu', function (e) { e.stopPropagation(); });
-    $(document).on('click', function () {
-      $('[data-user-menu].is-active').removeClass('is-active').find('[data-user-menu-toggle]').attr('aria-expanded', 'false');
-    });
+    $(document).on('click', '[data-dropdown-panel]', function (e) { e.stopPropagation(); });
+    $(document).on('click', function () { closeDropdowns(); });
     $(document).on('keydown', function (e) {
       if (e.key === 'Escape') {
-        $('[data-user-menu].is-active').removeClass('is-active');
+        closeDropdowns();
         $('body').removeClass('sidebar-open');
       }
     });
@@ -137,6 +165,21 @@
     $(document).on('click', '.modal-background, [data-modal-close]', closeModals);
     $(document).on('keydown', function (e) {
       if (e.key === 'Escape') { closeModals(); }
+    });
+
+    // Konfirmasi Keluar — tombol "Keluar" di sidebar maupun dropdown profil
+    // (.logout-trigger) tidak langsung submit form logout-nya; munculkan
+    // modal konfirmasi dulu (animasi masuk/keluar sudah ditangani CSS
+    // generik .modal, lihat style.css). Form aslinya baru di-submit kalau
+    // tombol "Keluar" di DALAM modal ditekan.
+    var $formLogoutMenunggu = null;
+    $(document).on('click', '.logout-trigger', function (e) {
+      e.preventDefault();
+      $formLogoutMenunggu = $(this).closest('form');
+      $('#logoutConfirmModal').addClass('is-active');
+    });
+    $('#logoutConfirmBtn').on('click', function () {
+      if ($formLogoutMenunggu) { $formLogoutMenunggu.trigger('submit'); }
     });
 
     // Pratinjau dokumen di dalam modal (tanpa membuka tab baru)
@@ -157,14 +200,58 @@
     // Pegawai/Unor/Biro PAKLN) — tombol submit disembunyikan sebagai
     // fallback bila JS nonaktif.
     $('.doc-upload-submit').hide();
-    $(document).on('change', '.doc-file-input', function () {
-      var $form = $(this).closest('form');
+
+    // Jenis dokumen yang berupa surat — wajib diisi Tanggal Surat lewat
+    // modal sebelum berkasnya benar-benar diunggah (lihat #tanggalSuratModal).
+    var JENIS_PERLU_TANGGAL_SURAT = ['cuti', 'notadinas', 'disposisi', 'nd_biropakln', 'iln_sekjen'];
+    var $formMenungguTanggalSurat = null;
+
+    function submitDocUploadForm($form, $fileInput) {
       // Jangan disable input file sebelum submit — browser tidak akan
       // menyertakan field yang disabled ke body POST, sehingga upload
       // gagal validasi (field "file" kosong).
       $form.find('.doc-upload-submit').text('Mengunggah…').prop('disabled', true);
-      $(this).prop('readonly', true);
+      $fileInput.prop('readonly', true);
       $form.trigger('submit');
+    }
+
+    $(document).on('change', '.doc-file-input', function () {
+      var $input = $(this);
+      var $form = $input.closest('form');
+      if (!this.files || !this.files.length) { return; }
+
+      var jenis = $form.find('input[name="jenis"]').val();
+      if (JENIS_PERLU_TANGGAL_SURAT.indexOf(jenis) !== -1) {
+        $formMenungguTanggalSurat = $form;
+        $('#tanggalSuratInput').val('').removeClass('is-danger');
+        $('#tanggalSuratModal').addClass('is-active');
+        return;
+      }
+      submitDocUploadForm($form, $input);
+    });
+
+    $('#tanggalSuratSimpan').on('click', function () {
+      var tanggal = $('#tanggalSuratInput').val();
+      if (!tanggal) { $('#tanggalSuratInput').addClass('is-danger').trigger('focus'); return; }
+      if (!$formMenungguTanggalSurat) { return; }
+      var $form = $formMenungguTanggalSurat;
+      $formMenungguTanggalSurat = null;
+      $form.find('.doc-tanggal-surat-input').val(tanggal);
+      closeModals();
+      submitDocUploadForm($form, $form.find('.doc-file-input'));
+    });
+
+    // Batal/tutup modal Tanggal Surat tanpa menyimpan — kosongkan lagi
+    // input berkas yang sempat dipilih, supaya tidak terlihat "terpilih"
+    // padahal belum diunggah.
+    function batalTanggalSurat() {
+      if (!$formMenungguTanggalSurat) { return; }
+      $formMenungguTanggalSurat.find('.doc-file-input').val('').prop('readonly', false);
+      $formMenungguTanggalSurat = null;
+    }
+    $(document).on('click', '#tanggalSuratModal .modal-background, #tanggalSuratModal [data-modal-close]', batalTanggalSurat);
+    $(document).on('keydown', function (e) {
+      if (e.key === 'Escape') { batalTanggalSurat(); }
     });
 
     // Checkbox yang langsung submit form-nya sendiri begitu dicentang atau
@@ -260,25 +347,6 @@
     }
     $('select[data-multiselect]').each(function () { initMultiselect($(this)); });
     $(document).on('click', function () { $('.multiselect-panel.is-active').removeClass('is-active'); });
-
-    // Notification Center: dropdown bell di navbar.
-    $('#notifBellBtn').on('click', function (e) {
-      e.stopPropagation();
-      var $btn = $(this);
-      var open = $('#notifDropdown').toggleClass('is-active').hasClass('is-active');
-      $btn.attr('aria-expanded', open ? 'true' : 'false');
-    });
-    $('#notifDropdown').on('click', function (e) { e.stopPropagation(); });
-    $(document).on('click', function () {
-      $('#notifDropdown').removeClass('is-active');
-      $('#notifBellBtn').attr('aria-expanded', 'false');
-    });
-    $(document).on('keydown', function (e) {
-      if (e.key === 'Escape') {
-        $('#notifDropdown').removeClass('is-active');
-        $('#notifBellBtn').attr('aria-expanded', 'false');
-      }
-    });
 
     // Toast pop-up: muncul bertahap lalu hilang otomatis setelah beberapa detik.
     $('[data-notif-toast]').each(function (i) {

@@ -248,16 +248,6 @@ def upload_dokumen(request, kode):
             pendukung.save(update_fields=["file", "uploaded_at"])
             messages.success(request, "Berkas dokumen pendukung dihapus.")
             return redirect("unor:upload_dokumen", kode=kode)
-        elif "toggle_pendukung" in request.POST:
-            # Proses mencentang jenis — berdiri sendiri, tidak memerlukan
-            # berkas diunggah ulang.
-            kategori = request.POST.get("kategori")
-            if kategori not in DokumenUnorPendukung.KATEGORI_LABELS:
-                messages.error(request, "Jenis dokumen pendukung tidak valid.")
-            else:
-                setattr(pendukung, kategori, not getattr(pendukung, kategori))
-                pendukung.save(update_fields=[kategori])
-                return redirect("unor:upload_dokumen", kode=kode)
         else:
             jenis = request.POST.get("jenis")
             existing = dokumen_map.get(jenis)
@@ -277,7 +267,6 @@ def upload_dokumen(request, kode):
         "jenis_choices": jenis_choices,
         "dokumen_map": dokumen_map,
         "pendukung": pendukung,
-        "pendukung_kategori": list(DokumenUnorPendukung.KATEGORI_LABELS.items()),
         "lengkap": lengkap,
         "templates": templates,
         **riwayat.konteks(pengajuan, request.user),

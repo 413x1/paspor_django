@@ -11,43 +11,48 @@
   <a href="{% url 'pakln:dashboard' %}" class="button is-small">← Kembali ke Dasbor</a>
 </div>
 
-<div class="box" style="max-width:560px;">
+<div class="box">
   <form method="post" novalidate>
     {% csrf_token %}
 
-    <div class="section-title" style="font-size:14px;margin-bottom:14px;">Default Pejabat Penandatangan ND Kabag</div>
-    <div class="field">
-      <label class="label" for="{{ form.jabatan_penandatangan_kabag.id_for_label }}">Nama Jabatan</label>
-      <div class="control">{{ form.jabatan_penandatangan_kabag }}</div>
-      {% for e in form.jabatan_penandatangan_kabag.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
-    </div>
-    <div class="field">
-      <label class="label" for="{{ form.nama_pejabat_kabag.id_for_label }}">Nama Pejabat</label>
-      <div class="control">{{ form.nama_pejabat_kabag }}</div>
-      {% for e in form.nama_pejabat_kabag.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
-    </div>
+    <div class="columns is-variable is-5">
+      <div class="column is-half">
+        <div class="section-title" style="font-size:14px;margin-bottom:14px;">Default Pejabat Penandatangan ND Kabag</div>
+        <div class="field">
+          <label class="label" for="{{ form.jabatan_penandatangan_kabag.id_for_label }}">Nama Jabatan</label>
+          <div class="control">{{ form.jabatan_penandatangan_kabag }}</div>
+          {% for e in form.jabatan_penandatangan_kabag.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+        <div class="field">
+          <label class="label" for="{{ form.nama_pejabat_kabag.id_for_label }}">Nama Pejabat</label>
+          <div class="control">{{ form.nama_pejabat_kabag }}</div>
+          {% for e in form.nama_pejabat_kabag.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
 
-    <hr>
+      <div class="column is-half">
+        <div class="section-title" style="font-size:14px;margin-bottom:14px;">Default Pejabat Penandatangan ND Karo</div>
+        <div class="field">
+          <label class="label" for="{{ form.jabatan_penandatangan_karo.id_for_label }}">Nama Jabatan</label>
+          <div class="control">{{ form.jabatan_penandatangan_karo }}</div>
+          {% for e in form.jabatan_penandatangan_karo.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+        <div class="field">
+          <label class="label" for="{{ form.nama_pejabat_karo.id_for_label }}">Nama Pejabat</label>
+          <div class="control">{{ form.nama_pejabat_karo }}</div>
+          {% for e in form.nama_pejabat_karo.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
 
-    <div class="section-title" style="font-size:14px;margin-bottom:14px;">Default Pejabat Penandatangan ND Karo</div>
-    <div class="field">
-      <label class="label" for="{{ form.jabatan_penandatangan_karo.id_for_label }}">Nama Jabatan</label>
-      <div class="control">{{ form.jabatan_penandatangan_karo }}</div>
-      {% for e in form.jabatan_penandatangan_karo.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        <div style="text-align:right;">
+          {% if pengaturan.updated_at %}
+            <p class="helptext" style="margin-bottom:14px;">
+              Terakhir disimpan {{ pengaturan.updated_at|date:"d M Y, H:i" }}{% if pengaturan.updated_oleh %} oleh {{ pengaturan.updated_oleh.get_full_name|default:pengaturan.updated_oleh.username }}{% endif %}.
+            </p>
+          {% endif %}
+          <button type="submit" class="button is-primary">Simpan</button>
+        </div>
+      </div>
     </div>
-    <div class="field">
-      <label class="label" for="{{ form.nama_pejabat_karo.id_for_label }}">Nama Pejabat</label>
-      <div class="control">{{ form.nama_pejabat_karo }}</div>
-      {% for e in form.nama_pejabat_karo.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
-    </div>
-
-    {% if pengaturan.updated_at %}
-      <p class="helptext" style="margin-bottom:14px;">
-        Terakhir disimpan {{ pengaturan.updated_at|date:"d M Y, H:i" }}{% if pengaturan.updated_oleh %} oleh {{ pengaturan.updated_oleh.get_full_name|default:pengaturan.updated_oleh.username }}{% endif %}.
-      </p>
-    {% endif %}
-
-    <button type="submit" class="button is-primary">Simpan</button>
   </form>
 </div>
 {% endblock %}

@@ -27,6 +27,21 @@
   --shadow: 0 10px 30px rgba(29, 53, 87, 0.12);
   --radius: 14px;
 
+  /* ---- Global Animation Foundation ----
+     Token durasi & easing bergaya native iOS/macOS: halus, cepat merespons,
+     TANPA overshoot/pantulan (Apple HIG jarang memakai efek "bounce" pada
+     UI sistem — kesan premium datang dari deselerasi yang mulus, bukan
+     pantulan). --ease-spring sengaja disediakan terpisah untuk elemen kecil
+     yang memang ingin terasa lebih hidup (switch/checkbox), dipakai sangat
+     terbatas supaya tetap terasa "subtle". */
+  --duration-instant: 100ms;
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-slow: 350ms;
+  --ease-apple: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-apple-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.17, 0.89, 0.32, 1.28);
+
   /* ---- Override variabel Bulma agar mengikuti brand ---- */
   --bulma-family-primary: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --bulma-body-background-color: var(--bg);
@@ -73,12 +88,12 @@ body { background: var(--bg); color: var(--slate-900); }
   width: var(--sidebar-w); display: flex; flex-direction: column;
   background: var(--sidebar-bg); color: var(--sidebar-text);
   border-right: 1px solid var(--topbar-role-bg);
-  transition: transform .25s ease;
+  transition: transform var(--duration-slow) var(--ease-apple-in-out);
 }
 .app-main {
   margin-left: var(--sidebar-w); min-height: 100vh;
   display: flex; flex-direction: column;
-  transition: margin-left .25s ease;
+  transition: margin-left var(--duration-slow) var(--ease-apple-in-out);
 }
 body.sidebar-collapsed .app-sidebar { transform: translateX(-100%); }
 body.sidebar-collapsed .app-main { margin-left: 0; }
@@ -109,13 +124,18 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
   display: flex; align-items: center; gap: 10px; width: 100%;
   padding: 9px 14px; border-radius: 4px; border: none; background: transparent;
   color: var(--sidebar-text); font: inherit; font-size: 14.5px; font-weight: 500;
-  text-align: left; cursor: pointer; transition: background .15s ease;
+  text-align: left; cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-apple), color var(--duration-fast) var(--ease-apple);
 }
 .sidebar-link svg {
   width: 18px; height: 18px; flex-shrink: 0;
   fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
 }
 .sidebar-link:hover { background: var(--sidebar-hover); color: var(--white); }
+/* "Keluar" di sidebar — soft red yang dioptimalkan untuk background gelap
+   sidebar (bukan pink solid), konsisten secara fungsi dengan hover "Keluar"
+   di dropdown profil header. */
+.sidebar-link.logout-sidebar-link:hover { background-color: rgba(239, 68, 68, .15); color: #f87171; }
 .sidebar-link.is-active,
 .sidebar-link.is-active:hover,
 .sidebar-group.is-active-route > .sidebar-link { background: var(--tab-active-bg); color: var(--navy-900); font-weight: 600; }
@@ -128,7 +148,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .sidebar-chevron {
   display: inline-block; width: 7px; height: 7px; margin-left: auto;
   border: solid currentColor; border-width: 0 1.8px 1.8px 0;
-  transform: rotate(45deg) translateY(-2px); transition: transform .2s ease;
+  transform: rotate(45deg) translateY(-2px); transition: transform var(--duration-fast) var(--ease-apple);
 }
 .sidebar-group.is-open > .sidebar-link .sidebar-chevron { transform: rotate(-135deg) translateY(-2px); }
 
@@ -136,7 +156,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .sidebar-group.is-open > .sidebar-submenu { display: block; }
 .sidebar-submenu a {
   display: block; padding: 6px 0; font-size: 14px; font-weight: 500;
-  color: var(--sidebar-muted); transition: color .15s ease;
+  color: var(--sidebar-muted); transition: color var(--duration-fast) var(--ease-apple);
 }
 .sidebar-submenu a:hover,
 .sidebar-submenu a.is-active { color: var(--white); }
@@ -172,11 +192,16 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .header-user-btn .sidebar-chevron { margin-left: 0; }
 .header-user.is-active .header-user-btn .sidebar-chevron { transform: rotate(-135deg) translateY(-2px); }
 .header-user-menu {
-  display: none; position: absolute; top: calc(100% + 12px); right: 0; z-index: 45;
+  display: block; position: absolute; top: calc(100% + 12px); right: 0; z-index: 45;
   min-width: 220px; background: var(--white); border: 1px solid var(--line);
   border-radius: var(--radius); box-shadow: var(--shadow); padding: 8px;
+  opacity: 0; visibility: hidden; transform: translateY(-6px) scale(.98); pointer-events: none;
+  transition: opacity var(--duration-fast) var(--ease-apple), transform var(--duration-fast) var(--ease-apple), visibility 0s linear var(--duration-fast);
 }
-.header-user.is-active .header-user-menu { display: block; }
+.header-user.is-active .header-user-menu {
+  opacity: 1; visibility: visible; transform: translateY(0) scale(1); pointer-events: auto;
+  transition: opacity var(--duration-fast) var(--ease-apple), transform var(--duration-fast) var(--ease-apple);
+}
 .header-user-menu-head {
   display: flex; flex-direction: column; padding: 8px 12px 10px; margin-bottom: 6px;
   border-bottom: 1px solid var(--line);
@@ -188,11 +213,25 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
   display: block; width: 100%; text-align: left; padding: 9px 12px; border-radius: 8px;
   background: none; border: none; font: inherit; font-size: 14px; font-weight: 500;
   color: var(--slate-600); cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-apple), color var(--duration-fast) var(--ease-apple);
 }
 .header-user-menu a:hover,
 .header-user-menu button:hover { background: var(--bg); color: var(--slate-900); }
 .header-user-menu form { margin: 0; }
+.header-user-menu .logout-menu-item:hover { background-color: #fef2f2; color: #dc2626; }
 
+/* Tombol "Keluar" di dalam modal konfirmasi logout — bahasa visual sama
+   dengan hover "Keluar" di dropdown profil (soft red), netral di state
+   normal (sengaja tanpa .is-danger supaya tidak bentrok dengan style ini). */
+.btn-logout-confirm {
+  transition: transform var(--duration-instant) var(--ease-apple), background-color var(--duration-fast) var(--ease-apple),
+    color var(--duration-fast) var(--ease-apple), border-color var(--duration-fast) var(--ease-apple),
+    box-shadow var(--duration-fast) var(--ease-apple), opacity var(--duration-fast) var(--ease-apple);
+}
+/* Di-scope dengan #logoutConfirmModal (selector ID) supaya spesifisitasnya
+   pasti menang dari rule hover tombol netral bawaan (`.button:not(...):hover`
+   di atas, yang punya banyak klausa :not() sehingga spesifisitasnya tinggi). */
+#logoutConfirmModal .btn-logout-confirm:hover { background-color: #fef2f2; color: #dc2626; border-color: #fca5a5; }
 .paspor-role {
   background: var(--topbar-role-bg); color: var(--white);
   font-size: 10px; font-weight: 700; border-radius: 6px; padding: 2px 8px;
@@ -210,7 +249,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
   display: inline-block; width: 0.625em; height: 0.625em; margin: 0 0 1px 8px;
   border: 0.125em solid currentColor; border-right: 0; border-top: 0;
   transform: rotate(-45deg);
-  opacity: 0; transition: opacity .12s ease;
+  opacity: 0; transition: opacity var(--duration-fast) var(--ease-apple);
 }
 
 @media (max-width: 1023px) {
@@ -250,11 +289,13 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 /* ---------- Tombol ---------- */
 .button {
   border-radius: 10px; font-weight: 700;
-  transition: transform .12s cubic-bezier(.34,1.56,.64,1), background-color .15s ease, box-shadow .15s ease, opacity .15s ease;
+  transition: transform var(--duration-instant) var(--ease-apple), background-color var(--duration-fast) var(--ease-apple),
+    box-shadow var(--duration-fast) var(--ease-apple), opacity var(--duration-fast) var(--ease-apple);
 }
 .button:active:not(:disabled) { transform: scale(.96); }
 .checkbox, .radio, a.navbar-item, .navbar-link, .dt-paging-button, .jenis-option {
-  transition: transform .12s cubic-bezier(.34,1.56,.64,1), background-color .15s ease, color .15s ease;
+  transition: transform var(--duration-instant) var(--ease-apple), background-color var(--duration-fast) var(--ease-apple),
+    color var(--duration-fast) var(--ease-apple);
 }
 .dt-paging-button:active:not(.disabled), .jenis-option:active { transform: scale(.96); }
 .button.is-primary { background: var(--navy-900); color: var(--white); }
@@ -298,6 +339,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 }
 .select:not(.is-multiple):not(.is-loading)::after { border-color: var(--teal); }
 .field:not(:last-child) { margin-bottom: 16px; }
+.column .field, .column .control { width: 100%; }
 .field .help.is-danger, .errorlist { color: #c0392b; font-size: 13px; margin: 4px 0 0; padding: 0; list-style: none; }
 .readonly-field, .input[readonly], .input[disabled] { background: var(--bg); color: var(--slate-600); }
 .helptext { font-size: 12px; color: var(--slate-400); margin-top: 4px; }
@@ -440,11 +482,11 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
   min-width: 190px; background: var(--white); border: 1px solid var(--line);
   border-radius: var(--radius); box-shadow: var(--shadow); padding: 6px;
   opacity: 0; visibility: hidden; transform: translateY(-6px) scale(.98); pointer-events: none;
-  transition: opacity .16s ease, transform .16s cubic-bezier(.34,1.56,.64,1), visibility 0s linear .16s;
+  transition: opacity var(--duration-fast) var(--ease-apple), transform var(--duration-fast) var(--ease-apple), visibility 0s linear var(--duration-fast);
 }
 .table-head-actions.is-active .table-head-menu {
   opacity: 1; visibility: visible; transform: translateY(0) scale(1); pointer-events: auto;
-  transition: opacity .16s ease, transform .16s cubic-bezier(.34,1.56,.64,1);
+  transition: opacity var(--duration-fast) var(--ease-apple), transform var(--duration-fast) var(--ease-apple);
 }
 .table-head-menu a.navbar-item {
   display: block; color: var(--slate-900); font-size: 13.5px; font-weight: 600;
@@ -565,16 +607,25 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .preview-split > :only-child { grid-column: 1 / -1; }
 @media (max-width: 1100px) { .preview-split { grid-template-columns: 1fr; } }
 
-/* ---------- Modal — animasi buka/tutup (berlaku untuk semua .modal) ---------- */
+/* ---------- Modal — animasi masuk/keluar (berlaku untuk semua .modal) ----------
+   Bulma default-nya `display:none` saat tertutup, yang memutus transisi CSS
+   kalau .is-active langsung dilepas (elemen hilang dari render tree sebelum
+   animasi sempat jalan). Di sini `display:flex` dibuat permanen, lalu
+   buka/tutupnya dikendalikan lewat opacity + visibility + pointer-events —
+   sehingga satu aturan transition yang sama otomatis berlaku untuk animasi
+   masuk MAUPUN keluar (tidak perlu class terpisah per arah). */
 .modal {
   display: flex; opacity: 0; visibility: hidden; pointer-events: none;
-  transition: opacity .18s ease, visibility 0s linear .18s;
+  transition: opacity var(--duration-base) var(--ease-apple), visibility 0s linear var(--duration-base);
 }
-.modal.is-active { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .18s ease; }
-.modal .modal-background { transition: opacity .18s ease; }
+.modal.is-active {
+  opacity: 1; visibility: visible; pointer-events: auto;
+  transition: opacity var(--duration-base) var(--ease-apple);
+}
+.modal .modal-background { transition: opacity var(--duration-base) var(--ease-apple); }
 .modal .modal-card, .modal .modal-content {
-  transform: scale(.94) translateY(10px);
-  transition: transform .2s cubic-bezier(.34,1.56,.64,1);
+  transform: scale(.95) translateY(8px);
+  transition: transform var(--duration-base) var(--ease-apple);
 }
 .modal.is-active .modal-card, .modal.is-active .modal-content { transform: scale(1) translateY(0); }
 
@@ -664,11 +715,11 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
   width: 370px; max-width: calc(100vw - 32px); background: var(--white); color: var(--slate-900);
   border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
   opacity: 0; visibility: hidden; transform: translateY(-6px) scale(.98); pointer-events: none;
-  transition: opacity .16s ease, transform .16s cubic-bezier(.34,1.56,.64,1), visibility 0s linear .16s;
+  transition: opacity var(--duration-fast) var(--ease-apple), transform var(--duration-fast) var(--ease-apple), visibility 0s linear var(--duration-fast);
 }
-.notif-dropdown.is-active {
+.notif-bell-wrap.is-active .notif-dropdown {
   opacity: 1; visibility: visible; transform: translateY(0) scale(1); pointer-events: auto;
-  transition: opacity .16s ease, transform .16s cubic-bezier(.34,1.56,.64,1);
+  transition: opacity var(--duration-fast) var(--ease-apple), transform var(--duration-fast) var(--ease-apple);
 }
 .notif-dropdown-head {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -737,7 +788,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .notif-toast {
   position: relative; display: flex; gap: 10px; background: var(--white); border-left: 4px solid var(--teal);
   border-radius: 10px; box-shadow: var(--shadow); padding: 12px 30px 12px 14px;
-  opacity: 0; transform: translateX(16px); transition: opacity .25s ease, transform .25s ease;
+  opacity: 0; transform: translateX(16px); transition: opacity var(--duration-base) var(--ease-apple), transform var(--duration-base) var(--ease-apple);
   pointer-events: none;
 }
 .notif-toast.is-visible { opacity: 1; transform: translateX(0); pointer-events: auto; }
