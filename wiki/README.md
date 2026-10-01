@@ -43,7 +43,7 @@ paspor_django/
 │   └── templatetags/pengajuan_extras.py
 ├── templates/                 # HTML (base, registration, pegawai, unor, pakln)
 ├── static/css/style.css       # Tema visual (navy/gold), meniru mockup
-└── media/                     # Lokasi unggahan dokumen (dev)
+└── media/                     # Berkas lama sebelum migrasi ke S3 (sumber sync_media_to_s3)
 ```
 
 ## 2. Pemetaan ke Mockup
@@ -202,9 +202,6 @@ tahap berikutnya:
 - **Export Excel** sesungguhnya — saat ini export berupa **CSV** (via
   tombol "Export CSV"); pertimbangkan `openpyxl` bila format `.xlsx`
   sungguhan diperlukan.
-- **Penyimpanan file produksi**: konfigurasi `MEDIA_ROOT` saat ini untuk
-  pengembangan lokal. Untuk produksi, arahkan ke object storage (S3-
-  compatible) via storage backend seperti `django-storages`.
 - **Halaman error kustom** (403/404/500) belum dibuat — saat ini memakai
   halaman bawaan Django.
 - Belum ada test otomatis (`pytest`/`unittest`) — disarankan ditambahkan
@@ -221,4 +218,4 @@ Sebelum deploy ke produksi, minimal:
 - Gunakan WSGI server produksi (Gunicorn/uWSGI) di belakang Nginx.
 - Aktifkan HTTPS (`SECURE_SSL_REDIRECT`, `SESSION_COOKIE_SECURE`,
   `CSRF_COOKIE_SECURE`, dsb.).
-- Pertimbangkan storage backend eksternal untuk `MEDIA_ROOT`.
+- Pastikan bucket S3 & key-nya terpisah untuk produksi (lihat `wiki/instructions/S3BUCKET_FILE_UPLOAD.MD`).

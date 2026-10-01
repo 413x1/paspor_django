@@ -159,7 +159,10 @@ STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-MEDIA_URL = "media/"
+# Media tidak lagi disimpan di disk lokal — semua FileField & unggahan
+# memakai bucket S3 (lihat STORAGES di bawah). MEDIA_ROOT hanya dipakai
+# sebagai sumber oleh command `sync_media_to_s3` untuk memindahkan berkas
+# lama ke bucket.
 MEDIA_ROOT = BASE_DIR / "media"
 
 # Batas ukuran unggahan dokumen (10 MB), selaras dengan aturan pada mockup.
@@ -167,14 +170,44 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 # ---------------------------------------------------------------------------
-# MinIO (object storage) — dipakai oleh app `fileupload`, lihat
-# wiki/UPLOAD_FILE.MD untuk penjelasan mekanismenya.
+# Object storage (S3-compatible: Garage di Synology NAS)
 # ---------------------------------------------------------------------------
-MINIO_ENDPOINT = env("MINIO_ENDPOINT", "localhost")
-MINIO_PORT = int(env("MINIO_PORT", "9000"))
-MINIO_USE_SSL = env("MINIO_USE_SSL", "false").lower() == "true"
-MINIO_ACCESS_KEY = env("MINIO_ACCESS_KEY", env("MINIO_ROOT_USER", "minioadmin"))
-MINIO_SECRET_KEY = env("MINIO_SECRET_KEY", env("MINIO_ROOT_PASSWORD", "minioadmin"))
-MINIO_BUCKET_NAME = env("MINIO_BUCKET_NAME", "")
+# Seluruh berkas unggahan (FileField pada app `pengajuan` maupun app
+# `fileupload`) disimpan lewat django-storages ke bucket S3. Penjelasan
+# lengkap ada di wiki/instructions/S3BUCKET_FILE_UPLOAD.MD.
+from botocore.config import Config as BotoConfig  # noqa: E402
+
+S3_ENDPOINT = env("S3_ENDPOINT", "http://127.0.0.1:3900")
+S3_BUCKET_NAME = env("S3_BUCKET_NAME", "paspor-uploads")
+S3_REGION_NAME = env("S3_REGION_NAME", "garage")
+S3_QUERYSTRING_EXPIRE = int(env("S3_QUERYSTRING_EXPIRE", "3600"))
+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "endpoint_url": S3_ENDPOINT,
+            "access_key": os.environ["S3_ACCESS_KEY"],   # Key ID (wajib)
+            "secret_key": os.environ["S3_SECRET_KEY"],   # Secret key (wajib)
+            "bucket_name": S3_BUCKET_NAME,
+            "region_name": S3_REGION_NAME,
+            # `addressing_style` & `signature_version` diabaikan django-storages
+            # bila `client_config` diisi, jadi keduanya diset di sini. Timeout
+            # mencegah request menggantung bila NAS tidak bisa dijangkau.
+            "client_config": BotoConfig(
+                s3={"addressing_style": "path"},
+                signature_version="s3v4",
+                connect_timeout=5,
+                read_timeout=30,
+                retries={"max_attempts": 2, "mode": "standard"},
+            ),
+            "default_acl": None,
+            "file_overwrite": False,
+            "querystring_auth": True,                     # presigned download links
+            "querystring_expire": S3_QUERYSTRING_EXPIRE,  # default 1 jam
+        },
+    },
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

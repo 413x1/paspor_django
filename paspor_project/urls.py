@@ -1,5 +1,3 @@
-from django.conf import settings
-from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
@@ -19,9 +17,6 @@ urlpatterns = [
     path("admin-biropakln/", include(("pengajuan.urls_pakln", "pakln"), namespace="pakln")),
     path("notifikasi/", include(("notifications.urls", "notifications"), namespace="notifications")),
 
-    # Demo unggah berkas PDF ke MinIO — publik, tanpa login (lihat wiki/UPLOAD_FILE.MD)
+    # Demo unggah berkas PDF ke bucket S3 — publik, tanpa login (lihat wiki/instructions/S3BUCKET_FILE_UPLOAD.MD)
     path("upload/", include(("fileupload.urls", "fileupload"), namespace="fileupload")),
 ]
-
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

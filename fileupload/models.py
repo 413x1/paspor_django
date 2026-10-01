@@ -2,9 +2,9 @@ from django.db import models
 
 
 class UploadedFile(models.Model):
-    """Catatan berkas yang tersimpan di bucket MinIO. `object_name` adalah
-    kunci object di MinIO (bukan nama file asli), dipakai proxy view untuk
-    streaming & hapus."""
+    """Catatan berkas yang tersimpan di bucket S3. `object_name` adalah
+    kunci object di bucket (bukan nama file asli), dipakai view untuk
+    presigned URL & hapus."""
 
     original_filename = models.CharField("Nama Berkas", max_length=255)
     object_name = models.CharField(max_length=255, unique=True)
