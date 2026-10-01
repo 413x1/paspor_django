@@ -42,6 +42,9 @@
         <h4>{{ label }}</h4>
         {% if dok %}
           <p style="color:var(--green);">✓ Sudah diunggah — {{ dok.uploaded_at|date:"d M Y H:i" }}</p>
+          {% if dok.tanggal_surat %}
+            <p class="cell-muted">📅 Tanggal Surat: {{ dok.tanggal_surat|date:"d M Y" }}</p>
+          {% endif %}
         {% else %}
           <p>Belum diunggah.</p>
         {% endif %}
@@ -57,6 +60,7 @@
         <form method="post" enctype="multipart/form-data" class="actions doc-upload-form" style="margin:0;">
           {% csrf_token %}
           <input type="hidden" name="jenis" value="{{ value }}">
+          <input type="hidden" name="tanggal_surat" class="doc-tanggal-surat-input">
           <input type="file" name="file" required class="doc-file-input" style="font-size:12.5px;max-width:160px;">
           <button type="submit" class="button is-small doc-upload-submit">⬆ Unggah</button>
         </form>
