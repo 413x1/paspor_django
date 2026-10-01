@@ -158,13 +158,15 @@ files are stored under `media/pengajuan/<kode>/<stage>/<jenis>/<filename>`.
 | `DokumenPakln` | Admin Biro PAKLN (3) | Nota Dinas Kepala Bagian; Nota Dinas Kepala Biro; Izin Luar Negeri (TTD Sekjen a.n. Menteri) |
 
 `DokumenUnorPendukung` (one-to-one with `Pengajuan`) holds the Admin Unor
-"Dokumen Pendukung Lainnya": a single `file` plus three independent boolean
-flags (`nd_sekunor`, `nd_menteri`, `lainnya`). Uploading/replacing the file
-and toggling a flag are deliberately separate, order-independent actions on
-`unor:upload_dokumen` (`"pendukung_upload"` / `"pendukung_hapus"` /
-`"toggle_pendukung"` POST branches) — neither requires the other to happen
-first. "Lengkap" = all 3 `DokumenUnor` wajib present **and**
-`DokumenUnorPendukung.is_lengkap()` (file present and at least one flag set).
+"Dokumen Pendukung Lainnya": a single `file` plus three boolean flags
+(`nd_sekunor`, `nd_menteri`, `lainnya`). The flags' checklist UI and its
+`"toggle_pendukung"` POST branch were removed from `unor:upload_dokumen` —
+the fields still exist on the model (Admin Biro PAKLN's Pratinjau page
+still reads them for older submissions) but are no longer settable from
+the Unor upload page. Uploading/replacing the file is the only action left
+there (`"pendukung_upload"` / `"pendukung_hapus"` POST branches). "Lengkap"
+= all 3 `DokumenUnor` wajib present **and** `DokumenUnorPendukung.is_lengkap()`
+(file present — no longer requires any flag set).
 
 Upload size cap: 10 MB (`DATA_UPLOAD_MAX_MEMORY_SIZE`,
 `FILE_UPLOAD_MAX_MEMORY_SIZE` in `settings.py`).
