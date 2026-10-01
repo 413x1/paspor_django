@@ -171,14 +171,18 @@ class DokumenPegawai(models.Model):
     Unggah Dokumen)."""
 
     class Jenis(models.TextChoices):
-        CUTI = "cuti", "Formulir Persetujuan Cuti Pegawai"
-        ILN = "iln", "Formulir Izin Luar Negeri"
-        PENDUKUNG = "pendukung", "Dokumen Pendukung"
-        NOTADINAS = "notadinas", "Nota Dinas Pimpinan Unit Kerja ke Sekretaris Unor"
+        CUTI = "cuti", "1.a Formulir Persetujuan Cuti Pegawai"
+        ILN = "iln", "1.b Formulir Izin Luar Negeri"
+        NOTADINAS = "notadinas", "1.c Nota Dinas Pimpinan Unit Kerja ke Sekretaris Unor"
+        PENDUKUNG = "pendukung", "1.d Dokumen Pendukung"
 
     pengajuan = models.ForeignKey(Pengajuan, on_delete=models.CASCADE, related_name="dokumen_pegawai")
     jenis = models.CharField(max_length=20, choices=Jenis.choices)
     file = models.FileField(upload_to=dokumen_pegawai_path)
+    # Hanya diisi untuk jenis dokumen yang berupa surat (1.a, 1.c) — lewat
+    # modal "Tanggal Surat" yang muncul begitu berkasnya dipilih, lihat
+    # JENIS_PERLU_TANGGAL_SURAT di base.html.
+    tanggal_surat = models.DateField("Tanggal Surat", null=True, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -195,13 +199,17 @@ class DokumenUnor(models.Model):
     jenis. Dokumen pendukung lainnya ada pada `DokumenUnorPendukung`."""
 
     class Jenis(models.TextChoices):
-        DISPOSISI = "disposisi", "Lembar Disposisi"
-        ILN_PIMPINAN = "iln_pimpinan", "Formulir Izin Luar Negeri (TTD Pimpinan Unor)"
-        ND_BIROPAKLN = "nd_biropakln", "Nota Dinas ke Biro PAKLN"
+        DISPOSISI = "disposisi", "2.a Lembar Disposisi / Izin Prinsip"
+        ILN_PIMPINAN = "iln_pimpinan", "2.b Formulir Izin Luar Negeri (TTD Pimpinan Unor)"
+        ND_BIROPAKLN = "nd_biropakln", "2.c Nota Dinas Sekertaris Unor ke Biro PAKLN"
 
     pengajuan = models.ForeignKey(Pengajuan, on_delete=models.CASCADE, related_name="dokumen_unor")
     jenis = models.CharField(max_length=20, choices=Jenis.choices)
     file = models.FileField(upload_to=dokumen_unor_path)
+    # Hanya diisi untuk jenis dokumen yang berupa surat (2.a, 2.c) — lewat
+    # modal "Tanggal Surat" yang muncul begitu berkasnya dipilih, lihat
+    # JENIS_PERLU_TANGGAL_SURAT di base.html.
+    tanggal_surat = models.DateField("Tanggal Surat", null=True, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -246,7 +254,11 @@ class DokumenUnorPendukung(models.Model):
         return [label for field, label in self.KATEGORI_LABELS.items() if getattr(self, field)]
 
     def is_lengkap(self):
-        return bool(self.file) and bool(self.kategori_tercentang())
+        # Checklist jenis dokumen dihapus dari UI Unggah Dokumen Unor —
+        # berkas terunggah saja sudah cukup. Field `nd_sekunor`/`nd_menteri`/
+        # `lainnya` tetap ada (dibaca Admin PAKLN di halaman Pratinjau untuk
+        # submission lama), hanya tidak lagi jadi syarat kelengkapan di sini.
+        return bool(self.file)
 
     def __str__(self):
         return f"{self.pengajuan.kode} — Dokumen Pendukung Unor"
@@ -257,11 +269,15 @@ class DokumenPakln(models.Model):
     pendukung lainnya (opsional) ada pada `DokumenPaklnPendukung`."""
 
     class Jenis(models.TextChoices):
-        ILN_SEKJEN = "iln_sekjen", "Izin Luar Negeri (TTD Sekjen a.n. Menteri)"
+        ILN_SEKJEN = "iln_sekjen", "3.a Izin Luar Negeri (TTD Sekjen a.n. Menteri)"
 
     pengajuan = models.ForeignKey(Pengajuan, on_delete=models.CASCADE, related_name="dokumen_pakln")
     jenis = models.CharField(max_length=20, choices=Jenis.choices)
     file = models.FileField(upload_to=dokumen_pakln_path)
+    # Hanya diisi untuk jenis dokumen yang berupa surat (3.a) — lewat modal
+    # "Tanggal Surat" yang muncul begitu berkasnya dipilih, lihat
+    # JENIS_PERLU_TANGGAL_SURAT di base.html.
+    tanggal_surat = models.DateField("Tanggal Surat", null=True, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
