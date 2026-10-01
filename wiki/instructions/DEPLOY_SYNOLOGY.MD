@@ -12,7 +12,7 @@
 4. [Buat File `.env` Produksi](#4-buat-file-env-produksi)
 5. [Izinkan Container Mengakses MySQL & Garage](#5-izinkan-container-mengakses-mysql--garage)
 6. [Build & Jalankan](#6-build--jalankan)
-7. [Akun Admin & Data Awal](#7-akun-admin--data-awal)
+7. [Data Awal & Akun Admin](#7-data-awal--akun-admin)
 8. [Update Aplikasi](#8-update-aplikasi)
 9. [Akses Lewat Domain HTTPS (Opsional)](#9-akses-lewat-domain-https-opsional)
 10. [Troubleshooting](#10-troubleshooting)
@@ -37,7 +37,8 @@ Browser ──presigned URL──▶ Garage (unduh/pratinjau dokumen langsung)
 - **WhiteNoise** menyajikan file static; tidak perlu nginx terpisah.
 - **WeasyPrint** beserta font Liberation (pengganti Times New Roman) sudah
   terpasang di image.
-- **Migrasi database** dijalankan otomatis setiap container start.
+- **Migrasi database, seed data awal, dan superuser** dijalankan otomatis
+  saat container start (lihat bagian 7).
 
 File terkait di repo:
 
@@ -45,7 +46,8 @@ File terkait di repo:
 |---|---|
 | `Dockerfile` | Build image produksi (multi-stage) |
 | `docker-compose.yml` | Definisi project untuk Container Manager |
-| `docker/entrypoint.sh` | Tunggu DB → `migrate` → jalankan Gunicorn |
+| `docker/entrypoint.sh` | `check` → tunggu DB → `migrate` → `deploy_init` → Gunicorn |
+| `paspor/management/commands/deploy_init.py` | Seed data awal, hari libur, dan superuser |
 | `docker/gunicorn.conf.py` | Konfigurasi Gunicorn |
 | `.dockerignore` | Mencegah `.env`, venv, dan media ikut masuk image |
 
@@ -102,6 +104,15 @@ DJANGO_MIGRATE_ON_START=True
 GUNICORN_WORKERS=3
 GUNICORN_TIMEOUT=120
 
+DJANGO_INIT_ON_START=True
+DJANGO_SEED_FORCE=False
+DJANGO_SEED_PEGAWAI_ORG_UNITS=False
+DJANGO_SEED_ADMIN_UNOR_ORG_UNITS=False
+DJANGO_SEED_HARI_LIBUR=True
+DJANGO_SUPERUSER_USERNAME=superadmin
+DJANGO_SUPERUSER_EMAIL=admin@contoh.go.id
+DJANGO_SUPERUSER_PASSWORD=PASSWORD_SUPERUSER_YANG_KUAT
+
 MAIL_ALLOW_SEND=false
 ```
 
@@ -153,18 +164,63 @@ Log bisa dilihat di Container Manager → Container → `paspor-web` → Log.
 Baris `[entrypoint] Database siap.` dan `Listening at: http://0.0.0.0:8000`
 menandakan aplikasi sudah jalan.
 
-## 7. Akun Admin & Data Awal
+## 7. Data Awal & Akun Admin
 
-Lewat SSH (sekali saja untuk database baru):
+Semua langkah di [DEVELOPMENT_GUIDE.MD §7 & §9](../DEVELOPMENT_GUIDE.MD)
+dijalankan **otomatis** oleh container (`docker/entrypoint.sh`) setiap kali
+start, dalam urutan berikut:
+
+| Urutan | Perintah | Kapan jalan | Diatur oleh |
+|---|---|---|---|
+| 1 | `manage.py check` | setiap start | — |
+| 2 | `manage.py migrate` | setiap start | `DJANGO_MIGRATE_ON_START` |
+| 3 | `seed_demo_data` (wajib) | hanya di database baru | `DJANGO_INIT_ON_START` |
+| 4 | `seed_pegawai_org_units` | hanya di database baru | `DJANGO_SEED_PEGAWAI_ORG_UNITS=True` |
+| 5 | `seed_admin_unor_org_units` | hanya di database baru | `DJANGO_SEED_ADMIN_UNOR_ORG_UNITS=True` |
+| 6 | `seed_hari_libur` | setiap start | `DJANGO_SEED_HARI_LIBUR` |
+| 7 | buat superuser `DJANGO_SUPERUSER_USERNAME` | bila belum ada | `DJANGO_SUPERUSER_*` |
+
+Langkah 3–7 dijalankan oleh command `python manage.py deploy_init`
+(`paspor/management/commands/deploy_init.py`).
+
+- **"Database baru"** artinya belum ada user sama sekali. Setelah deploy
+  pertama, seed data awal tidak dijalankan lagi, sehingga akun demo yang
+  sudah dihapus atau diganti password-nya tidak dibuat ulang saat restart.
+- Untuk menjalankan ulang seed data awal (mis. mengaktifkan seed akun per
+  unit setelah deploy pertama), set `DJANGO_SEED_FORCE=True`, restart
+  project, lalu kembalikan ke `False`. Semua seed idempoten.
+- `seed_hari_libur` jalan setiap start dan hanya menambah tanggal baru,
+  jadi CSV tahun baru di `scripts/data/` otomatis termuat setelah deploy.
+- Password superuser yang sudah ada **tidak** pernah ditimpa. Mengubah
+  `DJANGO_SUPERUSER_PASSWORD` setelah user dibuat tidak berpengaruh; ganti
+  lewat `/admin/` atau `changepassword`.
+
+Hasilnya terlihat di log container, baris berawalan `[deploy_init]`.
+
+**Jangan** menjalankan `makemigrations` di server: file migrasi sudah ada
+di repo, dan file yang dibuat di dalam container hilang saat rebuild. Buat
+migrasi di komputer pengembang, commit, lalu deploy ulang.
+
+> **Penting untuk produksi:** semua akun hasil seed memakai password
+> **`paspor123`**. Segera ganti password akun yang dipakai dan nonaktifkan
+> yang tidak dipakai:
+>
+> ```bash
+> sudo docker exec -it paspor-web python manage.py changepassword admin.pakln
+> ```
+>
+> `seed_demo_data` juga membuat 2 contoh pengajuan milik `andra.wibisono`
+> yang bisa dihapus lewat `/admin/`.
+
+Perintah manual yang tetap tersedia:
 
 ```bash
-sudo docker exec -it paspor-web python manage.py createsuperuser
-sudo docker exec -it paspor-web python manage.py seed_hari_libur
-```
+# Hitung ulang hari kerja pengajuan draft setelah kalender diubah
+sudo docker exec paspor-web python manage.py hitung_ulang_hari_kerja --dry-run
 
-Perintah seed lain yang tersedia: `seed_admin_unor_org_units`,
-`seed_pegawai_org_units`, `seed_demo_data` (jangan jalankan data demo di
-produksi kecuali memang dibutuhkan).
+# Jalankan ulang inisialisasi tanpa restart
+sudo docker exec paspor-web python manage.py deploy_init
+```
 
 Berkas lama di folder `media/` lokal bisa dipindahkan ke bucket dengan
 `python manage.py sync_media_to_s3` dari komputer pengembang (lihat
@@ -220,6 +276,8 @@ alamat tersebut.
 | `Forbidden (403) CSRF verification failed` | Origin belum ada di `DJANGO_CSRF_TRUSTED_ORIGINS` (harus lengkap dengan `http://` dan port). |
 | Tampilan tanpa CSS | Build ulang image; `collectstatic` dijalankan saat build. |
 | Upload gagal `403 Forbidden` | Key Garage salah atau belum di-*allow* ke bucket. |
+| Container restart terus, log berhenti di `[deploy_init]` | Salah satu seed gagal; baca pesan error di atasnya. Setelah diperbaiki, set `DJANGO_SEED_FORCE=True` sekali agar seed diulang. |
+| Superuser tidak dibuat | `DJANGO_SUPERUSER_USERNAME`/`PASSWORD` kosong, atau username sudah dipakai akun lain. |
 | Container status *unhealthy* | `127.0.0.1` belum ada di `DJANGO_ALLOWED_HOSTS`. |
 | `exec /app/docker/entrypoint.sh: no such file or directory` | Line ending CRLF; build ulang (Dockerfile sudah mengonversi otomatis). |
 | `413 Request Entity Too Large` lewat reverse proxy | Batas ukuran upload di reverse proxy; aplikasi sendiri membatasi 10 MB. |
