@@ -2,6 +2,7 @@ import os
 from datetime import date
 
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Q
 from django.http import FileResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -12,9 +13,10 @@ from django.utils.html import escape, format_html
 from notifications.services import notify_resubmit_unor, notify_submit_unor
 from paspor.kalender import rincian_hari
 
+from . import riwayat
 from .decorators import role_required
 from .forms import DokumenPegawaiForm, PengajuanForm
-from .models import DokumenPakln, DokumenPegawai, DokumenTemplate, Pengajuan
+from .models import DokumenPakln, DokumenPegawai, DokumenTemplate, Pengajuan, RiwayatPengajuan
 
 
 def _active_pengajuan(user):
@@ -200,12 +202,19 @@ def upload_dokumen(request, kode):
                 # Sudah ada catatan revisi Unor sebelumnya -> ini pengiriman
                 # ulang (Event 2C), bukan pengajuan baru (Event 1).
                 is_resubmit = bool(pengajuan.catatan_unor)
+                status_dari = pengajuan.status
 
-                pengajuan.status = Pengajuan.Status.PROSES
-                pengajuan.submitted = True
-                pengajuan.tgl_pengajuan = timezone.now().date()
-                pengajuan.catatan_unor = ""
-                pengajuan.save()
+                with transaction.atomic():
+                    pengajuan.status = Pengajuan.Status.PROSES
+                    pengajuan.submitted = True
+                    pengajuan.tgl_pengajuan = timezone.now().date()
+                    pengajuan.catatan_unor = ""
+                    pengajuan.save()
+                    riwayat.catat(
+                        pengajuan,
+                        RiwayatPengajuan.Aksi.DIKIRIM_ULANG if is_resubmit else RiwayatPengajuan.Aksi.DIKIRIM,
+                        request.user, status_dari,
+                    )
 
                 if is_resubmit:
                     notify_resubmit_unor(pengajuan)
@@ -257,7 +266,9 @@ def monitor_progres(request, kode):
     pengajuan = get_object_or_404(Pengajuan, kode=kode, pegawai=request.user)
     if not pengajuan.submitted:
         return redirect("pegawai:upload_dokumen", kode=pengajuan.kode)
-    return render(request, "pegawai/monitor.html", {"pengajuan": pengajuan})
+    return render(request, "pegawai/monitor.html", {
+        "pengajuan": pengajuan, **riwayat.konteks(pengajuan, request.user),
+    })
 
 
 @role_required("pegawai")

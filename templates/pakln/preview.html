@@ -3,6 +3,7 @@
 {% block wrap_extra_class %} narrow{% endblock %}
 
 {% block content %}
+<div class="preview-split">
 <div class="box">
   <div class="section-title">Pratinjau Pengajuan dari Unor — {{ pengajuan.kode }}</div>
 
@@ -40,8 +41,10 @@
       <div class="control"><input class="input" value="{{ pengajuan.tgl_kembali|date:'d M Y' }}" readonly></div>
     </div>
   </div>
+</div>
 
-  <div class="section-title" style="font-size:15px;margin-top:10px;">Direktori Dokumen dari Unor</div>
+<div class="box">
+  <div class="section-title">Direktori Dokumen dari Unor</div>
   {% for dok in pengajuan.dokumen_unor.all %}
     <div class="doc-row uploaded" style="padding:10px 14px;">
       <div class="info"><h4 style="font-size:13.5px;">{{ dok.get_jenis_display }}</h4></div>
@@ -95,9 +98,10 @@
       <button type="submit" name="lanjutkan" class="button is-primary is-fullwidth">Lanjutkan ke Administrasi Biro PAKLN →</button>
     </form>
   {% endif %}
-
+</div>
 </div>
 
+<div class="preview-split">
 {% if pengajuan.status == "proses_pakln" %}
 <div class="box" style="background:#fdecea; border-color:#f3c6c2;">
   <div class="section-title" style="font-size:14px;">↩ Kembalikan ke Admin Unor</div>
@@ -119,6 +123,9 @@
   </form>
 </div>
 {% endif %}
+
+{% include "partials/_riwayat_pengajuan.html" %}
+</div>
 
 <a href="{% url 'pakln:dashboard' %}" class="button is-fullwidth">← Kembali ke Dasbor</a>
 {% endblock %}

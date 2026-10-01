@@ -478,3 +478,47 @@ class DokumenTemplate(models.Model):
             return False
 
         return True
+
+
+# ---------------------------------------------------------------------------
+# Riwayat Pemrosesan (wiki/instructions/RIWAYAT_PEMROSESAN_PENGAJUAN.MD)
+# ---------------------------------------------------------------------------
+
+class RiwayatPengajuan(models.Model):
+    """Log append-only setiap perpindahan status Pengajuan beserta pesan
+    pengembalian. Tidak pernah di-update/dihapus dari aplikasi — tulis
+    lewat `pengajuan.riwayat.catat`, baca lewat `riwayat_untuk`."""
+
+    class Aksi(models.TextChoices):
+        DIKIRIM = "dikirim", "Diajukan ke Admin Unor"
+        DIKIRIM_ULANG = "dikirim_ulang", "Perbaikan dikirim ke Admin Unor"
+        DIKEMBALIKAN_UNOR = "dikembalikan_unor", "Dikembalikan Admin Unor ke Pegawai"
+        DITERUSKAN_PAKLN = "diteruskan_pakln", "Diteruskan ke Biro PAKLN"
+        DIKEMBALIKAN_PAKLN = "dikembalikan_pakln", "Dikembalikan Biro PAKLN ke Admin Unor"
+        SELESAI = "selesai", "Selesai diproses"
+
+    pengajuan = models.ForeignKey(Pengajuan, on_delete=models.CASCADE, related_name="riwayat")
+    aksi = models.CharField(max_length=30, choices=Aksi.choices)
+    status_dari = models.CharField(max_length=20, choices=Pengajuan.Status.choices)
+    status_ke = models.CharField(max_length=20, choices=Pengajuan.Status.choices)
+
+    aktor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="riwayat_pengajuan",
+    )
+    # Snapshot saat kejadian — tetap benar walau user kemudian dihapus
+    # atau perannya diganti. Dasar aturan visibilitas pesan.
+    aktor_role = models.CharField(max_length=20)
+    aktor_nama = models.CharField(max_length=150)
+
+    catatan = models.TextField(blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["created_at", "id"]
+        indexes = [models.Index(fields=["pengajuan", "created_at"])]
+        verbose_name = "Riwayat Pengajuan"
+        verbose_name_plural = "Riwayat Pengajuan"
+
+    def __str__(self):
+        return f"{self.pengajuan.kode} — {self.get_aksi_display()}"

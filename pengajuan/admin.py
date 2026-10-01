@@ -9,6 +9,7 @@ from .models import (
     DokumenUnor,
     DokumenUnorPendukung,
     Pengajuan,
+    RiwayatPengajuan,
 )
 
 
@@ -37,6 +38,27 @@ class DokumenPaklnPendukungInline(admin.StackedInline):
     extra = 0
 
 
+class _ReadOnlyMixin:
+    """Riwayat bersifat append-only — hanya ditulis lewat
+    pengajuan.riwayat.catat, tidak dapat diubah dari admin."""
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+class RiwayatPengajuanInline(_ReadOnlyMixin, admin.TabularInline):
+    model = RiwayatPengajuan
+    extra = 0
+    fields = ("created_at", "aksi", "status_dari", "status_ke", "aktor_nama", "aktor_role", "catatan")
+    readonly_fields = fields
+
+
 @admin.register(Pengajuan)
 class PengajuanAdmin(admin.ModelAdmin):
     list_display = ("kode", "pegawai", "kategori", "tujuan_negara_display", "kanal", "status", "tgl_pengajuan")
@@ -46,7 +68,7 @@ class PengajuanAdmin(admin.ModelAdmin):
     filter_horizontal = ("tujuan_negara",)
     inlines = [
         DokumenPegawaiInline, DokumenUnorInline, DokumenUnorPendukungInline,
-        DokumenPaklnInline, DokumenPaklnPendukungInline,
+        DokumenPaklnInline, DokumenPaklnPendukungInline, RiwayatPengajuanInline,
     ]
 
     @admin.display(description="Tujuan Negara")
@@ -69,3 +91,11 @@ class DokumenGenerateLogAdmin(admin.ModelAdmin):
     list_filter = ("jenis",)
     filter_horizontal = ("pengajuan",)
     readonly_fields = ("created_at",)
+
+
+@admin.register(RiwayatPengajuan)
+class RiwayatPengajuanAdmin(_ReadOnlyMixin, admin.ModelAdmin):
+    list_display = ("pengajuan", "aksi", "aktor_nama", "aktor_role", "created_at")
+    list_filter = ("aksi", "aktor_role")
+    search_fields = ("pengajuan__kode", "aktor_nama", "catatan")
+    list_select_related = ("pengajuan",)
