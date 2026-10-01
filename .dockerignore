@@ -1,0 +1,21 @@
+# Jangan masukkan rahasia & file lokal ke dalam image
+.env
+.git
+.gitignore
+**/__pycache__
+**/*.py[cod]
+venv/
+vevn/
+env/
+.venv/
+media/
+staticfiles/
+*.sqlite3
+*.log
+.DS_Store
+.vscode/
+.idea/
+
+# Dokumentasi & mockup tidak dibutuhkan saat runtime
+wiki/
+PASPOR_Mockup_*.html

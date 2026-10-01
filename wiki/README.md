@@ -209,6 +209,9 @@ tahap berikutnya:
 
 ## 7. Production Checklist (ringkas)
 
+Panduan lengkap deploy ke Synology NAS dengan Docker ada di
+`wiki/instructions/DEPLOY_SYNOLOGY.MD`.
+
 Sebelum deploy ke produksi, minimal:
 
 - Set `DJANGO_DEBUG=False` dan isi `DJANGO_ALLOWED_HOSTS` dengan domain asli.

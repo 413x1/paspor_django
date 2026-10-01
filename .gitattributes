@@ -1,0 +1,4 @@
+# Script shell harus selalu LF agar bisa dijalankan di container Linux,
+# walaupun di-checkout di Windows.
+*.sh text eol=lf
+Dockerfile text eol=lf
