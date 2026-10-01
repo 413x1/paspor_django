@@ -49,6 +49,18 @@ DEBUG = env("DJANGO_DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = [h.strip() for h in env("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
+# Origin lengkap (dengan skema & port) yang boleh mengirim form POST,
+# mis. "http://10.101.21.55:8000,https://paspor.domainanda.go.id".
+# Wajib diisi bila aplikasi diakses lewat reverse proxy / domain HTTPS.
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in env("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()]
+
+# Aktifkan hanya bila aplikasi berada di belakang reverse proxy HTTPS
+# (mis. Reverse Proxy DSM) yang mengirim header X-Forwarded-Proto.
+if env("DJANGO_BEHIND_HTTPS_PROXY", "False") == "True":
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
 
 # ---------------------------------------------------------------------------
 # Application definition
@@ -72,6 +84,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Sajikan file static (CSS/JS/gambar) langsung dari Gunicorn saat DEBUG=False.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -207,7 +221,8 @@ STORAGES = {
             "querystring_expire": S3_QUERYSTRING_EXPIRE,  # default 1 jam
         },
     },
-    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    # WhiteNoise: file static dikompresi (gzip/brotli) saat collectstatic.
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
 }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

@@ -1,0 +1,20 @@
+# Deploy PASPOR di Synology Container Manager.
+# MySQL dan Garage berjalan sebagai project terpisah di NAS yang sama;
+# aplikasi menjangkaunya lewat IP NAS (lihat DB_HOST & S3_ENDPOINT di .env).
+services:
+  web:
+    build: .
+    image: paspor-django:latest
+    container_name: paspor-web
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TZ: Asia/Jakarta
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/login/', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
