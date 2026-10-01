@@ -1,3 +1,5 @@
+> **Catatan:** dokumen ini adalah referensi mekanisme MinIO dari project Next.js (EILN). Implementasi di PASPOR saat ini memakai `django-storages` + bucket S3 (Garage) — lihat [instructions/S3BUCKET_FILE_UPLOAD.MD](instructions/S3BUCKET_FILE_UPLOAD.MD).
+
 # Mekanisme Upload File (MinIO-based) — Panduan Implementasi
 
 Dokumen ini menjabarkan mekanisme upload, akses, dan hapus file yang dipakai di project EILN, agar bisa direplikasi di project Next.js lain. Backend penyimpanan menggunakan **MinIO** (S3-compatible object storage), diakses lewat API route Next.js yang di-proxy (bukan diakses langsung dari browser), dengan proteksi autentikasi sesi (NextAuth) dan token JWT sementara untuk viewing.
