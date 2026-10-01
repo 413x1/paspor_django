@@ -23,6 +23,7 @@ from paspor.impor_libur import ImporError, baca_berkas, buat_template_xlsx, simp
 from paspor.kalender import AKHIR_PEKAN, hitung_hari_kalender
 from paspor.models import HariLibur, KategoriPerjalanan, Negara, SumberPembiayaan
 
+from . import riwayat
 from .decorators import role_required
 from .forms import (
     DokumenPaklnForm, DokumenTemplateForm, HariLiburForm, ImporHariLiburForm, KategoriPerjalananForm,
@@ -30,6 +31,7 @@ from .forms import (
 )
 from .models import (
     DokumenGenerateLog, DokumenPakln, DokumenPaklnPendukung, DokumenTemplate, Pengajuan, PengaturanDokumen,
+    RiwayatPengajuan,
 )
 
 _BULAN_ID = [
@@ -1595,11 +1597,17 @@ def preview(request, kode):
         elif pengajuan.status != Pengajuan.Status.PROSES_PAKLN:
             messages.error(request, "Pengajuan yang sudah selesai tidak dapat dikembalikan.")
         else:
-            pengajuan.status = Pengajuan.Status.PROSES
-            pengajuan.preview_unor_agree = False
-            pengajuan.preview_pakln_agree = False
-            pengajuan.catatan_pakln = catatan
-            pengajuan.save()
+            status_dari = pengajuan.status
+            with transaction.atomic():
+                pengajuan.status = Pengajuan.Status.PROSES
+                pengajuan.preview_unor_agree = False
+                pengajuan.preview_pakln_agree = False
+                pengajuan.catatan_pakln = catatan
+                pengajuan.save()
+                riwayat.catat(
+                    pengajuan, RiwayatPengajuan.Aksi.DIKEMBALIKAN_PAKLN,
+                    request.user, status_dari, catatan=catatan,
+                )
             notify_reject_pakln_to_unor(pengajuan, catatan)
             messages.success(
                 request,
@@ -1607,7 +1615,9 @@ def preview(request, kode):
             )
             return redirect("pakln:dashboard")
 
-    return render(request, "pakln/preview.html", {"pengajuan": pengajuan})
+    return render(request, "pakln/preview.html", {
+        "pengajuan": pengajuan, **riwayat.konteks(pengajuan, request.user),
+    })
 
 
 @role_required("admin_pakln")
@@ -1648,9 +1658,14 @@ def upload_dokumen(request, kode):
                         )
                         profile.save(update_fields=["sisa_cuti_tahun_berjalan"])
 
+                    status_dari = pengajuan.status
                     pengajuan.status = Pengajuan.Status.SELESAI
                     pengajuan.tgl_selesai = timezone.now().date()
                     pengajuan.save()
+                    riwayat.catat(
+                        pengajuan, RiwayatPengajuan.Aksi.SELESAI,
+                        request.user, status_dari,
+                    )
                 notify_complete_pkln(pengajuan)
                 messages.success(
                     request,
@@ -1708,6 +1723,7 @@ def upload_dokumen(request, kode):
         "pendukung": pendukung,
         "pendukung_kategori": list(DokumenPaklnPendukung.KATEGORI_LABELS.items()),
         "lengkap": lengkap,
+        **riwayat.konteks(pengajuan, request.user),
     }
     return render(request, "pakln/upload.html", context)
 

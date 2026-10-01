@@ -9,6 +9,7 @@
   </div>
 {% endif %}
 
+<div class="preview-split">
 <div class="box">
   <div class="section-title">Pratinjau Pengajuan dari Pegawai — {{ pengajuan.kode }}</div>
 
@@ -66,8 +67,10 @@
       <div class="control"><input class="input" value="{{ pengajuan.sumber_pembiayaan }}" readonly></div>
     </div>
   </div>
+</div>
 
-  <div class="section-title" style="font-size:15px;margin-top:10px;">Direktori Unggahan Pegawai</div>
+<div class="box">
+  <div class="section-title">Direktori Unggahan Pegawai</div>
   {% for dok in pengajuan.dokumen_pegawai.all %}
     <div class="doc-row uploaded" style="padding:10px 14px;">
       <div class="info"><h4 style="font-size:13.5px;">{{ dok.get_jenis_display }}</h4></div>
@@ -96,7 +99,9 @@
     </form>
   {% endif %}
 </div>
+</div>
 
+<div class="preview-split">
 <div class="box" style="background:#fdecea; border-color:#f3c6c2;">
   <div class="section-title" style="font-size:14px;">↩ Kembalikan ke Pegawai</div>
   <p class="cell-muted" style="margin:-8px 0 14px;">
@@ -113,6 +118,9 @@
     </div>
     <button type="submit" name="kembalikan" class="button is-danger is-fullwidth">↩ Kembalikan ke Pegawai</button>
   </form>
+</div>
+
+{% include "partials/_riwayat_pengajuan.html" %}
 </div>
 
 <a href="{% url 'unor:dashboard' %}" class="button is-fullwidth">← Kembali ke Dasbor</a>
