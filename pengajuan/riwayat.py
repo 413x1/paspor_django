@@ -2,10 +2,13 @@
 Riwayat Pemrosesan Pengajuan — satu pintu untuk menulis & membaca
 `RiwayatPengajuan`, lihat wiki/instructions/RIWAYAT_PEMROSESAN_PENGAJUAN.MD.
 
-Aturan visibilitas pesan (§3):
-  - Setiap peran selalu melihat pesan yang ditulis perannya sendiri.
-  - Pegawai     : + pesan dari Admin Unor.
-  - Admin Unor  : + pesan dari Admin Biro PAKLN.
+Catatan berjalan dua arah pada dua jalur (§3):
+  - Pegawai <-> Admin Unor        : dikembalikan_unor, dikirim_ulang
+  - Admin Unor <-> Admin Biro PAKLN : dikembalikan_pakln, diteruskan_ulang
+
+Aturan visibilitas pesan:
+  - Pegawai     : hanya pesan pada jalur Pegawai <-> Admin Unor.
+  - Admin Unor  : seluruh pesan (Unor ada di kedua jalur).
   - Admin PAKLN : seluruh pesan.
 
 Penyaringan dilakukan di sini (server), sehingga pesan yang tidak berhak
@@ -30,6 +33,9 @@ _LABEL_AKSI_PEGAWAI = {
     Aksi.DIKEMBALIKAN_PAKLN: "Dikembalikan ke Admin Unor untuk perbaikan",
 }
 
+# Aksi yang pesannya berada pada jalur Pegawai <-> Admin Unor.
+_JALUR_PEGAWAI = {Aksi.DIKEMBALIKAN_UNOR, Aksi.DIKIRIM_ULANG}
+
 _TONE = {
     Aksi.DIKEMBALIKAN_UNOR: "warning",
     Aksi.DIKEMBALIKAN_PAKLN: "warning",
@@ -42,6 +48,7 @@ _IKON = {
     Aksi.DIKEMBALIKAN_UNOR: "↩",
     Aksi.DITERUSKAN_PAKLN: "→",
     Aksi.DIKEMBALIKAN_PAKLN: "↩",
+    Aksi.DITERUSKAN_ULANG: "↻",
     Aksi.SELESAI: "✓",
 }
 
@@ -70,13 +77,19 @@ def catat(pengajuan, aksi, aktor, status_dari, catatan=""):
 
 
 def boleh_lihat_pesan(user, riwayat):
-    if user.role == User.Role.ADMIN_PAKLN or riwayat.aktor_role == user.role:
-        return True
     if user.role == User.Role.PEGAWAI:
-        return riwayat.aktor_role == User.Role.ADMIN_UNOR
-    if user.role == User.Role.ADMIN_UNOR:
-        return riwayat.aktor_role == User.Role.ADMIN_PAKLN
-    return False
+        return riwayat.aksi in _JALUR_PEGAWAI
+    return user.role in (User.Role.ADMIN_UNOR, User.Role.ADMIN_PAKLN)
+
+
+def catatan_perbaikan(pengajuan, aksi):
+    """Catatan balasan penerima pengembalian (`dikirim_ulang` /
+    `diteruskan_ulang`) bila itu peristiwa terakhir — untuk banner di
+    halaman pihak yang mengembalikan. Kosong bila tidak ada."""
+    terakhir = pengajuan.riwayat.last()
+    if terakhir and terakhir.aksi == aksi:
+        return terakhir.catatan
+    return ""
 
 
 def _label_aktor(user, riwayat):
@@ -97,6 +110,7 @@ def riwayat_untuk(pengajuan, user):
             label = _LABEL_AKSI_PEGAWAI.get(r.aksi, label)
         hasil.append({
             "aksi": r.aksi,
+            "status_dari": r.status_dari,
             "label": label,
             "aktor": _label_aktor(user, r),
             "waktu": r.created_at,
@@ -107,39 +121,23 @@ def riwayat_untuk(pengajuan, user):
     return hasil
 
 
-def peta_alur(pengajuan):
-    """4 simpul tahap + jumlah pengembalian per jalur balik (§6a)."""
+def timeline_dengan_riwayat(pengajuan, user):
+    """Timeline Proses yang digabung dengan Riwayat Pemrosesan:
+    setiap entri riwayat ditempel ke tahap tempat aksi itu terjadi
+    (`status_dari`), urut kronologis."""
     urutan = [
-        (Pengajuan.Status.BELUM, "Pegawai"),
-        (Pengajuan.Status.PROSES, "Admin Unor"),
-        (Pengajuan.Status.PROSES_PAKLN, "Biro PAKLN"),
-        (Pengajuan.Status.SELESAI, "Selesai"),
+        Pengajuan.Status.BELUM,
+        Pengajuan.Status.PROSES,
+        Pengajuan.Status.PROSES_PAKLN,
+        Pengajuan.Status.SELESAI,
     ]
-    status_list = [s for s, _ in urutan]
-    idx = status_list.index(pengajuan.status) if pengajuan.status in status_list else 0
-    selesai = pengajuan.status == Pengajuan.Status.SELESAI
-
-    simpul = []
-    for i, (_, judul) in enumerate(urutan):
-        if i < idx or (selesai and i == idx):
-            state = "done"
-        elif i == idx:
-            state = "current"
-        else:
-            state = "upcoming"
-        simpul.append({"judul": judul, "state": state})
-
-    aksi_list = [r.aksi for r in pengajuan.riwayat.all()]
-    return {
-        "simpul": simpul,
-        "kembali_ke_pegawai": aksi_list.count(Aksi.DIKEMBALIKAN_UNOR),
-        "kembali_ke_unor": aksi_list.count(Aksi.DIKEMBALIKAN_PAKLN),
-    }
+    langkah = [dict(step, riwayat=[]) for step in pengajuan.timeline]
+    for entri in riwayat_untuk(pengajuan, user):
+        idx = urutan.index(entri["status_dari"]) if entri["status_dari"] in urutan else 0
+        langkah[idx]["riwayat"].append(entri)
+    return langkah
 
 
 def konteks(pengajuan, user):
     """Context template untuk partial `partials/_riwayat_pengajuan.html`."""
-    return {
-        "riwayat": riwayat_untuk(pengajuan, user),
-        "peta_alur": peta_alur(pengajuan),
-    }
+    return {"timeline": timeline_dengan_riwayat(pengajuan, user)}

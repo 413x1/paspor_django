@@ -15,6 +15,8 @@ Aksi = RiwayatPengajuan.Aksi
 
 PESAN_UNOR = "Formulir ILN belum ditandatangani pimpinan."
 PESAN_PAKLN = "Nota Dinas ke Biro PAKLN belum sesuai format."
+BALASAN_PEGAWAI = "Formulir ILN sudah ditandatangani dan diunggah ulang."
+BALASAN_UNOR = "Nota Dinas sudah disesuaikan formatnya."
 
 
 class _AlurMixin:
@@ -47,15 +49,15 @@ class _AlurMixin:
         self.client.force_login(user)
         return self.client.post(reverse(url_name, args=[self.pengajuan.kode]), data)
 
-    def kirim(self):
-        self._post(self.pegawai, "pegawai:upload_dokumen", {"kirim": "1", "agree": "on"})
+    def kirim(self, catatan=BALASAN_PEGAWAI):
+        self._post(self.pegawai, "pegawai:upload_dokumen", {"kirim": "1", "agree": "on", "catatan": catatan})
 
     def kembalikan_unor(self, catatan=PESAN_UNOR):
         self._post(self.admin_unor, "unor:preview", {"kembalikan": "1", "catatan": catatan})
 
-    def teruskan(self):
+    def teruskan(self, catatan=BALASAN_UNOR):
         self._post(self.admin_unor, "unor:preview", {"lanjutkan": "1"})
-        self._post(self.admin_unor, "unor:upload_dokumen", {"teruskan": "1", "agree": "on"})
+        self._post(self.admin_unor, "unor:upload_dokumen", {"teruskan": "1", "agree": "on", "catatan": catatan})
 
     def kembalikan_pakln(self, catatan=PESAN_PAKLN):
         self._post(self.admin_pakln, "pakln:preview", {"kembalikan": "1", "catatan": catatan})
@@ -93,8 +95,13 @@ class PencatatanRiwayatTests(_AlurMixin, TestCase):
         self.assertEqual(self.pengajuan.status, Pengajuan.Status.SELESAI)
         self.assertEqual(self.aksi_list(), [
             Aksi.DIKIRIM, Aksi.DIKEMBALIKAN_UNOR, Aksi.DIKIRIM_ULANG, Aksi.DITERUSKAN_PAKLN,
-            Aksi.DIKEMBALIKAN_PAKLN, Aksi.DITERUSKAN_PAKLN, Aksi.SELESAI,
+            Aksi.DIKEMBALIKAN_PAKLN, Aksi.DITERUSKAN_ULANG, Aksi.SELESAI,
         ])
+        # Catatan hanya disimpan pada pengiriman/penerusan ulang.
+        self.assertEqual(self.pengajuan.riwayat.get(aksi=Aksi.DIKIRIM).catatan, "")
+        self.assertEqual(self.pengajuan.riwayat.get(aksi=Aksi.DITERUSKAN_PAKLN).catatan, "")
+        self.assertEqual(self.pengajuan.riwayat.get(aksi=Aksi.DIKIRIM_ULANG).catatan, BALASAN_PEGAWAI)
+        self.assertEqual(self.pengajuan.riwayat.get(aksi=Aksi.DITERUSKAN_ULANG).catatan, BALASAN_UNOR)
         kembali_unor = self.pengajuan.riwayat.get(aksi=Aksi.DIKEMBALIKAN_UNOR)
         self.assertEqual(kembali_unor.catatan, PESAN_UNOR)
         self.assertEqual((kembali_unor.status_dari, kembali_unor.status_ke), ("proses", "belum"))
@@ -117,6 +124,23 @@ class PencatatanRiwayatTests(_AlurMixin, TestCase):
         self.kembalikan_unor(catatan="  ")
         self.assertEqual(self.aksi_list(), [Aksi.DIKIRIM])
 
+    def test_kirim_ulang_wajib_catatan(self):
+        self.kirim()
+        self.kembalikan_unor()
+        self.kirim(catatan="  ")
+        self.pengajuan.refresh_from_db()
+        self.assertEqual(self.pengajuan.status, Pengajuan.Status.BELUM)
+        self.assertEqual(self.aksi_list(), [Aksi.DIKIRIM, Aksi.DIKEMBALIKAN_UNOR])
+
+    def test_teruskan_ulang_wajib_catatan(self):
+        self.kirim()
+        self.teruskan()
+        self.kembalikan_pakln()
+        self.teruskan(catatan="")
+        self.pengajuan.refresh_from_db()
+        self.assertEqual(self.pengajuan.status, Pengajuan.Status.PROSES)
+        self.assertEqual(self.aksi_list()[-1], Aksi.DIKEMBALIKAN_PAKLN)
+
 
 class VisibilitasRiwayatTests(_AlurMixin, TestCase):
     def setUp(self):
@@ -127,41 +151,52 @@ class VisibilitasRiwayatTests(_AlurMixin, TestCase):
         self.client.force_login(user)
         return self.client.get(reverse(url_name, args=[self.pengajuan.kode]))
 
-    def test_pegawai_hanya_melihat_pesan_unor(self):
+    def test_pegawai_hanya_melihat_jalur_pegawai_unor(self):
         resp = self._get(self.pegawai, "pegawai:monitor_progres")
         self.assertContains(resp, PESAN_UNOR)
+        self.assertContains(resp, BALASAN_PEGAWAI)
         self.assertNotContains(resp, PESAN_PAKLN)
+        self.assertNotContains(resp, BALASAN_UNOR)
         self.assertContains(resp, "Dikembalikan ke Admin Unor untuk perbaikan")
         # Pegawai tidak melihat nama pribadi admin.
         self.assertNotContains(resp, "Admin PAKLN (Biro PAKLN)")
 
-    def test_admin_unor_melihat_pesan_pakln_dan_pesannya_sendiri(self):
+    def test_admin_unor_melihat_kedua_jalur(self):
         resp = self._get(self.admin_unor, "unor:preview")
-        self.assertContains(resp, PESAN_PAKLN)
-        self.assertContains(resp, PESAN_UNOR)
+        for pesan in (PESAN_UNOR, BALASAN_PEGAWAI, PESAN_PAKLN, BALASAN_UNOR):
+            self.assertContains(resp, pesan)
 
     def test_admin_pakln_melihat_semua_pesan(self):
         resp = self._get(self.admin_pakln, "pakln:preview")
-        self.assertContains(resp, PESAN_UNOR)
-        self.assertContains(resp, PESAN_PAKLN)
+        for pesan in (PESAN_UNOR, BALASAN_PEGAWAI, PESAN_PAKLN, BALASAN_UNOR):
+            self.assertContains(resp, pesan)
 
     def test_riwayat_untuk_mengosongkan_pesan_tidak_berhak(self):
         def pesan(user):
             return {e["aksi"]: e["catatan"] for e in riwayat.riwayat_untuk(self.pengajuan, user)}
 
         self.assertEqual(pesan(self.pegawai)[Aksi.DIKEMBALIKAN_PAKLN], "")
+        self.assertEqual(pesan(self.pegawai)[Aksi.DITERUSKAN_ULANG], "")
         self.assertEqual(pesan(self.pegawai)[Aksi.DIKEMBALIKAN_UNOR], PESAN_UNOR)
+        self.assertEqual(pesan(self.pegawai)[Aksi.DIKIRIM_ULANG], BALASAN_PEGAWAI)
+        self.assertEqual(pesan(self.admin_unor)[Aksi.DIKIRIM_ULANG], BALASAN_PEGAWAI)
+        self.assertEqual(pesan(self.admin_pakln)[Aksi.DITERUSKAN_ULANG], BALASAN_UNOR)
         self.assertEqual(pesan(self.admin_unor)[Aksi.DIKEMBALIKAN_UNOR], PESAN_UNOR)
         self.assertEqual(pesan(self.admin_unor)[Aksi.DIKEMBALIKAN_PAKLN], PESAN_PAKLN)
         self.assertEqual(pesan(self.admin_pakln)[Aksi.DIKEMBALIKAN_UNOR], PESAN_UNOR)
         self.assertEqual(pesan(self.admin_pakln)[Aksi.DIKEMBALIKAN_PAKLN], PESAN_PAKLN)
 
-    def test_peta_alur_menghitung_pengembalian(self):
+    def test_timeline_menempel_riwayat_ke_tahap_asal(self):
         self.pengajuan.refresh_from_db()
-        peta = riwayat.peta_alur(self.pengajuan)
-        self.assertEqual(peta["kembali_ke_pegawai"], 1)
-        self.assertEqual(peta["kembali_ke_unor"], 1)
-        self.assertEqual([s["state"] for s in peta["simpul"]], ["done"] * 4)
+        langkah = riwayat.timeline_dengan_riwayat(self.pengajuan, self.admin_pakln)
+        self.assertEqual(len(langkah), 4)
+        self.assertEqual(sum(len(s["riwayat"]) for s in langkah), self.pengajuan.riwayat.count())
+        urutan = ["belum", "proses", "proses_pakln", "selesai"]
+        for idx, step in enumerate(langkah):
+            for entri in step["riwayat"]:
+                self.assertEqual(urutan.index(entri["status_dari"]), idx)
+        self.assertIn(Aksi.DIKEMBALIKAN_UNOR, [e["aksi"] for e in langkah[1]["riwayat"]])
+        self.assertIn(Aksi.DIKEMBALIKAN_PAKLN, [e["aksi"] for e in langkah[2]["riwayat"]])
 
     def test_akses_pengajuan_orang_lain_tetap_ditolak(self):
         pegawai_lain = User.objects.create_user("pegawai2", password="x", role="pegawai")
@@ -188,4 +223,32 @@ class RegresiCatatanTests(_AlurMixin, TestCase):
         self.kirim()
         self.pengajuan.refresh_from_db()
         self.assertEqual(self.pengajuan.catatan_unor, "")
-        self.assertTrue(Notification.objects.filter(event=Notification.Event.RESUBMIT_UNOR).exists())
+        notif = Notification.objects.get(event=Notification.Event.RESUBMIT_UNOR)
+        self.assertIn(BALASAN_PEGAWAI, notif.body)
+
+    def test_banner_balasan_di_halaman_pengirim_pengembalian(self):
+        self.kirim()
+        self.kembalikan_unor()
+        self.kirim()
+        self.client.force_login(self.admin_unor)
+        resp = self.client.get(reverse("unor:preview", args=[self.pengajuan.kode]))
+        self.assertContains(resp, "Perbaikan dari Pegawai")
+
+        self.teruskan()
+        self.kembalikan_pakln()
+        self.teruskan()
+        self.client.force_login(self.admin_pakln)
+        resp = self.client.get(reverse("pakln:preview", args=[self.pengajuan.kode]))
+        self.assertContains(resp, "Perbaikan dari Admin Unor")
+
+    def test_balasan_unor_tidak_dikirim_ke_pegawai(self):
+        from notifications.models import Notification
+
+        self.kirim()
+        self.teruskan()
+        self.kembalikan_pakln()
+        self.teruskan()
+        pakln = Notification.objects.filter(recipient=self.admin_pakln, event=Notification.Event.APPROVE_UNOR)
+        self.assertTrue(any(BALASAN_UNOR in n.body for n in pakln))
+        pegawai = Notification.objects.filter(recipient=self.pegawai)
+        self.assertFalse(any(BALASAN_UNOR in n.body for n in pegawai))

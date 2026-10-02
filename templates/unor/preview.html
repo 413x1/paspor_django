@@ -8,6 +8,11 @@
     <strong>⚠ Dikembalikan oleh Admin PKLN untuk diperbaiki:</strong> {{ pengajuan.catatan_pakln }}
   </div>
 {% endif %}
+{% if catatan_perbaikan %}
+  <div class="notification paspor-msg is-info">
+    <strong>↻ Perbaikan dari Pegawai:</strong> {{ catatan_perbaikan|linebreaksbr }}
+  </div>
+{% endif %}
 
 <div class="preview-split">
 <div class="box">

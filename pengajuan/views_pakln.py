@@ -1617,6 +1617,7 @@ def preview(request, kode):
 
     return render(request, "pakln/preview.html", {
         "pengajuan": pengajuan, **riwayat.konteks(pengajuan, request.user),
+        "catatan_perbaikan": riwayat.catatan_perbaikan(pengajuan, RiwayatPengajuan.Aksi.DITERUSKAN_ULANG),
     })
 
 

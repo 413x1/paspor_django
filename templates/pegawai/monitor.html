@@ -31,21 +31,6 @@
 
 <div class="box">
   <div class="section-title" style="font-size:14px;">Timeline Proses</div>
-  <ul class="timeline">
-    {% for step in pengajuan.timeline %}
-      <li>
-        <div class="dot-wrap {{ step.state }}">
-          {% if step.state == "done" %}✓{% elif step.state == "current" %}●{% else %}○{% endif %}
-        </div>
-        <div>
-          <h4>{{ step.title }}</h4>
-          <p>{{ step.desc }}</p>
-          {% if step.tanggal %}<div class="tgl">{{ step.tanggal|date:"d M Y" }}</div>{% endif %}
-        </div>
-      </li>
-    {% endfor %}
-  </ul>
+  {% include "partials/_timeline_proses.html" %}
 </div>
-
-{% include "partials/_riwayat_pengajuan.html" with gaya="timeline" %}
 {% endblock %}

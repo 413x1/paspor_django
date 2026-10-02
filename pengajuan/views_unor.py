@@ -186,6 +186,7 @@ def preview(request, kode):
 
     return render(request, "unor/preview.html", {
         "pengajuan": pengajuan, **riwayat.konteks(pengajuan, request.user),
+        "catatan_perbaikan": riwayat.catatan_perbaikan(pengajuan, RiwayatPengajuan.Aksi.DIKIRIM_ULANG),
     })
 
 
@@ -211,8 +212,14 @@ def upload_dokumen(request, kode):
 
     if request.method == "POST":
         if "teruskan" in request.POST:
+            # Sudah ada catatan revisi Biro PAKLN sebelumnya -> ini penerusan
+            # ulang, wajib disertai catatan balasan untuk Admin Biro PAKLN.
+            is_ulang = bool(pengajuan.catatan_pakln)
+            catatan = request.POST.get("catatan", "").strip() if is_ulang else ""
             if not lengkap:
                 messages.error(request, "Lengkapi seluruh dokumen administrasi Unor sebelum meneruskan berkas.")
+            elif is_ulang and not catatan:
+                messages.error(request, "Isi catatan perbaikan untuk Admin Biro PAKLN sebelum meneruskan ulang.")
             elif not request.POST.get("agree"):
                 messages.error(request, "Centang pernyataan kelengkapan dokumen terlebih dahulu.")
             else:
@@ -223,10 +230,11 @@ def upload_dokumen(request, kode):
                     pengajuan.catatan_pakln = ""
                     pengajuan.save()
                     riwayat.catat(
-                        pengajuan, RiwayatPengajuan.Aksi.DITERUSKAN_PAKLN,
-                        request.user, status_dari,
+                        pengajuan,
+                        RiwayatPengajuan.Aksi.DITERUSKAN_ULANG if is_ulang else RiwayatPengajuan.Aksi.DITERUSKAN_PAKLN,
+                        request.user, status_dari, catatan=catatan,
                     )
-                notify_approve_unor(pengajuan)
+                notify_approve_unor(pengajuan, catatan)
                 messages.success(request, f"Pengajuan {pengajuan.kode} diteruskan ke Admin Biro PAKLN.")
                 return redirect("unor:dashboard")
         elif "pendukung_upload" in request.POST:
