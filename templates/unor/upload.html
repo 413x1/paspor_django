@@ -97,6 +97,16 @@
 
   <form method="post">
     {% csrf_token %}
+    {% if pengajuan.catatan_pakln %}
+      <div class="field">
+        <label class="label" for="catatan_perbaikan">Catatan perbaikan untuk Admin Biro PAKLN</label>
+        <div class="control">
+          <textarea class="textarea" id="catatan_perbaikan" name="catatan" rows="3" required
+            placeholder="cth. Nota Dinas sudah disesuaikan dengan format dan diunggah ulang.">{{ request.POST.catatan }}</textarea>
+        </div>
+        <p class="helptext">Wajib diisi — jelaskan perbaikan yang telah dilakukan.</p>
+      </div>
+    {% endif %}
     <div class="agree-box">
       <input type="checkbox" id="agree" name="agree" required>
       <label for="agree">

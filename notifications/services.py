@@ -96,8 +96,9 @@ def notify_submit_unor(pengajuan):
     )
 
 
-def notify_resubmit_unor(pengajuan):
-    """Event 2C: Pegawai mengirim ulang perbaikan surat ke Admin Unor."""
+def notify_resubmit_unor(pengajuan, catatan=""):
+    """Event 2C: Pegawai mengirim ulang perbaikan surat ke Admin Unor,
+    beserta catatan balasan pegawai."""
     nama = _nama_pegawai(pengajuan)
     perihal = _perihal(pengajuan)
     _create(
@@ -108,7 +109,8 @@ def notify_resubmit_unor(pengajuan):
         title=f"Perbaikan Surat Diterima - {nama}",
         body=(
             f'Pegawai {nama} telah mengirimkan perbaikan surat perihal "{perihal}". '
-            f"Silakan periksa kembali."
+            + (f'Catatan Pegawai: "{catatan}". ' if catatan else "")
+            + "Silakan periksa kembali."
         ),
         redirect_url=reverse("unor:preview", args=[pengajuan.kode]),
     )
@@ -131,8 +133,10 @@ def notify_reject_unor(pengajuan, catatan):
     )
 
 
-def notify_approve_unor(pengajuan):
-    """Event 2A: Admin Unor menyetujui & meneruskan ke Admin PKLN."""
+def notify_approve_unor(pengajuan, catatan=""):
+    """Event 2A: Admin Unor menyetujui & meneruskan ke Admin PKLN.
+    `catatan` terisi bila ini penerusan ulang setelah dikembalikan PKLN —
+    hanya disampaikan ke Admin PKLN, tidak ke pegawai."""
     perihal = _perihal(pengajuan)
     nama = _nama_pegawai(pengajuan)
     unit = _unit_organisasi(pengajuan)
@@ -155,8 +159,11 @@ def notify_approve_unor(pengajuan):
         pengajuan=pengajuan,
         event=Notification.Event.APPROVE_UNOR,
         level=Notification.Level.INFO,
-        title="Penugasan Verifikasi Surat PKLN Baru",
+        title="Perbaikan Berkas dari Unor Diterima" if catatan else "Penugasan Verifikasi Surat PKLN Baru",
         body=(
+            f'Unor {nama_unor} telah mengirimkan perbaikan berkas atas nama {nama} '
+            f'perihal "{perihal}". Catatan Unor: "{catatan}".'
+            if catatan else
             f'Diterima pengajuan surat dari Unor {nama_unor} atas nama {nama} '
             f'perihal "{perihal}".'
         ),

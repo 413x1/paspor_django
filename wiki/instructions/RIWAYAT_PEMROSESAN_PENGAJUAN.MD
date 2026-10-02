@@ -44,12 +44,10 @@ Akibatnya:
 
 Tambahkan tabel **`RiwayatPengajuan`** — log *append-only* berisi satu
 baris untuk setiap perpindahan status, lengkap dengan aktor, waktu, dan
-pesan (jika ada). Riwayat ditampilkan sebagai:
-
-1. **Peta alur** — tahap Pegawai → Admin Unor → Biro PAKLN → Selesai,
-   dengan tanda di tahap mana pengajuan pernah dikembalikan.
-2. **Daftar kronologis** — setiap peristiwa beserta pesannya, difilter
-   sesuai peran yang melihat (lihat [§3](#3-aturan-visibilitas-pesan)).
+pesan (jika ada). Riwayat ditampilkan sebagai **Timeline Proses** 4 tahap
+(Diajukan Pegawai → Dalam Proses Unor → Dalam Proses Biro PAKLN → Selesai);
+di bawah setiap tahap tercantum peristiwa yang terjadi di tahap itu beserta
+pesannya, difilter sesuai peran yang melihat (lihat [§3](#3-aturan-visibilitas-pesan)).
 
 ### Kriteria penerimaan
 
@@ -77,7 +75,7 @@ Status yang ada di `Pengajuan.Status`: `belum` → `proses` → `proses_pakln` �
 ```
             ┌──────────── DIKEMBALIKAN_UNOR (pesan → pegawai) ─────────┐
             ▼                                                          │
- [belum] ──DIKIRIM / DIKIRIM_ULANG──► [proses] ──DITERUSKAN_PAKLN──► [proses_pakln] ──SELESAI──► [selesai]
+ [belum] ──DIKIRIM / DIKIRIM_ULANG (pesan → Unor)──► [proses] ──DITERUSKAN_PAKLN / DITERUSKAN_ULANG (pesan → PAKLN)──► [proses_pakln] ──SELESAI──► [selesai]
                                         ▲                                  │
                                         └── DIKEMBALIKAN_PAKLN (pesan → Unor) ┘
 ```
@@ -85,9 +83,10 @@ Status yang ada di `Pengajuan.Status`: `belum` → `proses` → `proses_pakln` �
 | Kode aksi | Label | Aktor | Status asal → tujuan | Pesan wajib | Titik kode saat ini |
 |---|---|---|---|---|---|
 | `dikirim` | Diajukan ke Admin Unor | Pegawai | `belum` → `proses` | – | `views_pegawai.upload_dokumen` (`kirim`, bukan resubmit) |
-| `dikirim_ulang` | Perbaikan dikirim ke Admin Unor | Pegawai | `belum` → `proses` | – | `views_pegawai.upload_dokumen` (`kirim`, `is_resubmit`) |
+| `dikirim_ulang` | Perbaikan dikirim ke Admin Unor | Pegawai | `belum` → `proses` | ✅ (balasan untuk Unor) | `views_pegawai.upload_dokumen` (`kirim`, `is_resubmit`) |
 | `dikembalikan_unor` | Dikembalikan Admin Unor ke Pegawai | Admin Unor | `proses` → `belum` | ✅ | `views_unor.preview` (`kembalikan`) |
-| `diteruskan_pakln` | Diteruskan ke Biro PAKLN | Admin Unor | `proses` → `proses_pakln` | – | `views_unor.upload_dokumen` (`teruskan`) |
+| `diteruskan_pakln` | Diteruskan ke Biro PAKLN | Admin Unor | `proses` → `proses_pakln` | – | `views_unor.upload_dokumen` (`teruskan`, bukan penerusan ulang) |
+| `diteruskan_ulang` | Perbaikan diteruskan ke Biro PAKLN | Admin Unor | `proses` → `proses_pakln` | ✅ (balasan untuk PAKLN) | `views_unor.upload_dokumen` (`teruskan`, `is_ulang`) |
 | `dikembalikan_pakln` | Dikembalikan Biro PAKLN ke Admin Unor | Admin PAKLN | `proses_pakln` → `proses` | ✅ | `views_pakln.preview` (`kembalikan`) |
 | `selesai` | Selesai diproses | Admin PAKLN | `proses_pakln` → `selesai` | – | `views_pakln.upload_dokumen` (`selesaikan`) |
 
@@ -95,10 +94,20 @@ Catatan:
 
 - Menyimpan draft formulir (`formulir_pengajuan`) **tidak** dicatat — belum
   ada proses. Opsional: catat `dibuat` saat pengajuan pertama kali disimpan.
-- `dikirim_ulang` memakai deteksi yang sama dengan notifikasi:
-  `is_resubmit = bool(pengajuan.catatan_unor)` sebelum kolom dikosongkan.
+- **Catatan dua arah.** Penerima pengembalian wajib membalas dengan
+  catatan saat mengirim lagi: pegawai → Admin Unor (`dikirim_ulang`) dan
+  Admin Unor → Biro PAKLN (`diteruskan_ulang`). Kolom "Catatan perbaikan"
+  hanya muncul (dan hanya divalidasi) bila pengajuan sedang dikembalikan.
+- Deteksi pengiriman ulang: `is_resubmit = bool(pengajuan.catatan_unor)`;
+  penerusan ulang: `is_ulang = bool(pengajuan.catatan_pakln)` — keduanya
+  dibaca sebelum kolom dikosongkan.
+- Balasan tampil sebagai banner "↻ Perbaikan dari …" di halaman pratinjau
+  pihak yang mengembalikan (`riwayat.catatan_perbaikan`) selama itu
+  peristiwa terakhir, dan selalu ada di Timeline Proses. Balasan juga
+  dimuat di notifikasi penerima (`notify_resubmit_unor`,
+  `notify_approve_unor` — yang terakhir hanya untuk Admin PAKLN, bukan pegawai).
 - Setelah `dikembalikan_pakln`, Admin Unor boleh langsung meneruskan lagi
-  (`diteruskan_pakln`) **atau** mengembalikan ke pegawai
+  (`diteruskan_ulang`) **atau** mengembalikan ke pegawai
   (`dikembalikan_unor`). Keduanya sudah didukung view yang ada.
 
 ---
@@ -106,23 +115,26 @@ Catatan:
 ## 3. Aturan Visibilitas Pesan
 
 Aturan berlaku pada **pesan** (`catatan`). Baris peristiwa (aksi, waktu,
-aktor) tetap tampil untuk semua peran agar peta alur utuh; untuk peran yang
+aktor) tetap tampil untuk semua peran agar timeline utuh; untuk peran yang
 tidak berhak, pesan diganti keterangan netral.
 
 | Peristiwa | Pegawai | Admin Unor | Admin Biro PAKLN |
 |---|---|---|---|
 | `dikembalikan_unor` (pesan Unor → Pegawai) | ✅ lihat pesan | ✅ lihat pesan (pesan sendiri) | ✅ lihat pesan |
+| `dikirim_ulang` (balasan Pegawai → Unor) | ✅ lihat pesan (pesan sendiri) | ✅ lihat pesan | ✅ lihat pesan |
 | `dikembalikan_pakln` (pesan PAKLN → Unor) | ❌ pesan disembunyikan | ✅ lihat pesan | ✅ lihat pesan |
+| `diteruskan_ulang` (balasan Unor → PAKLN) | ❌ pesan disembunyikan | ✅ lihat pesan (pesan sendiri) | ✅ lihat pesan |
 | Peristiwa tanpa pesan | ✅ | ✅ | ✅ |
 
 Dirumuskan sebagai aturan:
 
 ```
+# Pesan berada pada salah satu dari dua jalur:
+#   Pegawai <-> Admin Unor        : dikembalikan_unor, dikirim_ulang
+#   Admin Unor <-> Admin PAKLN    : dikembalikan_pakln, diteruskan_ulang
 boleh_lihat_pesan(user, riwayat) =
-    user.role == admin_pakln
- or riwayat.aktor_role == user.role          # pesan peran sendiri
- or (user.role == pegawai    and riwayat.aktor_role == admin_unor)
- or (user.role == admin_unor and riwayat.aktor_role == admin_pakln)
+    riwayat.aksi in JALUR_PEGAWAI           if user.role == pegawai
+    True                                    if user.role in (admin_unor, admin_pakln)
 ```
 
 Ketentuan tambahan:
@@ -212,11 +224,12 @@ def riwayat_untuk(pengajuan, user):
 
 def boleh_lihat_pesan(user, riwayat) -> bool: ...
 
-def peta_alur(pengajuan):
-    """4 simpul tahap + jumlah pengembalian per jalur balik."""
+def timeline_dengan_riwayat(pengajuan, user):
+    """4 tahap Pengajuan.timeline, tiap tahap berisi entri riwayat yang
+    terjadi di tahap itu (berdasarkan status_dari)."""
 
 def konteks(pengajuan, user):
-    """{'riwayat': ..., 'peta_alur': ...} untuk partial riwayat."""
+    """{'timeline': ...} untuk partial timeline/riwayat."""
 ```
 
 ### Pemanggilan di view
@@ -253,39 +266,36 @@ notify_reject_unor(pengajuan, catatan)
 
 ### Partial bersama
 
-`templates/partials/_riwayat_pengajuan.html`, di-include dengan
-`{% include "partials/_riwayat_pengajuan.html" %}`.
+- `templates/partials/_timeline_proses.html` — daftar `.timeline` 4 tahap
+  (Diajukan Pegawai → Dalam Proses Unor → Dalam Proses Biro PAKLN → Selesai),
+  dipakai semua peran.
+- `templates/partials/_riwayat_pengajuan.html` — card "Timeline Proses"
+  yang membungkus partial di atas (halaman Admin Unor & Biro PAKLN).
+
 View menambahkan `**riwayat.konteks(pengajuan, request.user)` ke context.
 Template **tidak** berisi logika peran — hanya menampilkan data yang sudah
 difilter.
 
-Isi partial:
-
-**a. Peta alur** — 4 simpul horizontal (vertikal di layar ponsel):
-Pegawai → Admin Unor → Biro PAKLN → Selesai.
-
-- Simpul tahap aktif disorot; tahap yang sudah lewat diberi tanda selesai
-  (boleh memakai ulang data `Pengajuan.timeline`).
-- Panah balik antar-simpul diberi lencana jumlah pengembalian, mis.
-  "↩ 2×" antara Admin Unor dan Pegawai. Jumlah dihitung dari riwayat.
-
-**b. Daftar kronologis** — urut lama → baru, per baris:
+Setiap tahap menampilkan judul, deskripsi, tanggal, dan status
+(selesai/aktif/belum). Di bawahnya, entri riwayat yang terjadi di tahap itu
+(dikelompokkan menurut `status_dari`, mis. "Dikembalikan ke Pegawai" berada di
+tahap Dalam Proses Unor), urut lama → baru, per baris:
 
 - ikon/warna per aksi (kembali = kuning/warning, selesai = hijau, lainnya = biru),
 - label aksi, nama/peran aktor, tanggal & jam (format Indonesia),
 - kotak pesan bila `catatan` terlihat untuk user tersebut.
 
 Gunakan token warna & kelas yang sudah ada di [static/css/style.css](../../static/css/style.css)
-(mis. pola `.timeline` pada Monitor Progres); naikkan versi `?v=` di `base.html`
+(pola `.timeline` + `.riwayat-list.timeline-riwayat`); naikkan versi `?v=` di `base.html`
 bila CSS berubah.
 
 ### Letak per peran
 
 | Peran | Halaman | Keterangan |
 |---|---|---|
-| Pegawai | `pegawai/monitor.html` | Di bawah Timeline Proses, `with gaya="timeline"`: tampil sama seperti Timeline Proses, tanpa peta alur |
-| Admin Unor | `unor/preview.html`, `unor/upload.html` | Preview: grid `.preview-split` — card Pratinjau ∣ Direktori Unggahan Pegawai, lalu ↩ Kembalikan ∣ Riwayat. Upload: di atas tombol navigasi bawah |
-| Admin PAKLN | `pakln/preview.html`, `pakln/upload.html` | Preview: grid `.preview-split` — Pratinjau ∣ Direktori Dokumen dari Unor, lalu ↩ Kembalikan ∣ Riwayat (Riwayat penuh bila tombol Kembalikan tidak tampil). Upload: di atas tombol navigasi bawah |
+| Pegawai | `pegawai/monitor.html` | Card "Timeline Proses" yang include `_timeline_proses.html` (tidak ada card Riwayat terpisah) |
+| Admin Unor | `unor/preview.html`, `unor/upload.html` | Preview: grid `.preview-split` — card Pratinjau ∣ Direktori Unggahan Pegawai, lalu ↩ Kembalikan ∣ Timeline Proses. Upload: di atas tombol navigasi bawah |
+| Admin PAKLN | `pakln/preview.html`, `pakln/upload.html` | Preview: grid `.preview-split` — Pratinjau ∣ Direktori Dokumen dari Unor, lalu ↩ Kembalikan ∣ Timeline Proses (Timeline Proses penuh bila tombol Kembalikan tidak tampil). Upload: di atas tombol navigasi bawah |
 
 Opsional (tahap berikutnya): kolom "Jumlah dikembalikan" pada tabel
 dashboard Admin PAKLN, dan tombol "Lihat Riwayat" (modal) di dashboard
@@ -323,14 +333,14 @@ Pengajuan yang sudah berjalan tidak punya riwayat. Data migration
 | `pengajuan/models.py` | Model `RiwayatPengajuan` |
 | `pengajuan/migrations/0014_riwayatpengajuan.py` | Skema |
 | `pengajuan/migrations/0015_backfill_riwayat.py` | Backfill data lama |
-| `pengajuan/riwayat.py` (baru) | `catat`, `riwayat_untuk`, `boleh_lihat_pesan` |
+| `pengajuan/riwayat.py` (baru) | `catat`, `riwayat_untuk`, `boleh_lihat_pesan`, `timeline_dengan_riwayat`, `konteks` |
 | `pengajuan/views_pegawai.py` | `upload_dokumen` (catat `dikirim`/`dikirim_ulang`); `monitor_progres` (kirim `riwayat` ke context) |
 | `pengajuan/views_unor.py` | `preview` (catat `dikembalikan_unor`, kirim `riwayat`); `upload_dokumen` (catat `diteruskan_pakln`, kirim `riwayat`) |
 | `pengajuan/views_pakln.py` | `preview` (catat `dikembalikan_pakln`, kirim `riwayat`); `upload_dokumen` (catat `selesai`, kirim `riwayat`) |
 | `pengajuan/admin.py` | Daftarkan `RiwayatPengajuan` sebagai *read-only* (tanpa add/change/delete) + inline read-only di `PengajuanAdmin` |
-| `templates/partials/_riwayat_pengajuan.html` (baru) | Peta alur + daftar kronologis |
-| `templates/pegawai/monitor.html`, `templates/unor/preview.html`, `templates/unor/upload.html`, `templates/pakln/preview.html`, `templates/pakln/upload.html` | Include partial |
-| `static/css/style.css`, `templates/base.html` | Gaya peta alur & daftar; naikkan `?v=` |
+| `templates/partials/_timeline_proses.html`, `templates/partials/_riwayat_pengajuan.html` (baru) | Timeline 4 tahap + riwayat per tahap; card Timeline Proses (Unor/PAKLN) |
+| `templates/pegawai/monitor.html`, `templates/unor/preview.html`, `templates/unor/upload.html`, `templates/pakln/preview.html`, `templates/pakln/upload.html` | Include partial (pegawai: `_timeline_proses.html`) |
+| `static/css/style.css`, `templates/base.html` | Gaya timeline & riwayat per tahap; naikkan `?v=` |
 | `pengajuan/tests.py` (baru) | Lihat [§9](#9-pengujian) |
 
 ---
@@ -374,7 +384,7 @@ diteruskan → dikembalikan PAKLN → diteruskan → selesai.
 | 1 | Tabel log terpisah, bukan memperluas `Notification` | Notifikasi per penerima & bisa di-dismiss; riwayat harus satu sumber yang utuh |
 | 2 | `catatan_unor` / `catatan_pakln` tetap ada | Banner & deteksi kirim ulang tidak perlu diubah |
 | 3 | Peran & nama aktor di-snapshot | Visibilitas bergantung peran saat pesan ditulis |
-| 4 | Peristiwa tetap tampil untuk semua peran, hanya pesan yang disaring | Peta alur tetap utuh & jujur ("pernah dikembalikan") tanpa membocorkan isi pesan |
+| 4 | Peristiwa tetap tampil untuk semua peran, hanya pesan yang disaring | Timeline tetap utuh & jujur ("pernah dikembalikan") tanpa membocorkan isi pesan |
 | 5 | Filter di server (`riwayat_untuk`) | Pesan terlarang tidak pernah sampai ke browser |
 
 ### Pertanyaan terbuka (implementasi memakai default di bawah)

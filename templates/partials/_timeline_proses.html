@@ -1,0 +1,35 @@
+{# Timeline Proses + Riwayat Pemrosesan — wiki/instructions/RIWAYAT_PEMROSESAN_PENGAJUAN.MD §6. #}
+{# Context: `timeline` dari riwayat.konteks() / riwayat.timeline_dengan_riwayat(); pesan sudah difilter per peran di server. #}
+<ul class="timeline">
+  {% for step in timeline %}
+    <li>
+      <div class="dot-wrap {{ step.state }}">
+        {% if step.state == "done" %}✓{% elif step.state == "current" %}●{% else %}○{% endif %}
+      </div>
+      <div>
+        <h4>{{ step.title }}</h4>
+        <p>{{ step.desc }}</p>
+        {% if step.tanggal %}<div class="tgl">{{ step.tanggal|date:"d M Y" }}</div>{% endif %}
+        {% if step.riwayat %}
+          <ul class="riwayat-list timeline-riwayat">
+            {% for entri in step.riwayat %}
+              <li class="is-{{ entri.tone }}">
+                <span class="riwayat-ikon" aria-hidden="true">{{ entri.ikon }}</span>
+                <div class="riwayat-isi">
+                  <div class="riwayat-head">
+                    <strong>{{ entri.label }}</strong>
+                    <span class="riwayat-waktu">{{ entri.waktu|date:"d M Y, H:i" }}</span>
+                  </div>
+                  <div class="riwayat-aktor">oleh {{ entri.aktor }}</div>
+                  {% if entri.catatan %}
+                    <div class="riwayat-pesan">{{ entri.catatan|linebreaksbr }}</div>
+                  {% endif %}
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    </li>
+  {% endfor %}
+</ul>

@@ -3,6 +3,12 @@
 {% block wrap_extra_class %} narrow{% endblock %}
 
 {% block content %}
+{% if catatan_perbaikan %}
+  <div class="notification paspor-msg is-info">
+    <strong>↻ Perbaikan dari Admin Unor:</strong> {{ catatan_perbaikan|linebreaksbr }}
+  </div>
+{% endif %}
+
 <div class="preview-split">
 <div class="box">
   <div class="section-title">Pratinjau Pengajuan dari Unor — {{ pengajuan.kode }}</div>

@@ -495,6 +495,7 @@ class RiwayatPengajuan(models.Model):
         DIKEMBALIKAN_UNOR = "dikembalikan_unor", "Dikembalikan Admin Unor ke Pegawai"
         DITERUSKAN_PAKLN = "diteruskan_pakln", "Diteruskan ke Biro PAKLN"
         DIKEMBALIKAN_PAKLN = "dikembalikan_pakln", "Dikembalikan Biro PAKLN ke Admin Unor"
+        DITERUSKAN_ULANG = "diteruskan_ulang", "Perbaikan diteruskan ke Biro PAKLN"
         SELESAI = "selesai", "Selesai diproses"
 
     pengajuan = models.ForeignKey(Pengajuan, on_delete=models.CASCADE, related_name="riwayat")

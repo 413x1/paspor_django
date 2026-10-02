@@ -194,14 +194,18 @@ def upload_dokumen(request, kode):
 
     if request.method == "POST":
         if "kirim" in request.POST:
+            # Sudah ada catatan revisi Unor sebelumnya -> ini pengiriman
+            # ulang (Event 2C), bukan pengajuan baru (Event 1), dan wajib
+            # disertai catatan balasan untuk Admin Unor.
+            is_resubmit = bool(pengajuan.catatan_unor)
+            catatan = request.POST.get("catatan", "").strip() if is_resubmit else ""
             if not lengkap:
                 messages.error(request, "Lengkapi seluruh dokumen sebelum mengirim ke Admin Unor.")
+            elif is_resubmit and not catatan:
+                messages.error(request, "Isi catatan perbaikan untuk Admin Unor sebelum mengirim ulang.")
             elif not request.POST.get("agree"):
                 messages.error(request, "Centang pernyataan kelengkapan dokumen terlebih dahulu.")
             else:
-                # Sudah ada catatan revisi Unor sebelumnya -> ini pengiriman
-                # ulang (Event 2C), bukan pengajuan baru (Event 1).
-                is_resubmit = bool(pengajuan.catatan_unor)
                 status_dari = pengajuan.status
 
                 with transaction.atomic():
@@ -213,11 +217,11 @@ def upload_dokumen(request, kode):
                     riwayat.catat(
                         pengajuan,
                         RiwayatPengajuan.Aksi.DIKIRIM_ULANG if is_resubmit else RiwayatPengajuan.Aksi.DIKIRIM,
-                        request.user, status_dari,
+                        request.user, status_dari, catatan=catatan,
                     )
 
                 if is_resubmit:
-                    notify_resubmit_unor(pengajuan)
+                    notify_resubmit_unor(pengajuan, catatan)
                 else:
                     notify_submit_unor(pengajuan)
 

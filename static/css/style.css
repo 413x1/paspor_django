@@ -543,33 +543,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .monitor-summary .dest { font-weight: 700; font-size: 14px; }
 .monitor-summary .meta { font-size: 12px; color: var(--slate-400); margin-top: 2px; }
 
-/* ---------- Riwayat Pemrosesan (partials/_riwayat_pengajuan.html) ---------- */
-.peta-alur {
-  list-style: none; margin: 0 0 22px; padding: 18px 0 0;
-  display: flex; align-items: flex-start;
-}
-.peta-simpul {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  flex-shrink: 0; width: 72px; text-align: center;
-}
-.peta-dot {
-  width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center;
-  justify-content: center; font-size: 12px; background: var(--line); color: var(--slate-400);
-}
-.peta-simpul.is-done .peta-dot { background: var(--green); color: var(--white); }
-.peta-simpul.is-current .peta-dot { background: var(--gold); color: var(--navy-900); }
-.peta-judul { font-size: 12px; font-weight: 600; line-height: 1.25; color: var(--slate-600); }
-.peta-simpul.is-upcoming .peta-judul { color: var(--slate-400); font-weight: 500; }
-.peta-garis {
-  flex: 1; min-width: 12px; height: 2px; margin: 12px -18px 0; background: var(--line); position: relative;
-}
-.peta-garis.is-done { background: var(--green); }
-.peta-kembali {
-  position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
-  padding: 1px 7px; border-radius: 999px; white-space: nowrap;
-  background: var(--gold-bg); color: var(--gold-dark); font-size: 11px; font-weight: 700;
-}
-
+/* ---------- Riwayat Pemrosesan (partials/_timeline_proses.html) ---------- */
 .riwayat-list { list-style: none; margin: 0; padding: 0; }
 .riwayat-list li { display: flex; gap: 12px; padding-bottom: 18px; position: relative; }
 .riwayat-list li:last-child { padding-bottom: 0; }
@@ -593,10 +567,13 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
   background: var(--gold-bg); color: var(--slate-900); font-size: 13px; overflow-wrap: anywhere;
 }
 .timeline .riwayat-pesan { margin-bottom: 2px; }
-/* Varian gaya timeline (halaman pegawai): warna titik mengikuti jenis aksi */
-.timeline .dot-wrap.is-info { background: var(--blue-bg); color: var(--navy-900); }
-.timeline .dot-wrap.is-warning { background: var(--gold); color: var(--navy-900); }
-.timeline .dot-wrap.is-success { background: var(--green); color: var(--white); }
+/* Riwayat yang digabung ke dalam tahap Timeline Proses */
+.timeline li > div:last-child { flex: 1; min-width: 0; }
+.timeline .timeline-riwayat {
+  margin-top: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 10px;
+}
+.timeline .timeline-riwayat li { padding-bottom: 14px; }
+.timeline .timeline-riwayat li:last-child { padding-bottom: 0; }
 
 /* Dua card bersebelahan (halaman Pratinjau Admin Unor / Biro PAKLN) */
 .preview-split {

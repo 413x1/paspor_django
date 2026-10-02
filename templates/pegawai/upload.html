@@ -71,6 +71,16 @@
 
   <form method="post">
     {% csrf_token %}
+    {% if pengajuan.catatan_unor %}
+      <div class="field">
+        <label class="label" for="catatan_perbaikan">Catatan perbaikan untuk Admin Unor</label>
+        <div class="control">
+          <textarea class="textarea" id="catatan_perbaikan" name="catatan" rows="3" required
+            placeholder="cth. Formulir ILN sudah ditandatangani pimpinan dan diunggah ulang.">{{ request.POST.catatan }}</textarea>
+        </div>
+        <p class="helptext">Wajib diisi — jelaskan perbaikan yang telah dilakukan.</p>
+      </div>
+    {% endif %}
     <div class="agree-box">
       <input type="checkbox" id="agree" name="agree" required>
       <label for="agree">
