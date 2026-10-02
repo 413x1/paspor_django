@@ -73,8 +73,8 @@ class PengajuanForm(forms.ModelForm):
                 attrs={"data-multiselect": "Pilih satu atau lebih negara tujuan…"}
             ),
             "sumber_pembiayaan": forms.Select(),
-            "tgl_berangkat": forms.DateInput(attrs={"type": "date", "class": "input"}),
-            "tgl_kembali": forms.DateInput(attrs={"type": "date", "class": "input"}),
+            "tgl_berangkat": forms.DateInput(attrs={"type": "date", "class": "input"}, format="%Y-%m-%d"),
+            "tgl_kembali": forms.DateInput(attrs={"type": "date", "class": "input"}, format="%Y-%m-%d"),
         }
 
     def __init__(self, *args, profile=None, **kwargs):
