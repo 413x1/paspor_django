@@ -1,0 +1,26 @@
+{# Direktori dokumen tahap-tahap sebelumnya (persyaratan.direktori). Context: direktori, pengajuan. #}
+{% for grup in direktori %}
+  <div class="section-title" style="font-size:13px;margin:{% if forloop.first %}0{% else %}14px{% endif %} 0 6px;">Unggahan {{ grup.label }}</div>
+  {% for item in grup.dokumen %}
+    <div class="doc-row uploaded" style="padding:10px 14px;">
+      <div class="info"><h4 style="font-size:13.5px;">{{ item.label }}</h4>
+        {% if item.dok.tanggal_surat %}<p class="cell-muted">📅 {{ item.dok.tanggal_surat|date:"d M Y" }}</p>{% endif %}</div>
+      <div class="actions">
+        <button type="button" class="button is-small" data-doc-preview="{{ item.dok.file.url }}" data-doc-title="{{ item.label }}">👁 Lihat</button>
+      </div>
+    </div>
+  {% empty %}
+    <p class="cell-muted">Belum ada dokumen.</p>
+  {% endfor %}
+  {% if grup.tahap == "unor" and not pengajuan.is_pdln %}
+    {% with pendukung=pengajuan.dokumen_unor_pendukung %}
+      {% if pendukung.file %}
+        <div class="doc-row uploaded" style="padding:10px 14px;">
+          <div class="info"><h4 style="font-size:13.5px;">Dokumen Pendukung Lainnya (Unor)</h4>
+            {% if pendukung.kategori_tercentang %}<p class="cell-muted">{{ pendukung.kategori_tercentang|join:", " }}</p>{% endif %}</div>
+          <div class="actions"><button type="button" class="button is-small" data-doc-preview="{{ pendukung.file.url }}" data-doc-title="Dokumen Pendukung Unor">👁 Lihat</button></div>
+        </div>
+      {% endif %}
+    {% endwith %}
+  {% endif %}
+{% endfor %}

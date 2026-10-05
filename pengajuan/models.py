@@ -6,17 +6,18 @@ from django.utils import timezone
 
 class Pengajuan(models.Model):
     """
-    Satu pengajuan Perjalanan Luar Negeri Non-Kedinasan.
+    Satu pengajuan perjalanan luar negeri — Non-Kedinasan atau PDLN
+    (Perjalanan Dinas Luar Negeri), lihat
+    wiki/instructions/BISNIS_PROSES_PDLN.MD.
 
-    `status` adalah "sumber kebenaran" siklus proses, identik dengan state
-    machine pada mockup:
+    `status` adalah "sumber kebenaran" siklus proses. Urutan tahap
+    bergantung tipe (`pengajuan.alur.ALUR`):
 
-        belum -> proses -> proses_pakln -> selesai
+        Non-Dinas, T1, T3 : belum -> proses -> proses_pakln -> selesai
+        T2P, T2L          : belum -> proses -> proses_bpsdm -> proses_pakln -> selesai
 
-    - belum          : draft, formulir belum/baru disimpan pegawai.
-    - proses          : sudah dikirim pegawai, menunggu diproses Admin Unor.
-    - proses_pakln    : diteruskan Admin Unor, menunggu diproses Admin Biro PAKLN.
-    - selesai         : seluruh proses administrasi rampung.
+    `dibatalkan` adalah status final yang bisa dicapai dari status mana
+    pun lewat permohonan pembatalan (`pengajuan.pembatalan`).
     """
 
     class Kanal(models.TextChoices):
@@ -26,12 +27,35 @@ class Pengajuan(models.Model):
     class Status(models.TextChoices):
         BELUM = "belum", "Belum Diajukan"
         PROSES = "proses", "Dalam Proses Unor"
+        PROSES_BPSDM = "proses_bpsdm", "Dalam Proses BPSDM"
         PROSES_PAKLN = "proses_pakln", "Dalam Proses Biro PAKLN"
         SELESAI = "selesai", "Selesai"
+        DIBATALKAN = "dibatalkan", "Dibatalkan"
+
+    class JenisPerjalanan(models.TextChoices):
+        NONDINAS = "nondinas", "Non-Kedinasan"
+        PDLN = "pdln", "PDLN"
+
+    class TipePdln(models.TextChoices):
+        T1 = "T1", "PDLN Tipe 1"
+        T2P = "T2P", "PDLN Tipe 2 — Pendidikan"
+        T2L = "T2L", "PDLN Tipe 2 — Pelatihan"
+        T3 = "T3", "PDLN Tipe 3 — Penugasan Khusus"
 
     kode = models.CharField("Kode Pengajuan", max_length=20, unique=True, blank=True)
     pegawai = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="pengajuan_list"
+    )
+    jenis_perjalanan = models.CharField(
+        "Jenis Perjalanan", max_length=20, choices=JenisPerjalanan.choices,
+        default=JenisPerjalanan.NONDINAS,
+    )
+    tipe_pdln = models.CharField("Tipe PDLN", max_length=5, choices=TipePdln.choices, blank=True)
+    # Snapshot unit organisasi pegawai saat pengajuan dikirim — dasar
+    # cakupan Admin Unor & report, tidak bergeser bila pegawai mutasi.
+    unit_organisasi = models.ForeignKey(
+        "paspor.UnitOrganisasi", on_delete=models.PROTECT, null=True, blank=True,
+        related_name="+", verbose_name="Unit Organisasi (saat diajukan)",
     )
 
     # --- Detail perjalanan (diisi pegawai pada Formulir Pengajuan) ---
@@ -60,6 +84,7 @@ class Pengajuan(models.Model):
     form_saved = models.BooleanField(default=False)
     submitted = models.BooleanField(default=False)
     preview_unor_agree = models.BooleanField(default=False)
+    preview_bpsdm_agree = models.BooleanField(default=False)
     preview_pakln_agree = models.BooleanField(default=False)
 
     # Catatan Admin Unor saat mengembalikan pengajuan ke pegawai (mis. ada
@@ -67,20 +92,32 @@ class Pengajuan(models.Model):
     # mengirim ulang pengajuannya.
     catatan_unor = models.TextField("Catatan Admin Unor", blank=True)
 
-    # Catatan Admin Biro PAKLN saat mengembalikan pengajuan ke Admin Unor
-    # (mis. rekomendasi/berkas administrasi Unor perlu diperbaiki).
+    # Catatan Admin BPSDM saat mengembalikan pengajuan Tipe 2 ke Admin Unor
+    # — penanda bahwa penerusan berikutnya ke BPSDM adalah penerusan ulang.
+    catatan_bpsdm = models.TextField("Catatan Admin BPSDM", blank=True)
+
+    # Catatan Admin Biro PAKLN saat mengembalikan pengajuan ke tahap
+    # sebelumnya (Admin Unor, atau Admin BPSDM untuk Tipe 2).
     catatan_pakln = models.TextField("Catatan Admin PKLN", blank=True)
 
     # --- Tanggal penting untuk pelaporan / monitor progres ---
     tgl_pengajuan = models.DateField(null=True, blank=True)
+    tgl_masuk_bpsdm = models.DateField(null=True, blank=True)
     tgl_masuk_pakln = models.DateField(null=True, blank=True)
     tgl_selesai = models.DateField(null=True, blank=True)
+    tgl_dibatalkan = models.DateField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["jenis_perjalanan", "tipe_pdln", "status"]),
+            models.Index(fields=["unit_organisasi", "status"]),
+            models.Index(fields=["status", "tgl_pengajuan"]),
+            models.Index(fields=["pegawai", "status"]),
+        ]
         verbose_name = "Pengajuan"
         verbose_name_plural = "Pengajuan"
 
@@ -90,10 +127,14 @@ class Pengajuan(models.Model):
         super().save(*args, **kwargs)
 
     def _generate_kode(self):
-        """Format PSP-<tahun>-<urutan 4 digit>, mengikuti contoh pada mockup
-        (mis. PSP-2026-0142)."""
+        """Non-Dinas: PSP-<tahun>-<urutan> (mis. PSP-2026-0142); PDLN:
+        PDLN-<tahun>-<tipe>-<urutan> (mis. PDLN-2026-T2P-0001). Nomor urut
+        dihitung per prefiks per tahun."""
         year = timezone.now().year
-        prefix = f"PSP-{year}-"
+        if self.jenis_perjalanan == self.JenisPerjalanan.PDLN and self.tipe_pdln:
+            prefix = f"PDLN-{year}-{self.tipe_pdln}-"
+        else:
+            prefix = f"PSP-{year}-"
         last = (
             Pengajuan.objects.filter(kode__startswith=prefix)
             .order_by("-kode")
@@ -123,28 +164,89 @@ class Pengajuan(models.Model):
         self.jumlah_hari_kerja = hitung_hari_kerja(self.tgl_berangkat, self.tgl_kembali)
         return self.jumlah_hari_kerja
 
+    # --- Turunan jenis/tipe & status ---------------------------------
+
+    @property
+    def is_pdln(self):
+        return self.jenis_perjalanan == self.JenisPerjalanan.PDLN
+
+    @property
+    def is_tipe2(self):
+        return self.tipe_pdln in (self.TipePdln.T2P, self.TipePdln.T2L)
+
+    @property
+    def kunci_alur(self):
+        """Kunci `alur.ALUR` & `persyaratan.PERSYARATAN`: "nondinas" atau
+        kode tipe PDLN."""
+        return self.tipe_pdln if self.is_pdln and self.tipe_pdln else "nondinas"
+
+    @property
+    def jenis_label(self):
+        """Label ringkas untuk tabel: "Non-Kedinasan" / "PDLN Tipe 1" …"""
+        return self.get_tipe_pdln_display() if self.is_pdln and self.tipe_pdln else "Non-Kedinasan"
+
+    @property
+    def pernah_dikirim(self):
+        return self.tgl_pengajuan is not None
+
+    @property
+    def perlu_visa(self):
+        """True bila salah satu negara tujuan memerlukan visa — Rekomendasi
+        Visa menjadi wajib (BISNIS_PROSES_PDLN.MD §6.4)."""
+        return self.tujuan_negara.filter(perlu_visa=True).exists()
+
+    @property
+    def negara_perlu_visa(self):
+        return ", ".join(
+            self.tujuan_negara.filter(perlu_visa=True).values_list("nama_negara", flat=True)
+        )
+
+    @property
+    def pembatalan_terbuka(self):
+        """Permohonan pembatalan yang masih menunggu keputusan, atau None.
+        Selama ada, aksi alur utama dibekukan."""
+        if not self.pk:
+            return None
+        return self.permohonan_pembatalan.filter(
+            status__in=PermohonanPembatalan.STATUS_TERBUKA
+        ).first()
+
+    @property
+    def laporan(self):
+        if not self.pk:
+            return None
+        try:
+            return self.laporan_pdln
+        except LaporanPdln.DoesNotExist:
+            return None
+
+    @property
+    def detail(self):
+        if not self.pk:
+            return None
+        try:
+            return self.detail_pdln
+        except DetailPdln.DoesNotExist:
+            return None
+
+    @property
+    def tuntas(self):
+        """Pengajuan telah mencapai tahap akhir (§2.1): dibatalkan,
+        Non-Dinas selesai, atau PDLN selesai + laporan disetujui."""
+        if self.status == self.Status.DIBATALKAN:
+            return True
+        if self.status != self.Status.SELESAI:
+            return False
+        if not self.is_pdln:
+            return True
+        laporan = self.laporan
+        return bool(laporan and laporan.status == LaporanPdln.Status.DISETUJUI)
+
     @property
     def timeline(self):
-        """Struktur data untuk halaman Monitor Progres pegawai, identik
-        dengan 4 tahap pada mockup."""
-        order = [self.Status.BELUM, self.Status.PROSES, self.Status.PROSES_PAKLN, self.Status.SELESAI]
-        current_index = order.index(self.status) if self.status in order else 0
-        steps = [
-            ("Diajukan Pegawai", "Pengisian Formulir dan Unggah Berkas untuk disampaikan ke Unor.", self.tgl_pengajuan),
-            ("Dalam Proses Unor", "Pratinjau Formulir dan Berkas, permohonan tanda tangan Pimpinan Unor, permohonan persetujuan Menteri, penyampaian berkas ke Biro PAKLN.", None),
-            ("Dalam Proses Biro PAKLN", "Permohonan tanda tangan Sekretaris Jenderal a.n. Menteri.", self.tgl_masuk_pakln),
-            ("Selesai", "Seluruh proses administrasi perizinan telah rampung.", self.tgl_selesai),
-        ]
-        result = []
-        for idx, (title, desc, tgl) in enumerate(steps):
-            if idx < current_index:
-                state = "done"
-            elif idx == current_index and self.status != self.Status.BELUM:
-                state = "current"
-            else:
-                state = "upcoming"
-            result.append({"title": title, "desc": desc, "tanggal": tgl, "state": state})
-        return result
+        """Tahap-tahap Timeline Proses sesuai tipe (lihat `alur.timeline`)."""
+        from .alur import timeline
+        return timeline(self)
 
     def __str__(self):
         return f"{self.kode} — {self.pegawai}"
@@ -167,17 +269,28 @@ def dokumen_pakln_path(instance, filename):
 
 
 class DokumenPegawai(models.Model):
-    """4 jenis dokumen yang diunggah pegawai (lihat mockup bagian
-    Unggah Dokumen)."""
+    """Dokumen yang diunggah pegawai. Jenis yang wajib per jenis/tipe
+    perjalanan ditentukan registri `pengajuan.persyaratan`."""
 
     class Jenis(models.TextChoices):
+        # Non-Kedinasan
         CUTI = "cuti", "1.a Formulir Persetujuan Cuti Pegawai"
         ILN = "iln", "1.b Formulir Izin Luar Negeri"
         NOTADINAS = "notadinas", "1.c Nota Dinas Pimpinan Unit Kerja ke Sekretaris Unor"
         PENDUKUNG = "pendukung", "1.d Dokumen Pendukung"
+        # PDLN
+        UNDANGAN = "undangan", "Undangan/Surat Permohonan dari Penyelenggara"
+        KAK = "kak", "Kerangka Acuan Kerja (KAK)"
+        RAB = "rab", "RAB Pembiayaan"
+        ITINERARY = "itinerary", "Jadwal Kegiatan/Itinerary"
+        LOA = "loa", "Letter of Acceptance (LoA)"
+        LOG = "log", "Letter of Guarantee (LoG)"
+        SURAT_PERNYATAAN = "surat_pernyataan", "Surat Pernyataan sesuai ketentuan Kemensetneg"
+        DRH = "drh", "Daftar Riwayat Hidup (DRH)"
+        IKATAN_DINAS = "ikatan_dinas", "Perjanjian Ikatan Dinas"
 
     pengajuan = models.ForeignKey(Pengajuan, on_delete=models.CASCADE, related_name="dokumen_pegawai")
-    jenis = models.CharField(max_length=20, choices=Jenis.choices)
+    jenis = models.CharField(max_length=30, choices=Jenis.choices)
     file = models.FileField(upload_to=dokumen_pegawai_path)
     # Hanya diisi untuk jenis dokumen yang berupa surat (1.a, 1.c) — lewat
     # modal "Tanggal Surat" yang muncul begitu berkasnya dipilih, lihat
@@ -199,12 +312,19 @@ class DokumenUnor(models.Model):
     jenis. Dokumen pendukung lainnya ada pada `DokumenUnorPendukung`."""
 
     class Jenis(models.TextChoices):
+        # Non-Kedinasan
         DISPOSISI = "disposisi", "2.a Lembar Disposisi / Izin Prinsip"
         ILN_PIMPINAN = "iln_pimpinan", "2.b Formulir Izin Luar Negeri (TTD Pimpinan Unor)"
         ND_BIROPAKLN = "nd_biropakln", "2.c Nota Dinas Sekertaris Unor ke Biro PAKLN"
+        # PDLN
+        IZIN_PRINSIP = "izin_prinsip", "Izin Prinsip Menteri"
+        SURAT_TUGAS = "surat_tugas", "Surat Tugas"
+        ND_KABIRO_PAKLN = "nd_kabiro_pakln", "Nota Dinas Sekretaris Unor ke Kepala Biro PAKLN"
+        ND_SEK_BPSDM = "nd_sek_bpsdm", "Nota Dinas Sekretaris Unor ke Sekretaris BPSDM"
+        DRH_TTD = "drh_ttd", "DRH ttd Pimpinan Unor"
 
     pengajuan = models.ForeignKey(Pengajuan, on_delete=models.CASCADE, related_name="dokumen_unor")
-    jenis = models.CharField(max_length=20, choices=Jenis.choices)
+    jenis = models.CharField(max_length=30, choices=Jenis.choices)
     file = models.FileField(upload_to=dokumen_unor_path)
     # Hanya diisi untuk jenis dokumen yang berupa surat (2.a, 2.c) — lewat
     # modal "Tanggal Surat" yang muncul begitu berkasnya dipilih, lihat
@@ -269,10 +389,18 @@ class DokumenPakln(models.Model):
     pendukung lainnya (opsional) ada pada `DokumenPaklnPendukung`."""
 
     class Jenis(models.TextChoices):
+        # Non-Kedinasan
         ILN_SEKJEN = "iln_sekjen", "3.a Izin Luar Negeri (TTD Sekjen a.n. Menteri)"
+        # PDLN
+        SP_SETNEG = "sp_setneg", "SP Setneg"
+        PASPOR_DINAS = "paspor_dinas", "Paspor Dinas"
+        EXIT_PERMIT = "exit_permit", "Exit Permit"
+        VISA = "visa", "Rekomendasi Visa"
+        SK_TUBEL = "sk_tubel", "SK Tugas Belajar"
+        ND_KARO_UNOR = "nd_karo_unor", "Nota Dinas Karo PAKLN ke Sekretaris Unor hal Penyampaian Dokumen PDLN"
 
     pengajuan = models.ForeignKey(Pengajuan, on_delete=models.CASCADE, related_name="dokumen_pakln")
-    jenis = models.CharField(max_length=20, choices=Jenis.choices)
+    jenis = models.CharField(max_length=30, choices=Jenis.choices)
     file = models.FileField(upload_to=dokumen_pakln_path)
     # Hanya diisi untuk jenis dokumen yang berupa surat (3.a) — lewat modal
     # "Tanggal Surat" yang muncul begitu berkasnya dipilih, lihat
@@ -284,6 +412,33 @@ class DokumenPakln(models.Model):
         unique_together = ("pengajuan", "jenis")
         verbose_name = "Dokumen Administrasi Biro PAKLN"
         verbose_name_plural = "Dokumen Administrasi Biro PAKLN"
+
+    def __str__(self):
+        return f"{self.pengajuan.kode} — {self.get_jenis_display()}"
+
+
+def dokumen_bpsdm_path(instance, filename):
+    return f"pengajuan/{instance.pengajuan.kode}/bpsdm/{instance.jenis}/{filename}"
+
+
+class DokumenBpsdm(models.Model):
+    """Dokumen administrasi Admin BPSDM (khusus PDLN Tipe 2)."""
+
+    class Jenis(models.TextChoices):
+        IZIN_PRINSIP = "izin_prinsip", "Izin Prinsip Menteri"
+        IKATAN_DINAS_TTD = "ikatan_dinas_ttd", "Perjanjian Ikatan Dinas ttd full / SK Tugas Belajar"
+        ND_KABIRO_PAKLN = "nd_kabiro_pakln", "Nota Dinas Sekretaris BPSDM ke Kepala Biro PAKLN"
+
+    pengajuan = models.ForeignKey(Pengajuan, on_delete=models.CASCADE, related_name="dokumen_bpsdm")
+    jenis = models.CharField(max_length=30, choices=Jenis.choices)
+    file = models.FileField(upload_to=dokumen_bpsdm_path)
+    tanggal_surat = models.DateField("Tanggal Surat", null=True, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("pengajuan", "jenis")
+        verbose_name = "Dokumen Administrasi BPSDM"
+        verbose_name_plural = "Dokumen Administrasi BPSDM"
 
     def __str__(self):
         return f"{self.pengajuan.kode} — {self.get_jenis_display()}"
@@ -427,6 +582,12 @@ class DokumenTemplate(models.Model):
     # --- Penargetan ---
     untuk_pegawai = models.BooleanField("Untuk Pegawai", default=True)
     untuk_admin_unor = models.BooleanField("Untuk Admin Unor", default=True)
+    untuk_admin_bpsdm = models.BooleanField("Untuk Admin BPSDM", default=False)
+    jenis_perjalanan = models.CharField(
+        "Jenis Perjalanan Tertentu", max_length=20, blank=True,
+        choices=Pengajuan.JenisPerjalanan.choices,
+        help_text="Kosongkan agar berlaku untuk Non-Kedinasan maupun PDLN.",
+    )
     unit_organisasi = models.ManyToManyField(
         "paspor.UnitOrganisasi",
         blank=True,
@@ -459,15 +620,19 @@ class DokumenTemplate(models.Model):
     def __str__(self):
         return self.nama
 
-    def relevan_untuk(self, user, kategori=None):
+    def relevan_untuk(self, user, kategori=None, jenis_perjalanan=None):
         """True jika template ini semestinya ditampilkan untuk `user`
-        (Pegawai/Admin Unor), opsional difilter kategori perjalanan
-        pengajuan yang sedang berjalan."""
+        (Pegawai/Admin Unor/Admin BPSDM), opsional difilter kategori dan
+        jenis perjalanan pengajuan yang sedang berjalan."""
         if not self.aktif:
             return False
         if user.role == "pegawai" and not self.untuk_pegawai:
             return False
         if user.role == "admin_unor" and not self.untuk_admin_unor:
+            return False
+        if user.role == "admin_bpsdm" and not self.untuk_admin_bpsdm:
+            return False
+        if self.jenis_perjalanan and jenis_perjalanan and self.jenis_perjalanan != jenis_perjalanan:
             return False
 
         unit_ids = set(self.unit_organisasi.values_list("id", flat=True))
@@ -497,6 +662,21 @@ class RiwayatPengajuan(models.Model):
         DIKEMBALIKAN_PAKLN = "dikembalikan_pakln", "Dikembalikan Biro PAKLN ke Admin Unor"
         DITERUSKAN_ULANG = "diteruskan_ulang", "Perbaikan diteruskan ke Biro PAKLN"
         SELESAI = "selesai", "Selesai diproses"
+        # Tahap BPSDM (PDLN Tipe 2)
+        DITERUSKAN_BPSDM = "diteruskan_bpsdm", "Diteruskan ke Admin BPSDM"
+        DITERUSKAN_ULANG_BPSDM = "diteruskan_ulang_bpsdm", "Perbaikan diteruskan ke Admin BPSDM"
+        DIKEMBALIKAN_BPSDM = "dikembalikan_bpsdm", "Dikembalikan BPSDM ke Admin Unor"
+        # Pelaporan PDLN
+        LAPORAN_DIUNGGAH = "laporan_diunggah", "Laporan PDLN diunggah"
+        LAPORAN_DIKEMBALIKAN = "laporan_dikembalikan", "Laporan PDLN dikembalikan"
+        LAPORAN_DISETUJUI = "laporan_disetujui", "Laporan PDLN disetujui"
+        # Pembatalan (mekanisme interim)
+        PEMBATALAN_DIAJUKAN = "pembatalan_diajukan", "Permohonan pembatalan diajukan"
+        PEMBATALAN_DITARIK = "pembatalan_ditarik", "Permohonan pembatalan ditarik"
+        PEMBATALAN_DISETUJUI_UNOR = "pembatalan_disetujui_unor", "Pembatalan disetujui Admin Unor"
+        PEMBATALAN_DITOLAK_UNOR = "pembatalan_ditolak_unor", "Pembatalan ditolak Admin Unor"
+        PEMBATALAN_DITOLAK_PAKLN = "pembatalan_ditolak_pakln", "Pembatalan ditolak Biro PAKLN"
+        DIBATALKAN = "dibatalkan", "Perjalanan dibatalkan"
 
     pengajuan = models.ForeignKey(Pengajuan, on_delete=models.CASCADE, related_name="riwayat")
     aksi = models.CharField(max_length=30, choices=Aksi.choices)
@@ -523,3 +703,118 @@ class RiwayatPengajuan(models.Model):
 
     def __str__(self):
         return f"{self.pengajuan.kode} — {self.get_aksi_display()}"
+
+
+# ---------------------------------------------------------------------------
+# PDLN (wiki/instructions/BISNIS_PROSES_PDLN.MD §8.3)
+# ---------------------------------------------------------------------------
+
+class DetailPdln(models.Model):
+    """Field khusus PDLN (1:1 dengan Pengajuan). Field yang dipakai
+    bergantung tipe — lihat BISNIS_PROSES_PDLN.MD §5."""
+
+    pengajuan = models.OneToOneField(Pengajuan, on_delete=models.CASCADE, related_name="detail_pdln")
+    penyelenggara = models.CharField("Penyelenggara", max_length=200, blank=True)
+    perguruan_tinggi = models.CharField("Perguruan Tinggi", max_length=200, blank=True)
+    kota_tujuan = models.CharField("Kota Tujuan", max_length=150, blank=True)
+    tgl_mulai_kegiatan = models.DateField("Tanggal Mulai Kegiatan", null=True, blank=True)
+    tgl_selesai_kegiatan = models.DateField("Tanggal Selesai Kegiatan", null=True, blank=True)
+    # Pencalonan beasiswa dari Aplikasi PINTAR (T2P/T2L) — id + snapshot
+    # nama agar tetap terbaca bila data PINTAR berubah/tidak tersedia.
+    beasiswa_pintar_id = models.CharField("ID Pencalonan PINTAR", max_length=50, blank=True)
+    beasiswa_nama = models.CharField("Nama Beasiswa", max_length=255, blank=True)
+    pernyataan_benar = models.BooleanField("Pernyataan kebenaran data", default=False)
+
+    class Meta:
+        verbose_name = "Detail PDLN"
+        verbose_name_plural = "Detail PDLN"
+
+    def __str__(self):
+        return f"{self.pengajuan.kode} — Detail PDLN"
+
+
+def laporan_pdln_path(instance, filename):
+    return f"pengajuan/{instance.pengajuan.kode}/laporan/{filename}"
+
+
+class LaporanPdln(models.Model):
+    """Laporan perjalanan dinas — wajib disetujui Admin Biro PAKLN agar
+    pengajuan PDLN dianggap tuntas (BISNIS_PROSES_PDLN.MD §4.4)."""
+
+    class Status(models.TextChoices):
+        MENUNGGU = "menunggu", "Menunggu Verifikasi"
+        DIKEMBALIKAN = "dikembalikan", "Dikembalikan"
+        DISETUJUI = "disetujui", "Disetujui"
+
+    pengajuan = models.OneToOneField(Pengajuan, on_delete=models.CASCADE, related_name="laporan_pdln")
+    file = models.FileField("Berkas Laporan", upload_to=laporan_pdln_path)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.MENUNGGU, db_index=True)
+    # Catatan pengembalian terakhir — penanda unggah ulang wajib catatan balasan.
+    catatan_pakln = models.TextField("Catatan Admin PAKLN", blank=True)
+    diunggah_oleh = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+",
+    )
+    uploaded_at = models.DateTimeField(default=timezone.now)
+    diverifikasi_oleh = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+    )
+    tgl_disetujui = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Laporan PDLN"
+        verbose_name_plural = "Laporan PDLN"
+
+    def __str__(self):
+        return f"{self.pengajuan.kode} — Laporan ({self.get_status_display()})"
+
+
+class PermohonanPembatalan(models.Model):
+    """Permohonan pembatalan perjalanan (mekanisme interim,
+    BISNIS_PROSES_PDLN.MD §4.5). Maksimal satu yang terbuka per pengajuan —
+    ditegakkan di `pengajuan.pembatalan`, karena MySQL tidak mendukung
+    conditional unique constraint."""
+
+    class Status(models.TextChoices):
+        MENUNGGU_UNOR = "menunggu_unor", "Menunggu Admin Unor"
+        MENUNGGU_PAKLN = "menunggu_pakln", "Menunggu Biro PAKLN"
+        DISETUJUI = "disetujui", "Disetujui"
+        DITOLAK = "ditolak", "Ditolak"
+        DITARIK = "ditarik", "Ditarik"
+
+    STATUS_TERBUKA = (Status.MENUNGGU_UNOR, Status.MENUNGGU_PAKLN)
+
+    pengajuan = models.ForeignKey(Pengajuan, on_delete=models.CASCADE, related_name="permohonan_pembatalan")
+    diajukan_oleh = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="+",
+    )
+    diajukan_role = models.CharField(max_length=20)
+    alasan = models.TextField("Alasan Pembatalan")
+    status = models.CharField(max_length=20, choices=Status.choices, db_index=True)
+    status_pengajuan_saat_diajukan = models.CharField(max_length=20, choices=Pengajuan.Status.choices)
+
+    unor_oleh = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+    )
+    unor_waktu = models.DateTimeField(null=True, blank=True)
+    unor_catatan = models.TextField(blank=True)
+    pakln_oleh = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+    )
+    pakln_waktu = models.DateTimeField(null=True, blank=True)
+    pakln_catatan = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["pengajuan", "status"])]
+        verbose_name = "Permohonan Pembatalan"
+        verbose_name_plural = "Permohonan Pembatalan"
+
+    def __str__(self):
+        return f"{self.pengajuan.kode} — Pembatalan ({self.get_status_display()})"
+
+    @property
+    def terbuka(self):
+        return self.status in self.STATUS_TERBUKA

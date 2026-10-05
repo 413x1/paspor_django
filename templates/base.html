@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}PASPOR{% endblock %} — Kementerian PU</title>
   <link rel="stylesheet" href="{% static 'vendors/bulma/css/versions/bulma-no-dark-mode.min.css' %}">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20261002b">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20261005a">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -82,6 +82,7 @@
   </div>
 </div>
 
+{# Modal konfirmasi "Keluar" — dipicu tombol Keluar di sidebar maupun dropdown profil (lihat .logout-trigger di script bawah). #}
 <div id="logoutConfirmModal" class="modal paspor-modal">
   <div class="modal-background"></div>
   <div class="modal-card">
@@ -219,7 +220,10 @@
       if (!this.files || !this.files.length) { return; }
 
       var jenis = $form.find('input[name="jenis"]').val();
-      if (JENIS_PERLU_TANGGAL_SURAT.indexOf(jenis) !== -1) {
+      // Registri persyaratan menandai baris yang butuh Tanggal Surat lewat
+      // atribut data-tanggal-surat (partials/_dokumen_tahap.html); daftar
+      // statis di atas tetap dipakai untuk halaman lama.
+      if ($form.is('[data-tanggal-surat]') || JENIS_PERLU_TANGGAL_SURAT.indexOf(jenis) !== -1) {
         $formMenungguTanggalSurat = $form;
         $('#tanggalSuratInput').val('').removeClass('is-danger');
         $('#tanggalSuratModal').addClass('is-active');

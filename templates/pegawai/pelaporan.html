@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Pelaporan PDLN{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Pelaporan PDLN</h2>
+    <p class="sub">Unggah laporan perjalanan dinas. Pengajuan PDLN baru dinyatakan tuntas setelah laporan disetujui Admin Biro PAKLN.</p>
+  </div>
+</div>
+
+{% for p in daftar %}
+  {% if p.laporan.status == "dikembalikan" %}
+    <div class="notification paspor-msg is-warning">
+      <strong>⚠ Laporan {{ p.kode }} dikembalikan:</strong> {{ p.laporan.catatan_pakln }}
+    </div>
+  {% endif %}
+{% endfor %}
+
+<div class="box">
+  <div class="table-wrap">
+    <table class="table data-table is-fullwidth is-hoverable">
+      <thead>
+        <tr><th>Tipe / Kode</th><th>Negara</th><th>Tgl Kembali</th><th>Status Perjalanan</th><th>Status Pelaporan</th><th>Aksi</th></tr>
+      </thead>
+      <tbody>
+        {% for p in daftar %}
+          <tr>
+            <td><strong>{{ p.jenis_label }}</strong><br><span class="cell-muted">{{ p.kode }}</span></td>
+            <td>{{ p.tujuan_negara_display|default:"—" }}{% if p.detail.kota_tujuan %}, {{ p.detail.kota_tujuan }}{% endif %}</td>
+            <td>{{ p.tgl_kembali|date:"d M Y"|default:"—" }}</td>
+            <td><span class="tag paspor-status is-{{ p.status }}"><span class="dot"></span>{{ p.get_status_display }}</span></td>
+            <td>
+              {% if p.status != "selesai" %}<span class="cell-muted">—</span>
+              {% elif p.laporan %}{{ p.laporan.get_status_display }}
+              {% else %}Belum melapor{% endif %}
+            </td>
+            <td>
+              {% if p.laporan %}
+                <button type="button" class="button is-small" data-doc-preview="{{ p.laporan.file.url }}" data-doc-title="Laporan {{ p.kode }}">👁 Lihat</button>
+              {% endif %}
+              {% if p.status == "selesai" and not p.pembatalan_terbuka %}
+                {% if not p.laporan or p.laporan.status == "dikembalikan" %}
+                  <button type="button" class="button is-small is-primary" data-modal-open="laporanModal-{{ p.pk }}">
+                    ⬆ {% if p.laporan %}Unggah Ulang{% else %}Unggah Laporan{% endif %}
+                  </button>
+                {% endif %}
+              {% elif p.status != "selesai" %}
+                <span class="cell-muted">Selesaikan PDLN dahulu</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="cell-muted">Belum ada pengajuan PDLN.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% for p in daftar %}
+  {% if p.status == "selesai" %}
+  <div id="laporanModal-{{ p.pk }}" class="modal paspor-modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+      <div class="modal-card-body">
+        <h3>{% if p.laporan %}Unggah Ulang{% else %}Unggah{% endif %} Laporan PDLN</h3>
+        <p class="modal-intro">{{ p.kode }} · {{ p.jenis_label }} · {{ p.tujuan_negara_display }}</p>
+        <form method="post" action="{% url 'pegawai:unggah_laporan' kode=p.kode %}" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="field">
+            <label class="label">Berkas laporan</label>
+            <div class="control"><input type="file" name="file" required class="input"></div>
+          </div>
+          {% if p.laporan.status == "dikembalikan" %}
+            <div class="field">
+              <label class="label">Catatan perbaikan untuk Biro PAKLN <span style="color:#c0392b;">*</span></label>
+              <div class="control"><textarea class="textarea" name="catatan" rows="3" required></textarea></div>
+            </div>
+          {% endif %}
+          <div style="display:flex; gap:8px; justify-content:flex-end;">
+            <button type="button" class="button" data-modal-close>Batal</button>
+            <button type="submit" class="button is-primary">Kirim Laporan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+{% endfor %}
+{% endblock %}

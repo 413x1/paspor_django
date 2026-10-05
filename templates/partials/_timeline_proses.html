@@ -4,7 +4,7 @@
   {% for step in timeline %}
     <li>
       <div class="dot-wrap {{ step.state }}">
-        {% if step.state == "done" %}✓{% elif step.state == "current" %}●{% else %}○{% endif %}
+        {% if step.state == "done" %}✓{% elif step.state == "current" %}●{% elif step.state == "cancelled" %}✕{% else %}○{% endif %}
       </div>
       <div>
         <h4>{{ step.title }}</h4>

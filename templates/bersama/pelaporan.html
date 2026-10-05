@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Pelaporan PDLN{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Pelaporan PDLN</h2>
+    <p class="sub">
+      {% if dapat_verifikasi %}Verifikasi laporan perjalanan dinas — laporan yang belum disetujui menahan pegawai mengajukan perjalanan baru.
+      {% else %}Monitor laporan perjalanan dinas pegawai unit organisasi Anda.{% endif %}
+    </p>
+  </div>
+</div>
+
+<div class="summary-grid is-wide">
+  <div class="summary-card"><div class="num">{{ hitung.selesai }}</div><div class="label">PDLN Selesai</div></div>
+  <div class="summary-card"><div class="num">{{ hitung.belum }}</div><div class="label">Belum Melapor</div></div>
+  <div class="summary-card{% if hitung.menunggu %} active{% endif %}"><div class="num">{{ hitung.menunggu }}</div><div class="label">Menunggu Verifikasi</div></div>
+  <div class="summary-card"><div class="num">{{ hitung.dikembalikan }}</div><div class="label">Dikembalikan</div></div>
+  <div class="summary-card{% if hitung.disetujui %} is-done{% endif %}"><div class="num">{{ hitung.disetujui }}</div><div class="label">Disetujui (Tuntas)</div></div>
+  <div class="summary-card"><div class="num">{{ hitung.terlambat }}</div><div class="label">Terlambat Melapor</div></div>
+</div>
+
+<div class="box">
+  <div class="table-wrap">
+    <table class="table data-table is-fullwidth is-hoverable">
+      <thead>
+        <tr><th>Pegawai</th><th>Unor</th><th>Tipe / Kode</th><th>Negara</th><th>Tgl Kembali</th><th>Status Pelaporan</th><th>Tgl Unggah</th><th>Aksi</th></tr>
+      </thead>
+      <tbody>
+        {% for b in baris %}
+          <tr>
+            <td>{{ b.p.pegawai.profile.nama }}<br><span class="cell-muted">{{ b.p.pegawai.profile.nip }}</span></td>
+            <td>{{ b.p.unit_organisasi.alias|default:"—" }}</td>
+            <td><a href="{% url preview_url kode=b.p.kode %}">{{ b.p.kode }}</a><br><span class="cell-muted">{{ b.p.jenis_label }}</span></td>
+            <td>{{ b.p.tujuan_negara_display }}</td>
+            <td>{{ b.p.tgl_kembali|date:"d M Y" }}</td>
+            <td>
+              {% if b.laporan %}{{ b.laporan.get_status_display }}{% else %}Belum melapor{% endif %}
+              {% if b.terlambat %}<br><span style="color:#c0392b;font-weight:700;">Terlambat</span>{% endif %}
+            </td>
+            <td>{{ b.laporan.uploaded_at|date:"d M Y"|default:"—" }}</td>
+            <td>
+              {% if b.laporan %}
+                <button type="button" class="button is-small" data-doc-preview="{{ b.laporan.file.url }}" data-doc-title="Laporan {{ b.p.kode }}">👁 Lihat</button>
+                {% if dapat_verifikasi and b.status == "menunggu" %}
+                  <button type="button" class="button is-small is-warning" data-modal-open="verif-{{ b.p.pk }}">Verifikasi</button>
+                {% endif %}
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="8" class="cell-muted">Belum ada PDLN berstatus selesai.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if dapat_verifikasi %}
+{% for b in baris %}
+  {% if b.status == "menunggu" %}
+  <div id="verif-{{ b.p.pk }}" class="modal paspor-modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+      <div class="modal-card-body">
+        <h3>Verifikasi Laporan — {{ b.p.kode }}</h3>
+        <p class="modal-intro">{{ b.p.pegawai.profile.nama }} · {{ b.p.jenis_label }} · {{ b.p.tujuan_negara_display }}</p>
+        <p><button type="button" class="button is-small" data-doc-preview="{{ b.laporan.file.url }}" data-doc-title="Laporan {{ b.p.kode }}">👁 Lihat laporan</button></p>
+        <form method="post" action="{% url 'pakln:verifikasi_laporan' kode=b.p.kode %}">
+          {% csrf_token %}
+          <div class="field">
+            <label class="label">Catatan <span class="cell-muted">(wajib bila mengembalikan)</span></label>
+            <div class="control"><textarea class="textarea" name="catatan" rows="3"></textarea></div>
+          </div>
+          <div style="display:flex; gap:8px; justify-content:flex-end;">
+            <button type="button" class="button" data-modal-close>Batal</button>
+            <button type="submit" name="keputusan" value="kembalikan" class="button is-danger is-light">↩ Kembalikan</button>
+            <button type="submit" name="keputusan" value="setujui" class="button is-primary">✓ Setujui Laporan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+{% endfor %}
+{% endif %}
+{% endblock %}

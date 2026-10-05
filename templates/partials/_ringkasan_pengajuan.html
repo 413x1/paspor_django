@@ -1,0 +1,37 @@
+{# Ringkasan data pengajuan (read-only) untuk halaman Pratinjau Admin Unor/BPSDM/PAKLN. Context: pengajuan. #}
+{% with profil=pengajuan.pegawai.profile detail=pengajuan.detail %}
+<div class="field-readonly-grid">
+  <div class="field"><label class="label">Nama Pegawai</label><div class="control"><input class="input" value="{{ profil.nama }}" readonly></div></div>
+  <div class="field"><label class="label">NIP</label><div class="control"><input class="input" value="{{ profil.nip }}" readonly></div></div>
+  <div class="field"><label class="label">Jabatan</label><div class="control"><input class="input" value="{{ profil.jabatan }}" readonly></div></div>
+  <div class="field"><label class="label">Pangkat/Golongan</label><div class="control"><input class="input" value="{{ profil.pangkat_golongan }}" readonly></div></div>
+  <div class="field"><label class="label">Unit Kerja</label><div class="control"><input class="input" value="{{ profil.unit_kerja }}" readonly></div></div>
+  <div class="field"><label class="label">Unit Organisasi</label><div class="control"><input class="input" value="{{ pengajuan.unit_organisasi.name|default:profil.unit_organisasi.name }}" readonly></div></div>
+  <div class="field"><label class="label">Jenis Perjalanan</label><div class="control"><input class="input" value="{{ pengajuan.jenis_label }}" readonly></div></div>
+  <div class="field"><label class="label">Kategori</label><div class="control"><input class="input" value="{{ pengajuan.kategori|default:'—' }}" readonly></div></div>
+  {% if detail.beasiswa_nama %}
+    <div class="field" style="grid-column:1/-1;"><label class="label">Beasiswa (Aplikasi PINTAR)</label><div class="control"><input class="input" value="{{ detail.beasiswa_nama }}" readonly></div></div>
+  {% endif %}
+  {% if detail.penyelenggara %}
+    <div class="field"><label class="label">Penyelenggara</label><div class="control"><input class="input" value="{{ detail.penyelenggara }}" readonly></div></div>
+  {% endif %}
+  {% if detail.perguruan_tinggi %}
+    <div class="field"><label class="label">Perguruan Tinggi</label><div class="control"><input class="input" value="{{ detail.perguruan_tinggi }}" readonly></div></div>
+  {% endif %}
+  <div class="field"><label class="label">Negara Tujuan</label><div class="control"><input class="input" value="{{ pengajuan.tujuan_negara_display }}" readonly></div></div>
+  {% if detail %}
+    <div class="field"><label class="label">Kota Tujuan</label><div class="control"><input class="input" value="{{ detail.kota_tujuan }}" readonly></div></div>
+  {% endif %}
+  {% if pengajuan.maksud %}
+    <div class="field" style="grid-column:1/-1;"><label class="label">Maksud Perjalanan</label><div class="control"><input class="input" value="{{ pengajuan.maksud }}" readonly></div></div>
+  {% endif %}
+  <div class="field"><label class="label">Tanggal Keberangkatan</label><div class="control"><input class="input" value="{{ pengajuan.tgl_berangkat|date:'d M Y' }}" readonly></div></div>
+  <div class="field"><label class="label">Tanggal Kembali</label><div class="control"><input class="input" value="{{ pengajuan.tgl_kembali|date:'d M Y' }}" readonly></div></div>
+  {% if detail %}
+    <div class="field"><label class="label">Mulai Kegiatan</label><div class="control"><input class="input" value="{{ detail.tgl_mulai_kegiatan|date:'d M Y' }}" readonly></div></div>
+    <div class="field"><label class="label">Selesai Kegiatan</label><div class="control"><input class="input" value="{{ detail.tgl_selesai_kegiatan|date:'d M Y' }}" readonly></div></div>
+  {% endif %}
+  <div class="field"><label class="label">Jumlah Hari Kerja</label><div class="control"><input class="input" value="{{ pengajuan.jumlah_hari_kerja|default_if_none:'—' }}" readonly></div></div>
+  <div class="field"><label class="label">Sumber Pembiayaan</label><div class="control"><input class="input" value="{{ pengajuan.sumber_pembiayaan|default:'—' }}" readonly></div></div>
+</div>
+{% endwith %}

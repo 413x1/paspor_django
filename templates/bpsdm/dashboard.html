@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Dasbor Admin BPSDM{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Dasbor Admin BPSDM</h2>
+    <p class="sub">Monitor pengajuan PDLN Tipe 2 (Pendidikan &amp; Pelatihan) dari seluruh unit organisasi.</p>
+  </div>
+  <a href="{% url 'bpsdm:rekap' %}" class="button is-small">Rekap</a>
+</div>
+
+<div class="section-title">Ringkasan Progres</div>
+{% include "partials/_ringkasan_dasbor.html" with tampil_bpsdm=True %}
+
+<div class="box">
+  <div class="section-title">Tabel Rincian Pengajuan PDLN Tipe 2</div>
+  <div class="table-wrap">
+    <table id="dashboardTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
+      <thead>
+        <tr><th>Pegawai</th><th>Unor</th><th>Sub-Tipe</th><th>Kategori</th><th>Perguruan Tinggi / Penyelenggara</th><th>Berangkat</th><th>Tgl Masuk BPSDM</th><th>Status</th><th>Action</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
+<script>
+  $(function () {
+    $('#dashboardTable').DataTable({
+      serverSide: true, processing: true, autoWidth: false,
+      ajax: { url: '{% url "bpsdm:dashboard_data" %}', type: 'GET', cache: false },
+      columns: [
+        { data: 0 }, { data: 1 }, { data: 2 }, { data: 3 },
+        { data: 4, orderable: false, searchable: false },
+        { data: 5 }, { data: 6 }, { data: 7 },
+        { data: 8, orderable: false, searchable: false },
+      ],
+      order: [[6, 'desc']],
+      pageLength: 10, lengthMenu: [10, 25, 50, 100],
+      dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
+      language: {
+        search: '', searchPlaceholder: 'Cari pengajuan...', lengthMenu: 'Tampilkan _MENU_ pengajuan',
+        info: 'Menampilkan _START_–_END_ dari _TOTAL_ pengajuan', infoEmpty: 'Belum ada pengajuan PDLN Tipe 2',
+        infoFiltered: '(disaring dari _MAX_)', zeroRecords: 'Tidak ada pengajuan yang cocok.', processing: 'Memuat…',
+        paginate: { previous: '‹ Sebelumnya', next: 'Berikutnya ›' },
+      },
+    });
+  });
+</script>
+{% endblock %}

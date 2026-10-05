@@ -12,18 +12,22 @@
     <h2>Dasbor Admin Unor</h2>
     <p class="sub">Unit Organisasi: <strong>{{ user.unit_organisasi.name|default:"— belum ditetapkan —" }}</strong></p>
   </div>
+  <div class="buttons">
+    <a href="{% url 'unor:pembatalan' %}" class="button is-small">Pembatalan</a>
+    <a href="{% url 'unor:rekap' %}" class="button is-small">Rekap</a>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <a href="?tab=pdln" class="button is-small {% if tab == 'pdln' %}is-active{% endif %}">Dasbor PDLN</a>
+  <a href="?tab=nondinas" class="button is-small {% if tab == 'nondinas' %}is-active{% endif %}">Dasbor Non-Kedinasan</a>
 </div>
 
 <div class="section-title">Ringkasan Progres</div>
-<div class="summary-grid">
-  <div class="summary-card"><div class="num">{{ summary.total }}</div><div class="label">Total Pengajuan dari Pegawai</div></div>
-  <div class="summary-card active"><div class="num">{{ summary.proses }}</div><div class="label">Dalam Proses Unor</div></div>
-  <div class="summary-card"><div class="num">{{ summary.proses_pakln }}</div><div class="label">Dalam Proses Biro PAKLN</div></div>
-  <div class="summary-card{% if summary.selesai > 0 %} is-done{% endif %}"><div class="num">{{ summary.selesai }}</div><div class="label">Selesai</div></div>
-</div>
+{% include "partials/_ringkasan_dasbor.html" with tampil_bpsdm=True %}
 
 <div class="box">
-  <div class="section-title">Tabel Rincian per Pengajuan Pegawai</div>
+  <div class="section-title">Tabel Rincian per Pengajuan Pegawai — {% if tab == "pdln" %}PDLN{% else %}Non-Kedinasan{% endif %}</div>
   <div class="table-wrap">
     <table id="dashboardTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
       <thead>
@@ -46,18 +50,11 @@
       serverSide: true,
       processing: true,
       autoWidth: false,
-      ajax: { url: '{% url "unor:dashboard_data" %}', type: 'GET', cache: false },
+      ajax: { url: '{% url "unor:dashboard_data" %}?tab={{ tab }}', type: 'GET', cache: false },
       columns: [
-        { data: 0 },
-        { data: 1 },
-        { data: 2, orderable: false, searchable: false },
-        { data: 3 },
+        { data: 0 }, { data: 1 }, { data: 2 }, { data: 3 },
         { data: 4, orderable: false, searchable: false },
-        { data: 5 },
-        { data: 6 },
-        { data: 7 },
-        { data: 8 },
-        { data: 9 },
+        { data: 5 }, { data: 6 }, { data: 7 }, { data: 8 }, { data: 9 },
         { data: 10, orderable: false, searchable: false },
       ],
       order: [[7, 'desc']],

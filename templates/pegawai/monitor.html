@@ -6,28 +6,67 @@
 <div class="page-head">
   <div>
     <h2>Monitor Progres</h2>
-    <p class="sub">{{ pengajuan.kode }}</p>
+    <p class="sub">{{ pengajuan.kode }} · {{ pengajuan.jenis_label }}</p>
   </div>
   <a href="{% url 'pegawai:beranda' %}" class="button is-small">← Kembali ke Beranda</a>
 </div>
 
+{% if pengajuan.catatan_unor and pengajuan.status == "belum" %}
+  <div class="notification paspor-msg is-warning">
+    <strong>⚠ Dikembalikan oleh Admin Unor untuk diperbaiki:</strong> {{ pengajuan.catatan_unor }}
+    <a href="{% url 'pegawai:upload_dokumen' kode=pengajuan.kode %}">Perbaiki &amp; kirim ulang →</a>
+  </div>
+{% endif %}
+
 <div class="box">
   <div class="monitor-summary">
     <div>
-      <div class="dest">{{ pengajuan.tujuan_negara_display|default:"—" }}</div>
+      <div class="dest">
+        {% if pengajuan.is_pdln %}✈️{% else %}🌍{% endif %}
+        {{ pengajuan.tujuan_negara_display|default:"—" }}{% if pengajuan.detail.kota_tujuan %} — {{ pengajuan.detail.kota_tujuan }}{% endif %}
+      </div>
       <div class="meta">
-        {{ pengajuan.kategori|default:"—" }} · Diajukan {{ pengajuan.tgl_pengajuan|date:"d M Y"|default:"—" }} via {{ pengajuan.get_kanal_display }}
+        {{ pengajuan.jenis_label }} · {{ pengajuan.kategori|default:"—" }}
+        {% if pengajuan.detail.penyelenggara %}· {{ pengajuan.detail.penyelenggara }}{% endif %}
+        {% if pengajuan.detail.perguruan_tinggi %}· {{ pengajuan.detail.perguruan_tinggi }}{% endif %}
+        · Diajukan {{ pengajuan.tgl_pengajuan|date:"d M Y"|default:"—" }} via {{ pengajuan.get_kanal_display }}
       </div>
     </div>
     <span class="tag paspor-status is-{{ pengajuan.status }}"><span class="dot"></span>{{ pengajuan.get_status_display }}</span>
   </div>
 
-  {% if pengajuan.status == "selesai" %}
+  {% if pengajuan.status == "selesai" and not pengajuan.is_pdln %}
     <a href="{% url 'pegawai:download_iln' kode=pengajuan.kode %}" class="button is-primary is-fullwidth" style="margin-top:16px;">
       ⬇ Unduh Dokumen ILN (Izin Luar Negeri)
     </a>
   {% endif %}
+
+  {% if hasil_pdln %}
+    <div class="section-title" style="font-size:13px;margin:16px 0 8px;">Dokumen Hasil PDLN</div>
+    <div class="buttons">
+      {% for dok in hasil_pdln %}
+        <a href="{% url 'pegawai:unduh_hasil' kode=pengajuan.kode jenis=dok.jenis %}" class="button is-small">⬇ {{ dok.get_jenis_display }}</a>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <div style="margin-top:14px;">
+    {% include "partials/_pembatalan.html" with tarik_url_name="pegawai:tarik_pembatalan" %}
+  </div>
 </div>
+
+{% if pengajuan.is_pdln and pengajuan.status == "selesai" %}
+<div class="box {% if not laporan or laporan.status == 'dikembalikan' %}is-warning-soft{% endif %}">
+  <div class="section-title" style="font-size:14px;">Laporan PDLN</div>
+  {% if not laporan %}
+    <p>Laporan perjalanan dinas belum diunggah. Pengajuan baru dinyatakan <strong>tuntas</strong> setelah laporan disetujui Admin Biro PAKLN.</p>
+  {% else %}
+    <p>Status: <strong>{{ laporan.get_status_display }}</strong> · diunggah {{ laporan.uploaded_at|date:"d M Y H:i" }}</p>
+    {% if laporan.status == "dikembalikan" %}<p>Catatan Biro PAKLN: {{ laporan.catatan_pakln }}</p>{% endif %}
+  {% endif %}
+  <a href="{% url 'pegawai:pelaporan' %}" class="button is-small is-primary" style="margin-top:8px;">Ke Pelaporan PDLN →</a>
+</div>
+{% endif %}
 
 <div class="box">
   <div class="section-title" style="font-size:14px;">Timeline Proses</div>

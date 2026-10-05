@@ -1,0 +1,19 @@
+{# Kartu ringkasan dasbor admin (report.ringkasan). Context: summary, tampil_bpsdm (bool). #}
+<div class="summary-grid is-wide">
+  <div class="summary-card"><div class="num">{{ summary.total }}</div><div class="label">Total Pengajuan Masuk</div></div>
+  <div class="summary-card{% if summary.perlu_tindakan %} active{% endif %}"><div class="num">{{ summary.perlu_tindakan }}</div><div class="label">Perlu Tindakan Saya</div></div>
+  <div class="summary-card"><div class="num">{{ summary.dikembalikan }}</div><div class="label">Dikembalikan ke Pegawai</div></div>
+  <div class="summary-card"><div class="num">{{ summary.proses }}</div><div class="label">Dalam Proses Unor</div></div>
+  {% if tampil_bpsdm %}<div class="summary-card"><div class="num">{{ summary.proses_bpsdm }}</div><div class="label">Dalam Proses BPSDM</div></div>{% endif %}
+  <div class="summary-card"><div class="num">{{ summary.proses_pakln }}</div><div class="label">Dalam Proses Biro PAKLN</div></div>
+  <div class="summary-card{% if summary.selesai > 0 %} is-done{% endif %}"><div class="num">{{ summary.selesai }}</div><div class="label">Selesai</div></div>
+  <div class="summary-card"><div class="num">{{ summary.dibatalkan }}</div><div class="label">Dibatalkan</div></div>
+</div>
+{% if summary.pembatalan_menunggu or summary.laporan_menunggu %}
+  <p class="helptext" style="margin-top:-8px;">
+    Perlu tindakan termasuk
+    {% if summary.pembatalan_menunggu %}<strong>{{ summary.pembatalan_menunggu }}</strong> permohonan pembatalan{% endif %}
+    {% if summary.pembatalan_menunggu and summary.laporan_menunggu %} dan {% endif %}
+    {% if summary.laporan_menunggu %}<strong>{{ summary.laporan_menunggu }}</strong> laporan PDLN menunggu verifikasi{% endif %}.
+  </p>
+{% endif %}

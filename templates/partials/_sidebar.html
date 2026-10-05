@@ -20,6 +20,19 @@
             <span>Beranda</span>
           </a>
         </li>
+        <li>
+          <a class="sidebar-link {% if vn == 'pegawai:pelaporan' %}is-active{% endif %}" href="{% url 'pegawai:pelaporan' %}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
+            <span>Pelaporan PDLN</span>
+            {% if sidebar_badge.pelaporan %}<span class="sidebar-badge">{{ sidebar_badge.pelaporan }}</span>{% endif %}
+          </a>
+        </li>
+        <li>
+          <a class="sidebar-link {% if vn == 'pegawai:pembatalan' %}is-active{% endif %}" href="{% url 'pegawai:pembatalan' %}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <span>Pembatalan</span>
+          </a>
+        </li>
       {% elif user.role == 'admin_unor' %}
         <li>
           <a class="sidebar-link {% if vn == 'unor:dashboard' %}is-active{% endif %}" href="{% url 'unor:dashboard' %}">
@@ -28,7 +41,51 @@
           </a>
         </li>
         <li>
+          <a class="sidebar-link {% if vn == 'unor:pembatalan' %}is-active{% endif %}" href="{% url 'unor:pembatalan' %}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <span>Pembatalan</span>
+            {% if sidebar_badge.pembatalan %}<span class="sidebar-badge">{{ sidebar_badge.pembatalan }}</span>{% endif %}
+          </a>
+        </li>
+        <li>
+          <a class="sidebar-link {% if vn == 'unor:pelaporan' %}is-active{% endif %}" href="{% url 'unor:pelaporan' %}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
+            <span>Pelaporan PDLN</span>
+          </a>
+        </li>
+        <li>
+          <a class="sidebar-link {% if vn == 'unor:rekap' %}is-active{% endif %}" href="{% url 'unor:rekap' %}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span>Rekap</span>
+          </a>
+        </li>
+        <li>
           <a class="sidebar-link {% if vn == 'unor:export' %}is-active{% endif %}" href="{% url 'unor:export' %}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Export</span>
+          </a>
+        </li>
+      {% elif user.role == 'admin_bpsdm' %}
+        <li>
+          <a class="sidebar-link {% if vn == 'bpsdm:dashboard' or vn == 'bpsdm:preview' or vn == 'bpsdm:upload_dokumen' %}is-active{% endif %}" href="{% url 'bpsdm:dashboard' %}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            <span>Dasbor</span>
+          </a>
+        </li>
+        <li>
+          <a class="sidebar-link {% if vn == 'bpsdm:pembatalan' %}is-active{% endif %}" href="{% url 'bpsdm:pembatalan' %}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <span>Pembatalan</span>
+          </a>
+        </li>
+        <li>
+          <a class="sidebar-link {% if vn == 'bpsdm:rekap' %}is-active{% endif %}" href="{% url 'bpsdm:rekap' %}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span>Rekap</span>
+          </a>
+        </li>
+        <li>
+          <a class="sidebar-link {% if vn == 'bpsdm:export' %}is-active{% endif %}" href="{% url 'bpsdm:export' %}">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             <span>Export</span>
           </a>
@@ -38,6 +95,26 @@
           <a class="sidebar-link {% if vn == 'pakln:dashboard' %}is-active{% endif %}" href="{% url 'pakln:dashboard' %}">
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
             <span>Dasbor</span>
+          </a>
+        </li>
+        <li>
+          <a class="sidebar-link {% if vn == 'pakln:pelaporan' %}is-active{% endif %}" href="{% url 'pakln:pelaporan' %}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
+            <span>Pelaporan PDLN</span>
+            {% if sidebar_badge.pelaporan %}<span class="sidebar-badge">{{ sidebar_badge.pelaporan }}</span>{% endif %}
+          </a>
+        </li>
+        <li>
+          <a class="sidebar-link {% if vn == 'pakln:pembatalan' %}is-active{% endif %}" href="{% url 'pakln:pembatalan' %}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <span>Pembatalan</span>
+            {% if sidebar_badge.pembatalan %}<span class="sidebar-badge">{{ sidebar_badge.pembatalan }}</span>{% endif %}
+          </a>
+        </li>
+        <li>
+          <a class="sidebar-link {% if vn == 'pakln:rekap' %}is-active{% endif %}" href="{% url 'pakln:rekap' %}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span>Rekap</span>
           </a>
         </li>
         {# Grup "Manajemen" terbuka otomatis bila halaman aktif ada di dalamnya #}
@@ -74,6 +151,12 @@
 
     <div class="sidebar-label">Lainnya</div>
     <ul class="sidebar-menu">
+        <li>
+          <a class="sidebar-link {% if vn == 'profil' %}is-active{% endif %}" href="{% url 'profil' %}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>Profil</span>
+          </a>
+        </li>
       <li>
         <a class="sidebar-link {% if vn == 'notifications:list' %}is-active{% endif %}" href="{% url 'notifications:list' %}">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>

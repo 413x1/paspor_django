@@ -1,0 +1,47 @@
+{# Filter global report (BISNIS_PROSES_PDLN.MD §10). Context dari views_report._konteks_filter. #}
+<form method="get" class="box filter-bar">
+  {% if tab %}<input type="hidden" name="tab" value="{{ tab }}">{% endif %}
+  <div class="field"><label class="label">Jenis</label>
+    <div class="select is-small"><select name="jenis">
+      <option value="">Semua</option>
+      {% for v, l in opsi_jenis %}<option value="{{ v }}" {% if f.jenis == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+    </select></div></div>
+  <div class="field"><label class="label">Tipe PDLN</label>
+    <div class="select is-small"><select name="tipe">
+      <option value="">Semua</option>
+      {% for v, l in opsi_tipe %}<option value="{{ v }}" {% if v in f.tipe %}selected{% endif %}>{{ l }}</option>{% endfor %}
+    </select></div></div>
+  <div class="field"><label class="label">Status</label>
+    <div class="select is-small"><select name="status">
+      <option value="">Semua</option>
+      {% for v, l in opsi_status %}<option value="{{ v }}" {% if v in f.status %}selected{% endif %}>{{ l }}</option>{% endfor %}
+    </select></div></div>
+  {% if opsi_unor %}
+  <div class="field"><label class="label">Unit Organisasi</label>
+    <div class="select is-small"><select name="unor">
+      <option value="">Semua</option>
+      {% for u in opsi_unor %}<option value="{{ u.pk }}" {% if f.unor == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.alias }}</option>{% endfor %}
+    </select></div></div>
+  {% endif %}
+  <div class="field"><label class="label">Periode</label>
+    <div class="select is-small"><select name="basis_tanggal">
+      <option value="tgl_pengajuan" {% if f.basis_tanggal == "tgl_pengajuan" %}selected{% endif %}>Tgl Pengajuan</option>
+      <option value="tgl_berangkat" {% if f.basis_tanggal == "tgl_berangkat" %}selected{% endif %}>Tgl Berangkat</option>
+    </select></div></div>
+  <div class="field"><label class="label">Dari</label><input class="input is-small" type="date" name="dari" value="{{ f.dari|date:'Y-m-d' }}"></div>
+  <div class="field"><label class="label">Sampai</label><input class="input is-small" type="date" name="sampai" value="{{ f.sampai|date:'Y-m-d' }}"></div>
+  <div class="field"><label class="label">Negara</label>
+    <div class="select is-small"><select name="negara">
+      <option value="">Semua</option>
+      {% for n in opsi_negara %}<option value="{{ n.pk }}" {% if f.negara == n.pk|stringformat:"s" %}selected{% endif %}>{{ n.nama_negara }}</option>{% endfor %}
+    </select></div></div>
+  <div class="field"><label class="label">Kanal</label>
+    <div class="select is-small"><select name="kanal">
+      <option value="">Semua</option>
+      {% for v, l in opsi_kanal %}<option value="{{ v }}" {% if f.kanal == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+    </select></div></div>
+  <div class="field">
+    <button type="submit" class="button is-small is-primary">Terapkan</button>
+    <a href="?{% if tab %}tab={{ tab }}{% endif %}" class="button is-small">Reset</a>
+  </div>
+</form>

@@ -1,5 +1,4 @@
 import base64
-import csv
 from datetime import datetime
 
 from django.contrib import messages
@@ -18,21 +17,23 @@ from django.views.decorators.http import require_POST
 
 from accounts.forms import EditUserForm, TambahUserForm
 from accounts.models import User
+from notifications import services as notif
 from notifications.services import notify_complete_pkln, notify_reject_pakln_to_unor
 from paspor.impor_libur import ImporError, baca_berkas, buat_template_xlsx, simpan
 from paspor.kalender import AKHIR_PEKAN, hitung_hari_kalender
 from paspor.models import HariLibur, KategoriPerjalanan, Negara, SumberPembiayaan
 
-from . import riwayat
+from . import alur, pembatalan, persyaratan, report, riwayat, tahap
 from .decorators import role_required
 from .forms import (
-    DokumenPaklnForm, DokumenTemplateForm, HariLiburForm, ImporHariLiburForm, KategoriPerjalananForm,
+    DokumenTemplateForm, HariLiburForm, ImporHariLiburForm, KategoriPerjalananForm,
     NegaraForm, PengaturanDokumenForm, SumberPembiayaanForm, TambahHariLiburForm,
 )
 from .models import (
-    DokumenGenerateLog, DokumenPakln, DokumenPaklnPendukung, DokumenTemplate, Pengajuan, PengaturanDokumen,
-    RiwayatPengajuan,
+    DokumenGenerateLog, DokumenPaklnPendukung, DokumenTemplate, LaporanPdln, Pengajuan,
+    PengaturanDokumen, PermohonanPembatalan, RiwayatPengajuan,
 )
+from .views_unor import status_html
 
 _BULAN_ID = [
     "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -432,24 +433,21 @@ def histori_generate_data(request):
     })
 
 
+def _tab(request):
+    return "nondinas" if request.GET.get("tab") == "nondinas" else "pdln"
+
+
 @role_required("admin_pakln")
 def dashboard(request):
-    """Tahap 2: Dasbor — menampilkan seluruh pengajuan yang sudah dikirim
-    pegawai (status != belum), termasuk yang masih diproses Admin Unor,
-    supaya Admin Biro PAKLN dapat memantau progres lebih awal. Hanya
-    pengajuan berstatus proses_pakln/selesai yang dapat ditindaklanjuti
-    (lihat template — link TL hanya muncul untuk status tersebut)."""
-    pengajuan_list = (
-        Pengajuan.objects.exclude(status=Pengajuan.Status.BELUM)
-        .select_related("pegawai__profile")
-    )
-    summary = {
-        "total": pengajuan_list.count(),
-        "proses_unor": pengajuan_list.filter(status=Pengajuan.Status.PROSES).count(),
-        "proses_pakln": pengajuan_list.filter(status=Pengajuan.Status.PROSES_PAKLN).count(),
-        "selesai": pengajuan_list.filter(status=Pengajuan.Status.SELESAI).count(),
-    }
-    return render(request, "pakln/dashboard.html", {"summary": summary})
+    """Dasbor — tab PDLN / Non-Kedinasan. Menampilkan seluruh pengajuan
+    yang sudah dikirim pegawai supaya Admin Biro PAKLN dapat memantau
+    progres lebih awal; tindak lanjut hanya untuk status proses_pakln."""
+    tab = _tab(request)
+    qs = report.queryset_untuk(request.user).filter(jenis_perjalanan=tab)
+    return render(request, "pakln/dashboard.html", {
+        "summary": report.ringkasan(request.user, qs),
+        "tab": tab,
+    })
 
 
 # Kolom tabel "Tabel Rincian Pengajuan" (index sesuai urutan kolom pada
@@ -459,7 +457,8 @@ def dashboard(request):
 # JS (orderable:false).
 _PAKLN_DASHBOARD_ORDER_FIELDS = {
     "1": "pegawai__profile__nama",
-    "2": "pegawai__profile__unit_organisasi__name",
+    "2": "unit_organisasi__name",
+    "3": "tipe_pdln",
     "4": "kategori__nama_kategori",
     "6": "tgl_berangkat",
     "7": "tgl_kembali",
@@ -473,50 +472,26 @@ def dashboard_data(request):
     """Endpoint JSON server-side untuk "Tabel Rincian Pengajuan" pada
     Dasbor Admin Biro PAKLN (protokol DataTables: draw/start/length/
     search/order pada GET), mengikuti pola `users_data` (Manajemen User)."""
+    tab = _tab(request)
     qs = (
-        Pengajuan.objects.exclude(status=Pengajuan.Status.BELUM)
-        .select_related("pegawai__profile__unit_organisasi", "kategori")
+        report.queryset_untuk(request.user)
+        .filter(jenis_perjalanan=tab)
+        .select_related("pegawai__profile__unit_organisasi", "unit_organisasi", "kategori")
     )
-    records_total = qs.count()
 
-    search_value = request.GET.get("search[value]", "").strip()
-    if search_value:
-        qs = qs.filter(
-            Q(pegawai__profile__nama__icontains=search_value)
-            | Q(pegawai__profile__nip__icontains=search_value)
-            | Q(pegawai__profile__unit_organisasi__name__icontains=search_value)
-            | Q(kategori__nama_kategori__icontains=search_value)
-            | Q(tujuan_negara__nama_negara__icontains=search_value)
-        ).distinct()
-    records_filtered = qs.count()
-
-    order_col = request.GET.get("order[0][column]")
-    order_field = _PAKLN_DASHBOARD_ORDER_FIELDS.get(order_col, "-created_at")
-    if request.GET.get("order[0][dir]") == "desc":
-        order_field = f"-{order_field}"
-    qs = qs.order_by(order_field, "-created_at")
-
-    try:
-        start = int(request.GET.get("start", 0))
-        length = int(request.GET.get("length", 10))
-    except ValueError:
-        start, length = 0, 10
-    page = qs[start:] if length == -1 else qs[start:start + length]
-
-    data = []
-    for p in page:
+    def baris(p):
         pegawai_html = format_html(
             "<strong>{}</strong><br><span class=\"cell-muted\">{}</span>",
             p.pegawai.profile.nama, p.pegawai.profile.nip,
         )
-        unit = p.pegawai.profile.unit_organisasi
-        status_html = format_html(
-            '<span class="tag paspor-status is-{}"><span class="dot"></span>{}</span>',
-            p.status, p.get_status_display(),
-        )
+        unit = p.unit_organisasi or p.pegawai.profile.unit_organisasi
 
-        if p.status == Pengajuan.Status.PROSES:
+        if p.pembatalan_terbuka:
+            aksi_html = format_html('<a href="{}" class="button is-small">Lihat</a>', reverse("pakln:preview", args=[p.kode]))
+        elif p.status in (Pengajuan.Status.PROSES, Pengajuan.Status.BELUM):
             aksi_html = mark_safe('<span class="cell-muted">Menunggu Admin Unor</span>')
+        elif p.status == Pengajuan.Status.PROSES_BPSDM:
+            aksi_html = mark_safe('<span class="cell-muted">Menunggu Admin BPSDM</span>')
         elif p.status == Pengajuan.Status.PROSES_PAKLN and not p.preview_pakln_agree:
             aksi_html = format_html(
                 '<a href="{}" class="button is-warning is-small">TL →</a>',
@@ -533,11 +508,10 @@ def dashboard_data(request):
                 reverse("pakln:preview", args=[p.kode]),
             )
 
-        # Checkbox seleksi batch (untuk Generate ND Kabag/Karo) — hanya
-        # bisa dicentang saat pengajuan sedang "Dalam Proses Biro PAKLN";
-        # status lain (mis. Selesai, Dalam Proses Unor) checkbox-nya
-        # disabled supaya tidak ikut terpilih.
-        if p.status == Pengajuan.Status.PROSES_PAKLN:
+        # Checkbox seleksi batch (untuk Generate ND Kabag/Karo — format
+        # dokumen Non-Kedinasan) — hanya bisa dicentang saat pengajuan
+        # Non-Kedinasan sedang "Dalam Proses Biro PAKLN".
+        if p.status == Pengajuan.Status.PROSES_PAKLN and not p.is_pdln:
             checkbox_html = format_html(
                 '<input type="checkbox" class="pengajuan-select-checkbox" value="{}">', p.kode,
             )
@@ -546,26 +520,21 @@ def dashboard_data(request):
                 '<input type="checkbox" class="pengajuan-select-checkbox" value="{}" disabled>', p.kode,
             )
 
-        data.append([
+        return [
             checkbox_html,
             pegawai_html,
             escape(unit.name if unit else "—"),
-            "Non-Kedinasan",
+            escape(p.jenis_label),
             escape(p.kategori.nama_kategori) if p.kategori else "—",
             escape(p.tujuan_negara_display or "—"),
             p.tgl_berangkat.strftime("%d %b %Y") if p.tgl_berangkat else "—",
             p.tgl_kembali.strftime("%d %b %Y") if p.tgl_kembali else "—",
             p.tgl_masuk_pakln.strftime("%d %b %Y") if p.tgl_masuk_pakln else "—",
-            status_html,
+            status_html(p),
             aksi_html,
-        ])
+        ]
 
-    return JsonResponse({
-        "draw": int(request.GET.get("draw", 1)),
-        "recordsTotal": records_total,
-        "recordsFiltered": records_filtered,
-        "data": data,
-    })
+    return report.datatable(request, qs, _PAKLN_DASHBOARD_ORDER_FIELDS, baris, report.search_pengajuan)
 
 
 @role_required("admin_pakln")
@@ -585,7 +554,7 @@ def kelola_user(request):
     else:
         form = TambahUserForm()
 
-    users_count = User.objects.filter(role__in=[User.Role.PEGAWAI, User.Role.ADMIN_UNOR]).count()
+    users_count = User.objects.filter(role__in=[User.Role.PEGAWAI, User.Role.ADMIN_UNOR, User.Role.ADMIN_BPSDM]).count()
     return render(request, "pakln/users.html", {"form": form, "users_count": users_count})
 
 
@@ -606,7 +575,7 @@ def users_data(request):
     """Endpoint JSON server-side untuk tabel "Daftar User" (protokol
     DataTables: draw/start/length/search/order pada GET)."""
     qs = (
-        User.objects.filter(role__in=[User.Role.PEGAWAI, User.Role.ADMIN_UNOR])
+        User.objects.filter(role__in=[User.Role.PEGAWAI, User.Role.ADMIN_UNOR, User.Role.ADMIN_BPSDM])
         .select_related("profile", "unit_organisasi", "profile__unit_organisasi")
     )
     records_total = qs.count()
@@ -679,7 +648,7 @@ def edit_user(request, user_id):
     user_obj = get_object_or_404(
         User.objects.select_related("profile", "unit_organisasi"),
         pk=user_id,
-        role__in=[User.Role.PEGAWAI, User.Role.ADMIN_UNOR],
+        role__in=[User.Role.PEGAWAI, User.Role.ADMIN_UNOR, User.Role.ADMIN_BPSDM],
     )
     profile = getattr(user_obj, "profile", None)
 
@@ -957,7 +926,10 @@ def negara_data(request):
             reverse("pakln:hapus_negara", args=[n.pk]),
         )
         data.append([
-            format_html("<strong>{}</strong>", n.nama_negara),
+            format_html(
+                "<strong>{}</strong>{}", n.nama_negara,
+                format_html('<br><span class="badge-auto">Perlu Visa</span>') if n.perlu_visa else "",
+            ),
             escape(n.kode_negara or "—"),
             status_html,
             aksi_html,
@@ -1580,103 +1552,83 @@ def hapus_kategori(request, kategori_id):
 
 @role_required("admin_pakln")
 def preview(request, kode):
-    """Tahap 3: Pratinjau Pengajuan dari Admin Unor (read-only)."""
-    pengajuan = get_object_or_404(
-        Pengajuan.objects.filter(status__in=[Pengajuan.Status.PROSES_PAKLN, Pengajuan.Status.SELESAI]),
-        kode=kode,
-    )
-    if request.method == "POST" and "lanjutkan" in request.POST:
+    """Pratinjau pengajuan (read-only) — dapat dibuka sejak diteruskan ke
+    Biro PAKLN; tindak lanjut hanya saat status proses_pakln."""
+    pengajuan = get_object_or_404(report.queryset_untuk(request.user), kode=kode)
+
+    if request.method == "POST":
+        pesan = alur.alasan_dibekukan(pengajuan)
+        if pesan:
+            messages.error(request, pesan)
+            return redirect("pakln:preview", kode=kode)
+
+    if request.method == "POST" and "lanjutkan" in request.POST and pengajuan.status == Pengajuan.Status.PROSES_PAKLN:
         pengajuan.preview_pakln_agree = True
         pengajuan.save(update_fields=["preview_pakln_agree"])
         return redirect("pakln:upload_dokumen", kode=pengajuan.kode)
 
+    tujuan_kembali = "Admin BPSDM" if pengajuan.is_tipe2 else "Admin Unor"
     if request.method == "POST" and "kembalikan" in request.POST:
         catatan = request.POST.get("catatan", "").strip()
         if not catatan:
-            messages.error(request, "Isi catatan perbaikan untuk Admin Unor sebelum mengembalikan pengajuan.")
+            messages.error(request, f"Isi catatan perbaikan untuk {tujuan_kembali} sebelum mengembalikan pengajuan.")
         elif pengajuan.status != Pengajuan.Status.PROSES_PAKLN:
             messages.error(request, "Pengajuan yang sudah selesai tidak dapat dikembalikan.")
         else:
-            status_dari = pengajuan.status
             with transaction.atomic():
-                pengajuan.status = Pengajuan.Status.PROSES
-                pengajuan.preview_unor_agree = False
-                pengajuan.preview_pakln_agree = False
-                pengajuan.catatan_pakln = catatan
-                pengajuan.save()
-                riwayat.catat(
-                    pengajuan, RiwayatPengajuan.Aksi.DIKEMBALIKAN_PAKLN,
-                    request.user, status_dari, catatan=catatan,
-                )
-            notify_reject_pakln_to_unor(pengajuan, catatan)
-            messages.success(
-                request,
-                f"Pengajuan {pengajuan.kode} dikembalikan ke Admin Unor beserta catatan.",
-            )
+                p = alur.kunci(pengajuan)
+                if p.status != Pengajuan.Status.PROSES_PAKLN or alur.alasan_dibekukan(p):
+                    messages.error(request, "Pengajuan sudah diproses pihak lain atau sedang dibekukan.")
+                    return redirect("pakln:preview", kode=kode)
+                status_dari = p.status
+                # Pengembalian selalu ke tahap tepat sebelumnya (BPSDM untuk Tipe 2).
+                p.status = alur.tahap_sebelumnya(p)
+                if p.status == Pengajuan.Status.PROSES_BPSDM:
+                    p.preview_bpsdm_agree = False
+                else:
+                    p.preview_unor_agree = False
+                p.preview_pakln_agree = False
+                p.catatan_pakln = catatan
+                p.save()
+                riwayat.catat(p, RiwayatPengajuan.Aksi.DIKEMBALIKAN_PAKLN, request.user, status_dari, catatan=catatan)
+            notify_reject_pakln_to_unor(p, catatan)
+            messages.success(request, f"Pengajuan {p.kode} dikembalikan ke {tujuan_kembali} beserta catatan.")
             return redirect("pakln:dashboard")
 
     return render(request, "pakln/preview.html", {
-        "pengajuan": pengajuan, **riwayat.konteks(pengajuan, request.user),
+        "pengajuan": pengajuan,
+        "direktori": persyaratan.direktori(pengajuan, "pakln"),
+        "tujuan_kembali": tujuan_kembali,
+        "dibekukan": alur.alasan_dibekukan(pengajuan),
+        "pembatalan_terbuka": pengajuan.pembatalan_terbuka,
+        **riwayat.konteks(pengajuan, request.user),
         "catatan_perbaikan": riwayat.catatan_perbaikan(pengajuan, RiwayatPengajuan.Aksi.DITERUSKAN_ULANG),
     })
 
 
 @role_required("admin_pakln")
 def upload_dokumen(request, kode):
-    """Tahap 4: Unggah Dokumen Administrasi Biro PAKLN, lalu menyelesaikan
+    """Unggah Dokumen Administrasi Biro PAKLN sesuai registri per tipe
+    (visa wajib bila negara tujuan memerlukan visa), lalu menyelesaikan
     proses (fungsi selesaikanProses pada mockup)."""
     pengajuan = get_object_or_404(Pengajuan, kode=kode)
     if not pengajuan.preview_pakln_agree:
         return redirect("pakln:preview", kode=kode)
 
-    jenis_choices = DokumenPakln.Jenis.choices
-    dokumen_map = {d.jenis: d for d in pengajuan.dokumen_pakln.all()}
-    pendukung, _ = DokumenPaklnPendukung.objects.get_or_create(pengajuan=pengajuan)
-
-    # Dokumen Izin Luar Negeri (TTD Sekjen) wajib; dokumen pendukung
-    # (Nota Dinas Kepala Bagian/Kepala Biro) opsional — tidak menjadi
-    # syarat kelengkapan untuk menyelesaikan proses.
-    lengkap = len(dokumen_map) >= len(jenis_choices)
+    pendukung = None
+    if not pengajuan.is_pdln:
+        pendukung, _ = DokumenPaklnPendukung.objects.get_or_create(pengajuan=pengajuan)
+    dapat_diubah = pengajuan.status == Pengajuan.Status.PROSES_PAKLN
 
     if request.method == "POST":
+        if not dapat_diubah:
+            messages.error(request, "Pengajuan tidak sedang diproses Biro PAKLN.")
+            return redirect("pakln:upload_dokumen", kode=kode)
         if "selesaikan" in request.POST:
-            if not lengkap:
-                messages.error(request, "Lengkapi dokumen Izin Luar Negeri (TTD Sekjen a.n. Menteri) sebelum menyelesaikan proses.")
-            elif not request.POST.get("agree"):
-                messages.error(request, "Centang pernyataan kelengkapan dokumen terlebih dahulu.")
-            elif pengajuan.status == Pengajuan.Status.SELESAI:
-                # Sudah pernah diselesaikan sebelumnya — hindari potong cuti dua kali.
-                return redirect("pakln:dashboard")
-            else:
-                with transaction.atomic():
-                    profile = getattr(pengajuan.pegawai, "profile", None)
-                    # Cuti yang terpakai = hari kerja (snapshot saat pengajuan
-                    # dikirim), konsisten dengan validasi sisa cuti di formulir.
-                    hari_terpakai = pengajuan.jumlah_hari_kerja or 0
-                    if profile and hari_terpakai:
-                        profile.sisa_cuti_tahun_berjalan = max(
-                            profile.sisa_cuti_tahun_berjalan - hari_terpakai, 0
-                        )
-                        profile.save(update_fields=["sisa_cuti_tahun_berjalan"])
-
-                    status_dari = pengajuan.status
-                    pengajuan.status = Pengajuan.Status.SELESAI
-                    pengajuan.tgl_selesai = timezone.now().date()
-                    pengajuan.save()
-                    riwayat.catat(
-                        pengajuan, RiwayatPengajuan.Aksi.SELESAI,
-                        request.user, status_dari,
-                    )
-                notify_complete_pkln(pengajuan)
-                messages.success(
-                    request,
-                    f"Pengajuan {pengajuan.kode} telah diselesaikan. "
-                    f"Sisa cuti tahun berjalan pegawai berkurang {hari_terpakai} hari.",
-                )
-                return redirect("pakln:dashboard")
-        elif "pendukung_upload" in request.POST:
-            # Proses unggah berkas pendukung — berdiri sendiri, tidak
-            # memerlukan checklist jenis sudah dicentang lebih dulu.
+            hasil = _selesaikan(request, pengajuan)
+            if hasil:
+                return hasil
+        elif "pendukung_upload" in request.POST and pendukung:
             file_obj = request.FILES.get("file")
             if not file_obj:
                 messages.error(request, "Pilih berkas dokumen pendukung terlebih dahulu.")
@@ -1686,16 +1638,14 @@ def upload_dokumen(request, kode):
                 pendukung.save(update_fields=["file", "uploaded_at"])
                 messages.success(request, "Dokumen pendukung berhasil diunggah.")
                 return redirect("pakln:upload_dokumen", kode=kode)
-        elif "pendukung_hapus" in request.POST:
+        elif "pendukung_hapus" in request.POST and pendukung:
             pendukung.file.delete(save=False)
             pendukung.file = ""
             pendukung.uploaded_at = None
             pendukung.save(update_fields=["file", "uploaded_at"])
             messages.success(request, "Berkas dokumen pendukung dihapus.")
             return redirect("pakln:upload_dokumen", kode=kode)
-        elif "toggle_pendukung" in request.POST:
-            # Proses mencentang jenis — berdiri sendiri, tidak memerlukan
-            # berkas diunggah ulang.
+        elif "toggle_pendukung" in request.POST and pendukung:
             kategori = request.POST.get("kategori")
             if kategori not in DokumenPaklnPendukung.KATEGORI_LABELS:
                 messages.error(request, "Jenis dokumen pendukung tidak valid.")
@@ -1704,127 +1654,164 @@ def upload_dokumen(request, kode):
                 pendukung.save(update_fields=[kategori])
                 return redirect("pakln:upload_dokumen", kode=kode)
         else:
-            jenis = request.POST.get("jenis")
-            existing = dokumen_map.get(jenis)
-            form = DokumenPaklnForm(request.POST, request.FILES, instance=existing)
-            if jenis in dict(jenis_choices) and form.is_valid():
-                dok = form.save(commit=False)
-                dok.pengajuan = pengajuan
-                dok.jenis = jenis
-                dok.save()
-                messages.success(request, "Dokumen berhasil diunggah.")
-                return redirect("pakln:upload_dokumen", kode=kode)
-            else:
-                messages.error(request, "Gagal mengunggah dokumen. Periksa kembali berkas Anda.")
+            hasil = tahap.proses_unggah(request, pengajuan, "pakln", "pakln:upload_dokumen")
+            if hasil:
+                return hasil
 
     context = {
         "pengajuan": pengajuan,
-        "jenis_choices": jenis_choices,
-        "dokumen_map": dokumen_map,
+        **tahap.konteks_dokumen(pengajuan, "pakln"),
         "pendukung": pendukung,
         "pendukung_kategori": list(DokumenPaklnPendukung.KATEGORI_LABELS.items()),
-        "lengkap": lengkap,
+        "dapat_diubah": dapat_diubah,
+        "readonly": not dapat_diubah,
+        "dibekukan": alur.alasan_dibekukan(pengajuan),
         **riwayat.konteks(pengajuan, request.user),
     }
     return render(request, "pakln/upload.html", context)
+
+
+def _selesaikan(request, pengajuan):
+    kurang = tahap.konteks_dokumen(pengajuan, "pakln")["dokumen_kurang"]
+    if kurang:
+        messages.error(request, "Lengkapi dokumen wajib sebelum menyelesaikan proses: " + ", ".join(kurang) + ".")
+        return None
+    if not request.POST.get("agree"):
+        messages.error(request, "Centang pernyataan kelengkapan dokumen terlebih dahulu.")
+        return None
+
+    hari_terpakai = 0
+    with transaction.atomic():
+        p = alur.kunci(pengajuan)
+        pesan = alur.alasan_dibekukan(p)
+        if p.status != Pengajuan.Status.PROSES_PAKLN or pesan:
+            # Sudah diselesaikan/diproses pihak lain — hindari potong cuti dua kali.
+            if pesan:
+                messages.error(request, pesan)
+            return redirect("pakln:dashboard")
+        if not p.is_pdln:
+            # Cuti hanya terpakai untuk perjalanan Non-Kedinasan; PDLN adalah
+            # penugasan dinas. Hari kerja = snapshot saat pengajuan dikirim.
+            profile = getattr(p.pegawai, "profile", None)
+            hari_terpakai = p.jumlah_hari_kerja or 0
+            if profile and hari_terpakai:
+                profile.sisa_cuti_tahun_berjalan = max(profile.sisa_cuti_tahun_berjalan - hari_terpakai, 0)
+                profile.save(update_fields=["sisa_cuti_tahun_berjalan"])
+        status_dari = p.status
+        p.status = Pengajuan.Status.SELESAI
+        p.tgl_selesai = timezone.now().date()
+        p.save()
+        riwayat.catat(p, RiwayatPengajuan.Aksi.SELESAI, request.user, status_dari)
+
+    notify_complete_pkln(p)
+    if p.is_pdln:
+        messages.success(request, f"Pengajuan {p.kode} telah diselesaikan. Pegawai selanjutnya mengunggah Laporan PDLN.")
+    else:
+        messages.success(
+            request,
+            f"Pengajuan {p.kode} telah diselesaikan. Sisa cuti tahun berjalan pegawai berkurang {hari_terpakai} hari.",
+        )
+    return redirect("pakln:dashboard")
 
 
 @role_required("admin_pakln")
 def hapus_dokumen(request, kode, jenis):
     """Hapus salah satu dokumen administrasi Biro PAKLN yang sudah diunggah."""
     pengajuan = get_object_or_404(Pengajuan, kode=kode)
-    if request.method == "POST":
-        dok = pengajuan.dokumen_pakln.filter(jenis=jenis).first()
-        if dok:
-            dok.file.delete(save=False)
-            dok.delete()
-            messages.success(request, "Dokumen berhasil dihapus.")
+    if pengajuan.status == Pengajuan.Status.PROSES_PAKLN:
+        tahap.hapus(request, pengajuan, "pakln", jenis)
     return redirect("pakln:upload_dokumen", kode=pengajuan.kode)
 
 
-@role_required("admin_pakln")
-def export_database(request):
-    """Tahap 5: Export Database untuk Admin Biro PAKLN. Tabel pratinjau
-    di halaman ditampilkan lewat Data Table Server-Side (lihat
-    `export_data`) — CSV tetap mengekspor seluruh baris yang cocok,
-    bukan hanya satu halaman tabel."""
-    pengajuan_list = Pengajuan.objects.filter(
-        status__in=[Pengajuan.Status.PROSES_PAKLN, Pengajuan.Status.SELESAI]
-    ).select_related("pegawai__profile")
-
-    if request.GET.get("format") == "csv":
-        response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = 'attachment; filename="paspor_pengajuan_pakln.csv"'
-        writer = csv.writer(response)
-        writer.writerow(["Kode", "Nama Pegawai", "Kategori", "Tujuan", "Tgl Masuk PAKLN", "Status"])
-        for p in pengajuan_list:
-            nama = getattr(getattr(p.pegawai, "profile", None), "nama", p.pegawai.get_full_name())
-            writer.writerow([p.kode, nama, p.kategori, p.tujuan_negara_display, p.tgl_masuk_pakln or "", p.get_status_display()])
-        return response
-
-    return render(request, "pakln/export.html", {})
-
-
-# Kolom tabel pratinjau "Export Database" (index sesuai urutan kolom pada
-# pakln/export.html) -> field untuk pengurutan (ORDER BY) di endpoint
-# server-side DataTables. Kolom Tujuan (M2M) sengaja tidak disertakan.
-_PAKLN_EXPORT_ORDER_FIELDS = {
-    "0": "pegawai__profile__nama",
-    "1": "kategori__nama_kategori",
-    "3": "tgl_masuk_pakln",
-    "4": "status",
-}
-
+# ---------------------------------------------------------------------------
+# Pelaporan PDLN — verifikasi (BISNIS_PROSES_PDLN.MD §4.4)
+# ---------------------------------------------------------------------------
 
 @role_required("admin_pakln")
-def export_data(request):
-    """Endpoint JSON server-side untuk tabel pratinjau "Export Database"
-    (protokol DataTables: draw/start/length/search/order pada GET),
-    mengikuti pola `users_data` (Manajemen User)."""
-    qs = Pengajuan.objects.filter(
-        status__in=[Pengajuan.Status.PROSES_PAKLN, Pengajuan.Status.SELESAI]
-    ).select_related("pegawai__profile", "kategori")
-    records_total = qs.count()
+def pelaporan(request):
+    from .views_unor import _konteks_pelaporan
 
-    search_value = request.GET.get("search[value]", "").strip()
-    if search_value:
-        qs = qs.filter(
-            Q(pegawai__profile__nama__icontains=search_value)
-            | Q(kategori__nama_kategori__icontains=search_value)
-            | Q(tujuan_negara__nama_negara__icontains=search_value)
-        ).distinct()
-    records_filtered = qs.count()
-
-    order_col = request.GET.get("order[0][column]")
-    order_field = _PAKLN_EXPORT_ORDER_FIELDS.get(order_col, "-tgl_masuk_pakln")
-    if request.GET.get("order[0][dir]") == "desc":
-        order_field = f"-{order_field}"
-    qs = qs.order_by(order_field, "-created_at")
-
-    try:
-        start = int(request.GET.get("start", 0))
-        length = int(request.GET.get("length", 10))
-    except ValueError:
-        start, length = 0, 10
-    page = qs[start:] if length == -1 else qs[start:start + length]
-
-    data = []
-    for p in page:
-        status_html = format_html(
-            '<span class="tag paspor-status is-{}"><span class="dot"></span>{}</span>',
-            p.status, p.get_status_display(),
-        )
-        data.append([
-            format_html("<strong>{}</strong>", p.pegawai.profile.nama),
-            escape(p.kategori.nama_kategori) if p.kategori else "—",
-            escape(p.tujuan_negara_display or "—"),
-            p.tgl_masuk_pakln.strftime("%d %b %Y") if p.tgl_masuk_pakln else "—",
-            status_html,
-        ])
-
-    return JsonResponse({
-        "draw": int(request.GET.get("draw", 1)),
-        "recordsTotal": records_total,
-        "recordsFiltered": records_filtered,
-        "data": data,
+    return render(request, "bersama/pelaporan.html", {
+        **_konteks_pelaporan(report.queryset_untuk(request.user)),
+        "dapat_verifikasi": True,
+        "preview_url": "pakln:preview",
     })
+
+
+@role_required("admin_pakln")
+@require_POST
+def verifikasi_laporan(request, kode):
+    pengajuan = get_object_or_404(Pengajuan, kode=kode, jenis_perjalanan=Pengajuan.JenisPerjalanan.PDLN)
+    keputusan = request.POST.get("keputusan")
+    catatan = request.POST.get("catatan", "").strip()
+    if keputusan not in ("setujui", "kembalikan"):
+        messages.error(request, "Keputusan tidak valid.")
+        return redirect("pakln:pelaporan")
+    if keputusan == "kembalikan" and not catatan:
+        messages.error(request, "Catatan wajib diisi bila mengembalikan laporan.")
+        return redirect("pakln:pelaporan")
+
+    with transaction.atomic():
+        p = alur.kunci(pengajuan)
+        laporan = LaporanPdln.objects.select_for_update().filter(pengajuan=p).first()
+        if laporan is None or laporan.status != LaporanPdln.Status.MENUNGGU:
+            messages.error(request, "Laporan tidak sedang menunggu verifikasi.")
+            return redirect("pakln:pelaporan")
+        if alur.alasan_dibekukan(p):
+            messages.error(request, alur.alasan_dibekukan(p))
+            return redirect("pakln:pelaporan")
+        laporan.diverifikasi_oleh = request.user
+        if keputusan == "setujui":
+            laporan.status = LaporanPdln.Status.DISETUJUI
+            laporan.tgl_disetujui = timezone.now()
+            laporan.catatan_pakln = ""
+            aksi = RiwayatPengajuan.Aksi.LAPORAN_DISETUJUI
+        else:
+            laporan.status = LaporanPdln.Status.DIKEMBALIKAN
+            laporan.catatan_pakln = catatan
+            aksi = RiwayatPengajuan.Aksi.LAPORAN_DIKEMBALIKAN
+        laporan.save()
+        riwayat.catat(p, aksi, request.user, p.status, catatan=catatan)
+
+    if keputusan == "setujui":
+        notif.notify_laporan_disetujui(p)
+        messages.success(request, f"Laporan PDLN {p.kode} disetujui — pengajuan tuntas.")
+    else:
+        notif.notify_laporan_dikembalikan(p, catatan)
+        messages.success(request, f"Laporan PDLN {p.kode} dikembalikan ke pegawai.")
+    return redirect("pakln:pelaporan")
+
+
+# ---------------------------------------------------------------------------
+# Pembatalan — jenjang akhir (BISNIS_PROSES_PDLN.MD §4.5)
+# ---------------------------------------------------------------------------
+
+@role_required("admin_pakln")
+def daftar_pembatalan(request):
+    semua = request.GET.get("tampil") == "semua"
+    qs = PermohonanPembatalan.objects.select_related("pengajuan__pegawai__profile", "diajukan_oleh")
+    if not semua:
+        qs = qs.filter(status=PermohonanPembatalan.Status.MENUNGGU_PAKLN)
+    return render(request, "bersama/pembatalan.html", {
+        "daftar": qs.order_by("-created_at"),
+        "semua": semua,
+        "menunggu": PermohonanPembatalan.Status.MENUNGGU_PAKLN,
+        "putuskan_url": "pakln:putuskan_pembatalan",
+        "preview_url": "pakln:preview",
+        "jumlah_menunggu": report.pembatalan_menunggu(request.user).count(),
+    })
+
+
+@role_required("admin_pakln")
+@require_POST
+def putuskan_pembatalan(request, pk):
+    permohonan = get_object_or_404(PermohonanPembatalan, pk=pk)
+    try:
+        pembatalan.putuskan(
+            permohonan, request.user, request.POST.get("keputusan") == "setuju", request.POST.get("catatan", ""),
+        )
+    except pembatalan.PembatalanError as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, f"Keputusan pembatalan {permohonan.pengajuan.kode} tersimpan.")
+    return redirect("pakln:pembatalan")

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Pembatalan{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Pembatalan</h2>
+    <p class="sub">Permohonan pembatalan perjalanan Anda. Ajukan pembatalan dari halaman Monitor Progres pengajuan terkait.</p>
+  </div>
+</div>
+
+<div class="box">
+  <div class="table-wrap">
+    <table class="table data-table is-fullwidth is-hoverable">
+      <thead>
+        <tr><th>Pengajuan</th><th>Diajukan</th><th>Alasan</th><th>Jenjang Unor</th><th>Jenjang Biro PAKLN</th><th>Status</th><th>Aksi</th></tr>
+      </thead>
+      <tbody>
+        {% for m in daftar %}
+          <tr>
+            <td><strong>{{ m.pengajuan.kode }}</strong><br><span class="cell-muted">{{ m.pengajuan.jenis_label }}</span></td>
+            <td>{{ m.created_at|date:"d M Y H:i" }}<br><span class="cell-muted">{% if m.diajukan_role == "pegawai" %}oleh Anda{% else %}oleh Admin Unor{% endif %}</span></td>
+            <td>{{ m.alasan }}</td>
+            <td>{% if m.unor_waktu %}{{ m.unor_waktu|date:"d M Y" }}{% if m.unor_catatan %}<br><span class="cell-muted">{{ m.unor_catatan }}</span>{% endif %}{% else %}—{% endif %}</td>
+            <td>{% if m.pakln_waktu %}{{ m.pakln_waktu|date:"d M Y" }}{% if m.pakln_catatan %}<br><span class="cell-muted">{{ m.pakln_catatan }}</span>{% endif %}{% else %}—{% endif %}</td>
+            <td>{{ m.get_status_display }}</td>
+            <td>
+              <a href="{% url 'pegawai:monitor_progres' kode=m.pengajuan.kode %}" class="button is-small">Lihat</a>
+              {% if m.terbuka and m.diajukan_oleh_id == user.pk %}
+                <form method="post" action="{% url 'pegawai:tarik_pembatalan' m.pk %}" style="display:inline;" onsubmit="return confirm('Tarik permohonan ini?');">
+                  {% csrf_token %}<button type="submit" class="button is-small">↶ Tarik</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="cell-muted">Belum ada permohonan pembatalan.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
