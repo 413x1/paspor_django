@@ -7,8 +7,11 @@
 <div class="page-head">
   <div>
     <h2>Unggah Dokumen</h2>
-    <p class="sub">{{ pengajuan.kode }} · Kelengkapan berkas pengajuan</p>
+    <p class="sub">{{ pengajuan.kode }} · {{ pengajuan.jenis_label }} · Kelengkapan berkas pengajuan</p>
   </div>
+  {% if pengajuan.pernah_dikirim %}
+    <a href="{% url 'pegawai:monitor_progres' kode=pengajuan.kode %}" class="button is-small">Lihat Progres →</a>
+  {% endif %}
 </div>
 
 {% if pengajuan.catatan_unor %}
@@ -16,8 +19,14 @@
     <strong>⚠ Dikembalikan oleh Admin Unor untuk diperbaiki:</strong> {{ pengajuan.catatan_unor }}
   </div>
 {% endif %}
+{% if dibekukan %}
+  <div class="notification paspor-msg is-warning">{{ dibekukan }}</div>
+{% endif %}
+{% if not dapat_diubah and not dibekukan %}
+  <div class="notification paspor-msg is-info">Pengajuan sudah dikirim — dokumen hanya dapat dilihat.</div>
+{% endif %}
 
-{% if templates %}
+{% if templates and dapat_diubah %}
 <div class="box" style="background:var(--blue-bg); border-color:#cfe0f2;">
   <div class="section-title" style="font-size:14px;margin-bottom:10px;">📄 Template Dokumen Tersedia</div>
   {% for t in templates %}
@@ -35,40 +44,9 @@
 {% endif %}
 
 <div class="box">
-  {% for value, label in jenis_choices %}
-    {% with dok=dokumen_map|get_item:value %}
-    <div class="doc-row {% if dok %}uploaded{% endif %}">
-      <div class="info">
-        <h4>{{ label }}</h4>
-        {% if dok %}
-          <p style="color:var(--green);">✓ Sudah diunggah — {{ dok.uploaded_at|date:"d M Y H:i" }}</p>
-          {% if dok.tanggal_surat %}
-            <p class="cell-muted">📅 Tanggal Surat: {{ dok.tanggal_surat|date:"d M Y" }}</p>
-          {% endif %}
-        {% else %}
-          <p>Belum diunggah.</p>
-        {% endif %}
-      </div>
-      <div class="actions">
-        {% if dok %}
-          <button type="button" class="button is-small" data-doc-preview="{{ dok.file.url }}" data-doc-title="{{ label }}">👁 Pratinjau</button>
-          <form method="post" action="{% url 'pegawai:hapus_dokumen' kode=pengajuan.kode jenis=value %}" style="margin:0;" onsubmit="return confirm('Hapus dokumen ini?');">
-            {% csrf_token %}
-            <button type="submit" class="button is-small is-danger">🗑 Hapus</button>
-          </form>
-        {% endif %}
-        <form method="post" enctype="multipart/form-data" class="actions doc-upload-form" style="margin:0;">
-          {% csrf_token %}
-          <input type="hidden" name="jenis" value="{{ value }}">
-          <input type="hidden" name="tanggal_surat" class="doc-tanggal-surat-input">
-          <input type="file" name="file" required class="doc-file-input" style="font-size:12.5px;max-width:160px;">
-          <button type="submit" class="button is-small doc-upload-submit">⬆ Unggah</button>
-        </form>
-      </div>
-    </div>
-    {% endwith %}
-  {% endfor %}
+  {% include "partials/_dokumen_tahap.html" with hapus_url="pegawai:hapus_dokumen" %}
 
+  {% if dapat_diubah %}
   <form method="post">
     {% csrf_token %}
     {% if pengajuan.catatan_unor %}
@@ -76,7 +54,7 @@
         <label class="label" for="catatan_perbaikan">Catatan perbaikan untuk Admin Unor</label>
         <div class="control">
           <textarea class="textarea" id="catatan_perbaikan" name="catatan" rows="3" required
-            placeholder="cth. Formulir ILN sudah ditandatangani pimpinan dan diunggah ulang.">{{ request.POST.catatan }}</textarea>
+            placeholder="cth. Dokumen sudah ditandatangani pimpinan dan diunggah ulang.">{{ request.POST.catatan }}</textarea>
         </div>
         <p class="helptext">Wajib diisi — jelaskan perbaikan yang telah dilakukan.</p>
       </div>
@@ -88,12 +66,19 @@
         untuk selanjutnya dikirimkan kepada Admin Unor.
       </label>
     </div>
-    <button type="submit" name="kirim" class="button is-primary" {% if not lengkap %}disabled{% endif %}>
+    <button type="submit" name="kirim" class="button is-primary" {% if not lengkap or dibekukan %}disabled{% endif %}>
       Kirim ke Admin Unor →
     </button>
     {% if not lengkap %}
-      <p class="helptext">Lengkapi seluruh direktori dokumen untuk melanjutkan.</p>
+      <p class="helptext">Lengkapi dokumen wajib untuk melanjutkan: {{ dokumen_kurang|join:", " }}.</p>
     {% endif %}
   </form>
+  {% endif %}
 </div>
+
+{% if pengajuan.status == "belum" %}
+<div class="box">
+  {% include "partials/_pembatalan.html" with tarik_url_name="pegawai:tarik_pembatalan" %}
+</div>
+{% endif %}
 {% endblock %}

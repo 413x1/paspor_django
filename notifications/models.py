@@ -19,6 +19,20 @@ class Notification(models.Model):
         RESUBMIT_UNOR = "NOTIF_02C_RESUBMIT_UNOR", "Pengajuan Ulang ke Admin Unor"
         COMPLETE_PKLN = "NOTIF_03A_COMPLETE_PKLN", "Selesai & Terbit oleh Admin PKLN"
         REJECT_PKLN_UNOR = "NOTIF_03B_REJECT_PKLN_TO_UNOR", "Dikembalikan Admin PKLN ke Admin Unor"
+        # PDLN Tipe 2 — tahap BPSDM
+        FORWARD_BPSDM = "NOTIF_04A_FORWARD_BPSDM", "Diteruskan Unor ke Admin BPSDM"
+        RESUBMIT_BPSDM = "NOTIF_04B_RESUBMIT_BPSDM", "Perbaikan diteruskan ke Admin BPSDM"
+        REJECT_BPSDM_UNOR = "NOTIF_04C_REJECT_BPSDM_TO_UNOR", "Dikembalikan Admin BPSDM ke Admin Unor"
+        # Pelaporan PDLN
+        LAPORAN_DIUNGGAH = "NOTIF_05A_LAPORAN_DIUNGGAH", "Laporan PDLN diunggah"
+        LAPORAN_DIKEMBALIKAN = "NOTIF_05B_LAPORAN_DIKEMBALIKAN", "Laporan PDLN dikembalikan"
+        LAPORAN_DISETUJUI = "NOTIF_05C_LAPORAN_DISETUJUI", "Laporan PDLN disetujui"
+        # Pembatalan
+        PEMBATALAN_DIAJUKAN = "NOTIF_06A_PEMBATALAN_DIAJUKAN", "Permohonan pembatalan diajukan"
+        PEMBATALAN_MENUNGGU_PAKLN = "NOTIF_06B_PEMBATALAN_MENUNGGU_PAKLN", "Pembatalan menunggu Biro PAKLN"
+        PEMBATALAN_DITOLAK = "NOTIF_06C_PEMBATALAN_DITOLAK", "Permohonan pembatalan ditolak"
+        PEMBATALAN_DISETUJUI = "NOTIF_06D_PEMBATALAN_DISETUJUI", "Perjalanan dibatalkan"
+        PEMBATALAN_DITARIK = "NOTIF_06E_PEMBATALAN_DITARIK", "Permohonan pembatalan ditarik"
 
     class Level(models.TextChoices):
         INFO = "info", "Info"

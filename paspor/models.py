@@ -32,6 +32,13 @@ class Negara(models.Model):
         help_text="Opsional, mis. kode ISO 3166-1 alpha-2 (ID, SA, SG, dst.)",
     )
     is_active = models.BooleanField("Aktif", default=True)
+    # Penentu wajib/opsionalnya Rekomendasi Visa pada PDLN
+    # (wiki/instructions/BISNIS_PROSES_PDLN.MD §6.4).
+    perlu_visa = models.BooleanField(
+        "Memerlukan Visa", default=False,
+        help_text="Centang bila perjalanan dinas ke negara ini memerlukan visa — "
+                  "Rekomendasi Visa menjadi dokumen wajib pada PDLN.",
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -62,6 +69,9 @@ class SumberPembiayaan(models.Model):
         default=TipePerjalanan.NON_DINAS,
     )
     nama = models.CharField("Nama", max_length=100)
+    # Daftar kode tipe PDLN yang boleh memakai sumber ini (mis. ["T2P"]);
+    # kosong = berlaku untuk semua tipe PDLN. Diabaikan untuk Non-Dinas.
+    tipe_pdln = models.JSONField("Berlaku untuk Tipe PDLN", default=list, blank=True)
     keterangan = models.TextField("Keterangan", blank=True)
     is_active = models.BooleanField("Aktif", default=True)
 
@@ -92,6 +102,9 @@ class KategoriPerjalanan(models.Model):
         default=JenisPerjalanan.NON_DINAS,
     )
     nama_kategori = models.CharField("Nama Kategori", max_length=100)
+    # Daftar kode tipe PDLN yang memakai kategori ini (mis. ["T1", "T3"]);
+    # kosong = berlaku untuk semua tipe PDLN. Diabaikan untuk Non-Dinas.
+    tipe_pdln = models.JSONField("Berlaku untuk Tipe PDLN", default=list, blank=True)
     is_active = models.BooleanField("Aktif", default=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -137,3 +150,9 @@ class HariLibur(models.Model):
 
     def __str__(self):
         return f"{self.tanggal:%d-%m-%Y} — {self.keterangan}"
+
+
+def berlaku_untuk_tipe(obj, tipe):
+    """True bila master Kategori/Sumber berlaku untuk kode tipe PDLN
+    `tipe` (daftar kosong = semua tipe)."""
+    return not obj.tipe_pdln or tipe in obj.tipe_pdln

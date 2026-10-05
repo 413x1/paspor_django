@@ -1,6 +1,7 @@
 # Bisnis Proses PDLN (Perjalanan Dinas Luar Negeri)
 
-> **Status:** rancangan — acuan integrasi alur PDLN ke PASPOR (belum diimplementasikan).
+> **Status:** diimplementasikan — fase 1–5, 2b, 7, 8 (lihat [§16](#16-status-implementasi--peta-kode)).
+> Fase 6 (generate dokumen PDLN) belum: menunggu format resmi.
 > **Sumber:** mockup `20261005_PASPOR — Tahap 2_ PDLN Tipe 1–3 + PINTAR.html`.
 > **Pengguna:** Pegawai, Admin Unor, Admin BPSDM (baru), Admin Biro PAKLN.
 > **Terkait:** [RIWAYAT_PEMROSESAN_PENGAJUAN.MD](RIWAYAT_PEMROSESAN_PENGAJUAN.MD),
@@ -27,6 +28,7 @@
 13. [Tahapan Implementasi](#13-tahapan-implementasi)
 14. [Keputusan & Pertanyaan Terbuka](#14-keputusan--pertanyaan-terbuka)
 15. [Bahan Pertimbangan untuk Diskusi Lanjutan](#15-bahan-pertimbangan-untuk-diskusi-lanjutan)
+16. [Status Implementasi & Peta Kode](#16-status-implementasi--peta-kode)
 
 ---
 
@@ -1044,3 +1046,45 @@ mengubah struktur data.
   (pengembang, penguji, pemilik proses yang memvalidasi), target rilis,
   dan ketergantungan eksternal (contoh dokumen resmi, API PINTAR,
   keputusan D1–D2).
+
+---
+
+## 16. Status Implementasi & Peta Kode
+
+| Fase | Status | Catatan |
+|---|---|---|
+| 1. Fondasi data | ✅ | Migrasi `accounts 0006`, `paspor 0006–0007` (master PDLN + seed), `pengajuan 0018–0019` (skema + backfill `unit_organisasi`), `notifications 0004` |
+| 2. Alur & registri | ✅ | `ALUR`, timeline dinamis (5 tahap untuk Tipe 2), registri persyaratan |
+| 2b. Pembatalan | ✅ | Mekanisme interim §4.5, berlaku Dinas & Non-Dinas |
+| 3. PDLN Tipe 1 & 3 + Pelaporan | ✅ | Termasuk visa wajib/opsional per negara dan aturan satu pengajuan aktif |
+| 4. PDLN Tipe 2 + BPSDM | ✅ | Role `admin_bpsdm`, URL `/admin-bpsdm/` |
+| 5. Integrasi PINTAR | ◐ | Antarmuka + **stub** (data contoh mockup); aktif nyata bila `PINTAR_API_URL` diisi — kontrak API masih asumsi |
+| 6. Generate dokumen PDLN | ⏳ | Belum — baris dokumen bertanda *generate* sementara diunggah manual |
+| 7. Report terpadu | ✅ | Filter global, Export CSV/XLSX (+ sheet Ringkasan), Rekap (status, unor, negara, bulan, kategori/sumber, waktu proses, pengembalian, pembatalan) |
+| 8. Profil | ✅ | Data personal (read-only), dokumen kepegawaian / SK penugasan, data paspor |
+
+Default yang dipakai implementasi untuk pertanyaan terbuka §14: beasiswa wajib untuk T2P & T2L;
+pegawai dapat mengunduh SP Setneg, Exit Permit, Rekomendasi Visa, SK Tubel, ND Karo (bukan Paspor
+Dinas); batas pelaporan 14 hari (`report.BATAS_HARI_LAPORAN`, hanya penanda "Terlambat");
+batas pembatalan Non-Dinas `selesai` s.d. tanggal berangkat; PDLN selama laporan belum disetujui.
+Selain itu, cuti pegawai hanya dipotong untuk Non-Dinas.
+
+### Peta kode
+
+| Berkas | Isi |
+|---|---|
+| `pengajuan/models.py` | `Pengajuan` (jenis, tipe, status baru, snapshot unor, properti `tuntas`/`perlu_visa`/`pembatalan_terbuka`), `DetailPdln`, `DokumenBpsdm`, `LaporanPdln`, `PermohonanPembatalan`, pilihan jenis dokumen & aksi riwayat baru |
+| `pengajuan/alur.py` | `ALUR`, `tahap_berikut/sebelumnya`, `timeline`, `pengajuan_belum_tuntas`, `kunci` (row lock), `alasan_dibekukan` |
+| `pengajuan/persyaratan.py` | Registri `PERSYARATAN` (tipe × tahap), `syarat_untuk`, `dokumen_kurang`, `direktori` |
+| `pengajuan/tahap.py` | Helper unggah/hapus/konteks dokumen per tahap |
+| `pengajuan/pembatalan.py` | `ajukan`, `putuskan`, `tarik`, `batalkan_draft` |
+| `pengajuan/report.py`, `views_report.py` | Cakupan per role, filter global, ringkasan dasbor, DataTables, export CSV/XLSX, rekap |
+| `pengajuan/views_pegawai.py` | Formulir Non-Dinas & PDLN, unggah, monitor, pelaporan, pembatalan, profil |
+| `pengajuan/views_unor.py`, `views_bpsdm.py`, `views_pakln.py` | Dasbor (tab PDLN/Non-Kedinasan), pratinjau, unggah & teruskan/kembalikan/selesaikan, antrean pembatalan, pelaporan |
+| `pengajuan/riwayat.py` | Label & visibilitas catatan per jalur (BPSDM, laporan, pembatalan) |
+| `notifications/services.py` | Event 4x (BPSDM), 5x (laporan), 6x (pembatalan) |
+| `paspor/integrasi/pintar.py` | Antarmuka Aplikasi PINTAR + stub |
+| `templates/partials/_dokumen_tahap.html`, `_direktori_dokumen.html`, `_ringkasan_pengajuan.html`, `_pembatalan.html`, `_ringkasan_dasbor.html`, `_filter_report.html` | Komponen bersama |
+| `templates/bpsdm/`, `templates/bersama/`, `templates/report/`, `templates/akun/profil.html`, `templates/pegawai/{formulir_pdln,pelaporan,pembatalan}.html` | Halaman baru |
+| `pengajuan/tests_pdln.py` | Test alur T1/T2P, visa, pelaporan, satu pengajuan aktif, pembatalan, cakupan role, report |
+

@@ -831,3 +831,24 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 }
 .multiselect-option:hover { background: var(--bg); }
 .multiselect-option input[type="checkbox"] { flex-shrink: 0; }
+
+/* ---------- PDLN, pelaporan & pembatalan (BISNIS_PROSES_PDLN.MD) ---------- */
+.tag.paspor-status.is-proses_bpsdm { background: #ede7f6; color: #5e35b1; }
+.tag.paspor-status.is-dibatalkan { background: #fdecea; color: #c0392b; }
+.timeline .dot-wrap.cancelled { background: #c0392b; color: var(--white); }
+.riwayat-list li.is-danger .riwayat-ikon { background: #fdecea; color: #c0392b; }
+.badge-auto.is-optional { background: #eceff3; color: var(--slate-600); }
+.tab-bar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.tab-bar .button.is-active { background: var(--navy-900); border-color: var(--navy-900); color: var(--white); }
+.summary-grid.is-wide { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.box.is-danger-soft { background: #fdecea; border-color: #f3c6c2; }
+.box.is-warning-soft { background: var(--gold-bg); border-color: var(--gold); }
+.kv-list { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 13px; margin: 0; }
+.kv-list dt { color: var(--slate-400); font-weight: 600; }
+.kv-list dd { margin: 0; }
+.jenis-step[hidden] { display: none; }
+.filter-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 14px; }
+.filter-bar .field { margin-bottom: 0; }
+.filter-bar .label { font-size: 12px; margin-bottom: 4px; }
+.rekap-table th, .rekap-table td { text-align: right; white-space: nowrap; }
+.rekap-table th:first-child, .rekap-table td:first-child { text-align: left; }

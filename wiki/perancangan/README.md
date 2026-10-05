@@ -1,6 +1,6 @@
 # Perancangan Fitur PDLN & Penyempurnaan Alur PASPOR
 
-> **Status:** rancangan — turunan dari [BISNIS_PROSES_PDLN.MD](../instructions/BISNIS_PROSES_PDLN.MD).
+> **Status:** diimplementasikan (lihat BISNIS_PROSES_PDLN.MD §16) — turunan dari [BISNIS_PROSES_PDLN.MD](../instructions/BISNIS_PROSES_PDLN.MD).
 > Bila ada perbedaan, dokumen bisnis proses yang menjadi acuan; perbarui
 > diagram di sini mengikuti perubahan di sana.
 

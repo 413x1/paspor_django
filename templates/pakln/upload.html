@@ -4,48 +4,20 @@
 {% block wrap_extra_class %} narrow{% endblock %}
 
 {% block content %}
+{% if dibekukan %}<div class="notification paspor-msg is-warning">{{ dibekukan }}</div>{% endif %}
+
 <div class="box">
   <div class="section-title">Unggah Dokumen Administrasi Biro PAKLN — {{ pengajuan.kode }}</div>
+  <p class="sub" style="margin:-10px 0 12px;">{{ pengajuan.jenis_label }} · <span class="tag paspor-status is-{{ pengajuan.status }}"><span class="dot"></span>{{ pengajuan.get_status_display }}</span></p>
 
-  {% for value, label in jenis_choices %}
-    {% with dok=dokumen_map|get_item:value %}
-    <div class="doc-row {% if dok %}uploaded{% endif %}">
-      <div class="info">
-        <h4>{{ label }} <span class="badge-auto">Wajib</span></h4>
-        {% if dok %}
-          <p style="color:var(--green);">✓ Sudah diunggah — {{ dok.uploaded_at|date:"d M Y H:i" }}</p>
-          {% if dok.tanggal_surat %}
-            <p class="cell-muted">📅 Tanggal Surat: {{ dok.tanggal_surat|date:"d M Y" }}</p>
-          {% endif %}
-        {% else %}
-          <p>Belum diunggah.</p>
-        {% endif %}
-      </div>
-      <div class="actions">
-        {% if dok %}
-          <button type="button" class="button is-small" data-doc-preview="{{ dok.file.url }}" data-doc-title="{{ label }}">👁 Pratinjau</button>
-          <form method="post" action="{% url 'pakln:hapus_dokumen' kode=pengajuan.kode jenis=value %}" style="margin:0;" onsubmit="return confirm('Hapus dokumen ini?');">
-            {% csrf_token %}
-            <button type="submit" class="button is-small is-danger">🗑 Hapus</button>
-          </form>
-        {% endif %}
-        <form method="post" enctype="multipart/form-data" class="actions doc-upload-form" style="margin:0;">
-          {% csrf_token %}
-          <input type="hidden" name="jenis" value="{{ value }}">
-          <input type="hidden" name="tanggal_surat" class="doc-tanggal-surat-input">
-          <input type="file" name="file" required class="doc-file-input" style="font-size:12.5px;max-width:160px;">
-          <button type="submit" class="button is-small doc-upload-submit">⬆ Unggah</button>
-        </form>
-      </div>
-    </div>
-    {% endwith %}
-  {% endfor %}
+  {% include "partials/_dokumen_tahap.html" with hapus_url="pakln:hapus_dokumen" %}
 
+  {% if pendukung %}
   <div class="section-title" style="font-size:14px;margin:20px 0 4px;">
-    Dokumen Lainnya <span class="badge-auto">Opsional</span>
+    Dokumen Lainnya <span class="badge-auto is-optional">Opsional</span>
   </div>
   <p class="helptext" style="margin:0 0 12px;">
-    Unggah berkas dan centang jenis dokumen yang tercakup di dalamnya (boleh lebih dari satu) — dua proses yang berdiri sendiri, tidak perlu berurutan. Bagian ini tidak wajib diisi untuk menyelesaikan proses.
+    Unggah berkas dan centang jenis dokumen yang tercakup di dalamnya (boleh lebih dari satu) — dua proses yang berdiri sendiri. Bagian ini tidak wajib diisi untuk menyelesaikan proses.
   </p>
 
   <div class="doc-row {% if pendukung.file %}uploaded{% endif %}">
@@ -60,17 +32,21 @@
     <div class="actions">
       {% if pendukung.file %}
         <button type="button" class="button is-small" data-doc-preview="{{ pendukung.file.url }}" data-doc-title="Dokumen Lainnya">👁 Pratinjau</button>
-        <form method="post" style="margin:0;" onsubmit="return confirm('Hapus berkas dokumen lainnya ini?');">
+      {% endif %}
+      {% if dapat_diubah %}
+        {% if pendukung.file %}
+          <form method="post" style="margin:0;" onsubmit="return confirm('Hapus berkas dokumen lainnya ini?');">
+            {% csrf_token %}
+            <button type="submit" name="pendukung_hapus" class="button is-small is-danger">🗑 Hapus</button>
+          </form>
+        {% endif %}
+        <form method="post" enctype="multipart/form-data" class="actions doc-upload-form" style="margin:0;">
           {% csrf_token %}
-          <button type="submit" name="pendukung_hapus" class="button is-small is-danger">🗑 Hapus</button>
+          <input type="hidden" name="pendukung_upload" value="1">
+          <input type="file" name="file" required class="doc-file-input" style="font-size:12.5px;max-width:160px;">
+          <button type="submit" class="button is-small doc-upload-submit">⬆ {% if pendukung.file %}Ganti{% else %}Unggah{% endif %}</button>
         </form>
       {% endif %}
-      <form method="post" enctype="multipart/form-data" class="actions doc-upload-form" style="margin:0;">
-        {% csrf_token %}
-        <input type="hidden" name="pendukung_upload" value="1">
-        <input type="file" name="file" required class="doc-file-input" style="font-size:12.5px;max-width:160px;">
-        <button type="submit" class="button is-small doc-upload-submit">⬆ {% if pendukung.file %}Ganti{% else %}Unggah{% endif %}</button>
-      </form>
     </div>
   </div>
 
@@ -82,27 +58,30 @@
         <input type="hidden" name="kategori" value="{{ field }}">
         <input type="hidden" name="toggle_pendukung" value="1">
         <label class="checkbox" style="display:block;font-weight:400;">
-          <input type="checkbox" class="auto-toggle" {% if pendukung|get_attr:field %}checked{% endif %}> {{ label }}
+          <input type="checkbox" class="auto-toggle" {% if pendukung|get_attr:field %}checked{% endif %} {% if not dapat_diubah %}disabled{% endif %}> {{ label }}
         </label>
       </form>
     {% endfor %}
   </div>
+  {% endif %}
 
+  {% if dapat_diubah %}
   <form method="post">
     {% csrf_token %}
     <div class="agree-box">
       <input type="checkbox" id="agree" name="agree" required>
       <label for="agree">
-        Dokumen Izin Luar Negeri (TTD Sekjen a.n. Menteri) telah lengkap, untuk selanjutnya menyelesaikan proses perizinan.
+        Admin Biro PAKLN menyatakan seluruh dokumen administrasi wajib telah <strong>lengkap dan sesuai</strong>, untuk selanjutnya menyelesaikan proses.
       </label>
     </div>
-    <button type="submit" name="selesaikan" class="button is-warning is-fullwidth" {% if not lengkap %}disabled{% endif %}>
+    <button type="submit" name="selesaikan" class="button is-warning is-fullwidth" {% if not lengkap or dibekukan %}disabled{% endif %}>
       Selesaikan Proses ✓
     </button>
     {% if not lengkap %}
-      <p class="helptext">Lengkapi dokumen Izin Luar Negeri (TTD Sekjen a.n. Menteri) untuk melanjutkan.</p>
+      <p class="helptext">Lengkapi dokumen wajib untuk melanjutkan: {{ dokumen_kurang|join:", " }}.</p>
     {% endif %}
   </form>
+  {% endif %}
 </div>
 
 {% include "partials/_riwayat_pengajuan.html" %}

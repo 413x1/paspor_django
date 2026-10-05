@@ -7,11 +7,14 @@ from django.db import models
 from django.forms.models import ModelChoiceIterator
 
 from paspor.kalender import AKHIR_PEKAN, hitung_hari_kerja
-from paspor.models import HariLibur, KategoriPerjalanan, Negara, SumberPembiayaan
+from paspor.models import HariLibur, KategoriPerjalanan, Negara, SumberPembiayaan, berlaku_untuk_tipe
 
 from .models import (
-    DokumenPakln, DokumenPegawai, DokumenTemplate, DokumenUnor, Pengajuan, PengaturanDokumen,
+    DetailPdln, DokumenBpsdm, DokumenPakln, DokumenPegawai, DokumenTemplate, DokumenUnor, Pengajuan,
+    PengaturanDokumen,
 )
+
+TIPE_PDLN_CHOICES = Pengajuan.TipePdln.choices
 
 
 class GroupedModelChoiceIterator(ModelChoiceIterator):
@@ -141,6 +144,166 @@ class PengajuanForm(forms.ModelForm):
         return cleaned
 
 
+def _filter_tipe(queryset, tipe, terpilih_id=None):
+    """Saring master Kategori/Sumber PDLN yang berlaku untuk `tipe`
+    (field JSON list — disaring di Python agar portabel lintas DB), tetap
+    sertakan pilihan lama yang sudah terpilih."""
+    ids = [obj.pk for obj in queryset if berlaku_untuk_tipe(obj, tipe) or obj.pk == terpilih_id]
+    return queryset.model.objects.filter(pk__in=ids)
+
+
+class PdlnForm(forms.ModelForm):
+    """Formulir Pengajuan PDLN — field umum di `Pengajuan`, field khusus
+    tipe di `DetailPdln` (BISNIS_PROSES_PDLN.MD §5). Tidak ada validasi
+    sisa cuti (perjalanan dinas)."""
+
+    # Field per tipe: (nama field, label, berlaku untuk tipe)
+    FIELD_TIPE = {
+        "penyelenggara": ("T1", "T3", "T2L"),
+        "perguruan_tinggi": ("T2P",),
+        "beasiswa": ("T2P", "T2L"),
+    }
+    LABEL_KEGIATAN = {
+        "T1": ("Tgl Mulai Agenda (sesuai Undangan)", "Tgl Selesai Agenda (sesuai Undangan)"),
+        "T3": ("Tgl Mulai Agenda (sesuai Undangan)", "Tgl Selesai Agenda (sesuai Undangan)"),
+        "T2P": ("Tgl Mulai Perkuliahan", "Tgl Selesai Perkuliahan"),
+        "T2L": ("Tgl Mulai Pelatihan", "Tgl Selesai Pelatihan"),
+    }
+
+    kategori = forms.ModelChoiceField(
+        queryset=KategoriPerjalanan.objects.none(), empty_label="— Pilih Kategori —",
+    )
+    beasiswa = forms.ChoiceField(label="Nama Beasiswa (Aplikasi PINTAR)", required=False)
+    penyelenggara = forms.CharField(
+        max_length=200, required=False,
+        widget=forms.TextInput(attrs={"class": "input", "placeholder": "cth. ASEAN Secretariat"}),
+    )
+    perguruan_tinggi = forms.CharField(
+        max_length=200, required=False,
+        widget=forms.TextInput(attrs={"class": "input", "placeholder": "cth. Delft University of Technology"}),
+    )
+    kota_tujuan = forms.CharField(
+        max_length=150, widget=forms.TextInput(attrs={"class": "input", "placeholder": "cth. Jenewa"}),
+    )
+    tgl_mulai_kegiatan = forms.DateField(
+        widget=forms.DateInput(attrs={"type": "date", "class": "input"}, format="%Y-%m-%d"),
+    )
+    tgl_selesai_kegiatan = forms.DateField(
+        widget=forms.DateInput(attrs={"type": "date", "class": "input"}, format="%Y-%m-%d"),
+    )
+    pernyataan_benar = forms.BooleanField(
+        label="Saya menyatakan data dan formulir yang diisi telah benar.",
+        error_messages={"required": "Centang pernyataan kebenaran pengisian formulir."},
+    )
+
+    class Meta:
+        model = Pengajuan
+        fields = ["kategori", "tujuan_negara", "sumber_pembiayaan", "tgl_berangkat", "tgl_kembali"]
+        widgets = {
+            "tujuan_negara": forms.SelectMultiple(
+                attrs={"data-multiselect": "Pilih satu atau lebih negara tujuan…"}
+            ),
+            "tgl_berangkat": forms.DateInput(attrs={"type": "date", "class": "input"}, format="%Y-%m-%d"),
+            "tgl_kembali": forms.DateInput(attrs={"type": "date", "class": "input"}, format="%Y-%m-%d"),
+        }
+        labels = {"tgl_kembali": "Tanggal Kepulangan", "tgl_berangkat": "Tanggal Keberangkatan"}
+
+    def __init__(self, *args, tipe, pencalonan=(), **kwargs):
+        self.tipe = tipe
+        self.pencalonan = {p.id: p for p in pencalonan}
+        super().__init__(*args, **kwargs)
+        instance = self.instance
+        detail = instance.detail if instance.pk else None
+
+        negara = Negara.objects.filter(is_active=True)
+        if instance.pk:
+            selected = instance.tujuan_negara.values_list("pk", flat=True)
+            negara = Negara.objects.filter(models.Q(is_active=True) | models.Q(pk__in=selected))
+        self.fields["tujuan_negara"].queryset = negara
+        self.fields["tujuan_negara"].required = True
+
+        kategori = KategoriPerjalanan.objects.filter(
+            jenis_perjalanan=KategoriPerjalanan.JenisPerjalanan.PDLN, is_active=True,
+        )
+        if instance.kategori_id:
+            kategori = KategoriPerjalanan.objects.filter(
+                models.Q(jenis_perjalanan=KategoriPerjalanan.JenisPerjalanan.PDLN, is_active=True)
+                | models.Q(pk=instance.kategori_id)
+            )
+        self.fields["kategori"].queryset = _filter_tipe(kategori, tipe, instance.kategori_id)
+
+        sumber = SumberPembiayaan.objects.filter(
+            tipe_perjalanan=SumberPembiayaan.TipePerjalanan.PDLN, is_active=True,
+        )
+        if instance.sumber_pembiayaan_id:
+            sumber = SumberPembiayaan.objects.filter(
+                models.Q(tipe_perjalanan=SumberPembiayaan.TipePerjalanan.PDLN, is_active=True)
+                | models.Q(pk=instance.sumber_pembiayaan_id)
+            )
+        self.fields["sumber_pembiayaan"].queryset = _filter_tipe(sumber, tipe, instance.sumber_pembiayaan_id)
+        self.fields["sumber_pembiayaan"].required = True
+        self.fields["tgl_berangkat"].required = True
+        self.fields["tgl_kembali"].required = True
+
+        pilihan = [("", "— Pilih beasiswa —")] + [(p.id, p.label) for p in pencalonan]
+        if detail and detail.beasiswa_pintar_id and detail.beasiswa_pintar_id not in self.pencalonan:
+            pilihan.append((detail.beasiswa_pintar_id, detail.beasiswa_nama))
+        self.fields["beasiswa"].choices = pilihan
+
+        mulai, selesai = self.LABEL_KEGIATAN.get(tipe, ("Tgl Mulai Kegiatan", "Tgl Selesai Kegiatan"))
+        self.fields["tgl_mulai_kegiatan"].label = mulai
+        self.fields["tgl_selesai_kegiatan"].label = selesai
+
+        for nama, tipe_berlaku in self.FIELD_TIPE.items():
+            if tipe not in tipe_berlaku:
+                del self.fields[nama]
+            else:
+                self.fields[nama].required = True
+        if "beasiswa" in self.fields:
+            self.fields["beasiswa"].error_messages["required"] = "Pilih beasiswa dari Aplikasi PINTAR."
+
+        if detail and not self.is_bound:
+            for nama in ("penyelenggara", "perguruan_tinggi", "kota_tujuan",
+                         "tgl_mulai_kegiatan", "tgl_selesai_kegiatan", "pernyataan_benar"):
+                if nama in self.fields:
+                    self.initial[nama] = getattr(detail, nama)
+            if "beasiswa" in self.fields:
+                self.initial["beasiswa"] = detail.beasiswa_pintar_id
+
+    def clean(self):
+        cleaned = super().clean()
+        berangkat, kembali = cleaned.get("tgl_berangkat"), cleaned.get("tgl_kembali")
+        mulai, selesai = cleaned.get("tgl_mulai_kegiatan"), cleaned.get("tgl_selesai_kegiatan")
+        if berangkat and kembali and kembali < berangkat:
+            self.add_error("tgl_kembali", "Tanggal kepulangan tidak boleh sebelum tanggal keberangkatan.")
+        if mulai and selesai and selesai < mulai:
+            self.add_error("tgl_selesai_kegiatan", "Tanggal selesai tidak boleh sebelum tanggal mulai.")
+        if berangkat and kembali and mulai and selesai and (mulai < berangkat or selesai > kembali):
+            raise forms.ValidationError(
+                "Periode kegiatan harus berada di dalam periode perjalanan (tanggal keberangkatan s.d. kepulangan)."
+            )
+        self.instance.jumlah_hari_kerja = hitung_hari_kerja(berangkat, kembali)
+        return cleaned
+
+    def save_detail(self, pengajuan):
+        data = self.cleaned_data
+        detail, _ = DetailPdln.objects.get_or_create(pengajuan=pengajuan)
+        detail.kota_tujuan = data["kota_tujuan"]
+        detail.tgl_mulai_kegiatan = data["tgl_mulai_kegiatan"]
+        detail.tgl_selesai_kegiatan = data["tgl_selesai_kegiatan"]
+        detail.pernyataan_benar = data["pernyataan_benar"]
+        detail.penyelenggara = data.get("penyelenggara", "")
+        detail.perguruan_tinggi = data.get("perguruan_tinggi", "")
+        if "beasiswa" in self.fields:
+            pilih = data.get("beasiswa", "")
+            calon = self.pencalonan.get(pilih)
+            detail.beasiswa_pintar_id = pilih
+            if calon:
+                detail.beasiswa_nama = calon.label[:255]
+        detail.save()
+        return detail
+
+
 class DokumenPegawaiForm(forms.ModelForm):
     class Meta:
         model = DokumenPegawai
@@ -154,6 +317,16 @@ class DokumenPegawaiForm(forms.ModelForm):
 class DokumenUnorForm(forms.ModelForm):
     class Meta:
         model = DokumenUnor
+        fields = ["file", "tanggal_surat"]
+        widgets = {
+            "file": forms.ClearableFileInput(attrs={"class": "form-control"}),
+            "tanggal_surat": forms.DateInput(attrs={"type": "date"}),
+        }
+
+
+class DokumenBpsdmForm(forms.ModelForm):
+    class Meta:
+        model = DokumenBpsdm
         fields = ["file", "tanggal_surat"]
         widgets = {
             "file": forms.ClearableFileInput(attrs={"class": "form-control"}),
@@ -180,8 +353,8 @@ class DokumenTemplateForm(forms.ModelForm):
         model = DokumenTemplate
         fields = [
             "nama", "keterangan", "file",
-            "untuk_pegawai", "untuk_admin_unor",
-            "unit_organisasi", "kategori", "aktif",
+            "untuk_pegawai", "untuk_admin_unor", "untuk_admin_bpsdm",
+            "jenis_perjalanan", "unit_organisasi", "kategori", "aktif",
         ]
         widgets = {
             "nama": forms.TextInput(attrs={"class": "input", "placeholder": "cth. Contoh Formulir Izin Luar Negeri"}),
@@ -191,6 +364,8 @@ class DokumenTemplateForm(forms.ModelForm):
         labels = {
             "untuk_pegawai": "Tampilkan untuk Pegawai",
             "untuk_admin_unor": "Tampilkan untuk Admin Unor",
+            "untuk_admin_bpsdm": "Tampilkan untuk Admin BPSDM",
+            "jenis_perjalanan": "Batasi untuk Jenis Perjalanan tertentu",
             "unit_organisasi": "Batasi untuk Unit Organisasi tertentu",
             "kategori": "Batasi untuk Kategori Perjalanan tertentu",
             "aktif": "Tampilkan ke Pegawai/Admin Unor",
@@ -211,9 +386,9 @@ class DokumenTemplateForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
-        if not cleaned.get("untuk_pegawai") and not cleaned.get("untuk_admin_unor"):
+        if not (cleaned.get("untuk_pegawai") or cleaned.get("untuk_admin_unor") or cleaned.get("untuk_admin_bpsdm")):
             raise forms.ValidationError(
-                "Pilih minimal salah satu target: Pegawai atau Admin Unor."
+                "Pilih minimal salah satu target: Pegawai, Admin Unor, atau Admin BPSDM."
             )
         return cleaned
 
@@ -224,12 +399,15 @@ class NegaraForm(forms.ModelForm):
 
     class Meta:
         model = Negara
-        fields = ["nama_negara", "kode_negara", "is_active"]
+        fields = ["nama_negara", "kode_negara", "is_active", "perlu_visa"]
         widgets = {
             "nama_negara": forms.TextInput(attrs={"class": "input", "placeholder": "cth. Arab Saudi"}),
             "kode_negara": forms.TextInput(attrs={"class": "input", "placeholder": "cth. SA (opsional)"}),
         }
-        labels = {"is_active": "Tampilkan pada Formulir Pengajuan"}
+        labels = {
+            "is_active": "Tampilkan pada Formulir Pengajuan",
+            "perlu_visa": "Memerlukan visa (Rekomendasi Visa wajib pada PDLN)",
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -319,13 +497,29 @@ class HariLiburForm(forms.ModelForm):
         labels = {"is_active": "Aktif (dihitung sebagai bukan hari kerja)"}
 
 
-class SumberPembiayaanForm(forms.ModelForm):
+class _TipePdlnMixin:
+    """Field multi-checkbox "Berlaku untuk Tipe PDLN" (JSON list di model);
+    kosong = semua tipe. Hanya relevan bila jenis/tipe perjalanan = PDLN."""
+
+    def _init_tipe_pdln(self):
+        self.fields["tipe_pdln"] = forms.MultipleChoiceField(
+            choices=TIPE_PDLN_CHOICES, required=False, widget=forms.CheckboxSelectMultiple(),
+            label="Berlaku untuk Tipe PDLN",
+            help_text="Hanya untuk PDLN. Kosongkan agar berlaku untuk semua tipe PDLN.",
+            initial=self.instance.tipe_pdln if self.instance and self.instance.pk else [],
+        )
+
+    def clean_tipe_pdln(self):
+        return list(self.cleaned_data.get("tipe_pdln") or [])
+
+
+class SumberPembiayaanForm(_TipePdlnMixin, forms.ModelForm):
     """Form Manajemen Sumber Pembiayaan (Admin Biro PAKLN) — sumber data
     dropdown "Sumber Pembiayaan" pada Formulir Pengajuan."""
 
     class Meta:
         model = SumberPembiayaan
-        fields = ["tipe_perjalanan", "nama", "keterangan", "is_active"]
+        fields = ["tipe_perjalanan", "nama", "tipe_pdln", "keterangan", "is_active"]
         widgets = {
             "tipe_perjalanan": forms.Select(),
             "nama": forms.TextInput(attrs={"class": "input", "placeholder": "cth. Biaya Sendiri"}),
@@ -336,6 +530,7 @@ class SumberPembiayaanForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["keterangan"].required = False
+        self._init_tipe_pdln()
 
 
 class PengaturanDokumenForm(forms.ModelForm):
@@ -361,15 +556,19 @@ class PengaturanDokumenForm(forms.ModelForm):
         }
 
 
-class KategoriPerjalananForm(forms.ModelForm):
+class KategoriPerjalananForm(_TipePdlnMixin, forms.ModelForm):
     """Form Manajemen Kategori Perjalanan (Admin Biro PAKLN) — sumber data
     dropdown "Kategori Perjalanan" pada Formulir Pengajuan."""
 
     class Meta:
         model = KategoriPerjalanan
-        fields = ["jenis_perjalanan", "nama_kategori", "is_active"]
+        fields = ["jenis_perjalanan", "nama_kategori", "tipe_pdln", "is_active"]
         widgets = {
             "jenis_perjalanan": forms.Select(),
             "nama_kategori": forms.TextInput(attrs={"class": "input", "placeholder": "cth. Ibadah"}),
         }
         labels = {"is_active": "Tampilkan pada Formulir Pengajuan"}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._init_tipe_pdln()

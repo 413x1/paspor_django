@@ -112,6 +112,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "notifications.context_processors.notifications",
+                "pengajuan.context_processors.badge_sidebar",
             ],
         },
     },
@@ -226,3 +227,9 @@ STORAGES = {
 }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Integrasi Aplikasi PINTAR (pencalonan beasiswa, PDLN Tipe 2) — kosong = pakai
+# data stub lokal (paspor/integrasi/pintar.py). Lihat BISNIS_PROSES_PDLN.MD §12.
+PINTAR_API_URL = env("PINTAR_API_URL", "")
+PINTAR_API_TOKEN = env("PINTAR_API_TOKEN", "")
+PINTAR_API_TIMEOUT = int(env("PINTAR_API_TIMEOUT", "5"))

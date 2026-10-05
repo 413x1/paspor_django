@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}Formulir Pengajuan PDLN{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Formulir Pengajuan</h2>
+    <p class="sub">{{ tipe_label }}{% if pengajuan.kode %} · {{ pengajuan.kode }}{% endif %}</p>
+  </div>
+  <a href="{% url 'pegawai:beranda' %}" class="button is-small">← Beranda</a>
+</div>
+
+{% if pengajuan.catatan_unor %}
+  <div class="notification paspor-msg is-warning">
+    <strong>⚠ Dikembalikan oleh Admin Unor untuk diperbaiki:</strong> {{ pengajuan.catatan_unor }}
+  </div>
+{% endif %}
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;margin-bottom:14px;">
+    Data Pegawai <span class="badge-auto">Otomatis dari database kepegawaian</span>
+  </div>
+  <div class="field-readonly-grid">
+    <div class="field"><label class="label">Nama Pegawai <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ profile.nama }}" disabled></div></div>
+    <div class="field"><label class="label">NIP <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ profile.nip }}" disabled></div></div>
+    <div class="field"><label class="label">Unit Kerja <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ profile.unit_kerja }}" disabled></div></div>
+    <div class="field"><label class="label">Unit Organisasi <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ profile.unit_organisasi.name }}" disabled></div></div>
+    <div class="field" style="grid-column:1/-1;"><label class="label">Jenis Perjalanan Luar Negeri <span class="badge-auto">Otomatis</span></label>
+      <div class="control"><input class="input" value="{{ tipe_label }}" disabled></div></div>
+  </div>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;margin-bottom:14px;">
+    {% if tipe == "T2P" %}Detail Tugas Belajar{% elif tipe == "T2L" %}Detail Pelatihan{% else %}Detail Perjalanan Dinas{% endif %}
+  </div>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="notification paspor-msg is-danger">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+
+    {% if form.beasiswa %}
+      <div class="field">
+        <label class="label" for="{{ form.beasiswa.id_for_label }}">{{ form.beasiswa.label }} <span class="badge-auto">Aplikasi PINTAR</span></label>
+        <div class="control"><div class="select is-fullwidth">{{ form.beasiswa }}</div></div>
+        <p class="helptext">Hanya menampilkan pencalonan beasiswa atas nama Anda yang berstatus <strong>Selesai</strong>
+          (mendapat rekomendasi Admin BPSDM dan Admin Biro PAKLN).</p>
+        {% if pintar_stub %}<p class="help is-warning">Integrasi Aplikasi PINTAR belum aktif — daftar ini data contoh (stub).</p>{% endif %}
+        {% for error in form.beasiswa.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.kategori.id_for_label }}">Kategori {% if tipe == "T2P" %}Pendidikan{% elif tipe == "T2L" %}Pelatihan{% else %}Perjalanan{% endif %}</label>
+          <div class="control"><div class="select is-fullwidth">{{ form.kategori }}</div></div>
+          {% for error in form.kategori.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        {% if form.penyelenggara %}
+          <div class="field">
+            <label class="label" for="{{ form.penyelenggara.id_for_label }}">Penyelenggara</label>
+            <div class="control">{{ form.penyelenggara }}</div>
+            {% for error in form.penyelenggara.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+          </div>
+        {% endif %}
+        {% if form.perguruan_tinggi %}
+          <div class="field">
+            <label class="label" for="{{ form.perguruan_tinggi.id_for_label }}">Perguruan Tinggi</label>
+            <div class="control">{{ form.perguruan_tinggi }}</div>
+            {% for error in form.perguruan_tinggi.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.tujuan_negara.id_for_label }}">Negara Tujuan</label>
+          <div class="control">{{ form.tujuan_negara }}</div>
+          {% for error in form.tujuan_negara.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.kota_tujuan.id_for_label }}">Kota Tujuan</label>
+          <div class="control">{{ form.kota_tujuan }}</div>
+          {% for error in form.kota_tujuan.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.tgl_berangkat.id_for_label }}">Tanggal Keberangkatan</label>
+          <div class="control">{{ form.tgl_berangkat }}</div>
+          {% for error in form.tgl_berangkat.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.tgl_kembali.id_for_label }}">Tanggal Kepulangan</label>
+          <div class="control">{{ form.tgl_kembali }}</div>
+          {% for error in form.tgl_kembali.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.tgl_mulai_kegiatan.id_for_label }}">{{ form.tgl_mulai_kegiatan.label }}</label>
+          <div class="control">{{ form.tgl_mulai_kegiatan }}</div>
+          {% for error in form.tgl_mulai_kegiatan.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.tgl_selesai_kegiatan.id_for_label }}">{{ form.tgl_selesai_kegiatan.label }}</label>
+          <div class="control">{{ form.tgl_selesai_kegiatan }}</div>
+          {% for error in form.tgl_selesai_kegiatan.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.sumber_pembiayaan.id_for_label }}">Sumber Pembiayaan</label>
+          <div class="control"><div class="select is-fullwidth">{{ form.sumber_pembiayaan }}</div></div>
+          {% for error in form.sumber_pembiayaan.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label">Jumlah Hari Kalender / Hari Kerja <span class="badge-auto">Otomatis</span></label>
+          <div class="control"><input type="text" id="hari_info" class="input" disabled
+            value="{% if pengajuan.jumlah_hari_kalender %}{{ pengajuan.jumlah_hari_kalender }} hari kalender / {{ pengajuan.jumlah_hari_kerja }} hari kerja{% endif %}"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="agree-box">
+      {{ form.pernyataan_benar }}
+      <label for="{{ form.pernyataan_benar.id_for_label }}">Saya menyatakan <strong>data dan formulir yang diisi telah benar</strong>.</label>
+    </div>
+    {% for error in form.pernyataan_benar.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+
+    <button type="submit" class="button is-primary">Simpan &amp; Lanjutkan →</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  $(function () {
+    var $b = $('#{{ form.tgl_berangkat.id_for_label }}');
+    var $k = $('#{{ form.tgl_kembali.id_for_label }}');
+    function hitung() {
+      if (!$b.val() || !$k.val()) { $('#hari_info').val(''); return; }
+      $.getJSON('{% url "pegawai:hitung_hari" %}', { berangkat: $b.val(), kembali: $k.val(), jenis: 'pdln' })
+        .done(function (r) { $('#hari_info').val(r.hari_kalender + ' hari kalender / ' + r.hari_kerja + ' hari kerja'); })
+        .fail(function () { $('#hari_info').val(''); });
+    }
+    $b.add($k).on('change', hitung);
+  });
+</script>
+{% endblock %}

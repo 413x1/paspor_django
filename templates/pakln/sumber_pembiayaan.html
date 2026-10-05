@@ -44,6 +44,13 @@
       {% for e in form.keterangan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
     </div>
 
+    <div class="field" data-tipe-pdln-field>
+      <label class="label">{{ form.fields.tipe_pdln.label }}</label>
+      <div class="control checkbox-list">{{ form.tipe_pdln }}</div>
+      <p class="helptext">{{ form.fields.tipe_pdln.help_text }}</p>
+      {% for e in form.tipe_pdln.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+    </div>
+
     <div class="field">
       <label class="checkbox" for="{{ form.is_active.id_for_label }}">
         {{ form.is_active }} {{ form.fields.is_active.label }}

@@ -15,8 +15,21 @@
   </div>
   {% if not aktif %}
     <button type="button" class="button is-warning" data-modal-open="jenisModal">✚ Tambah Usulan Baru</button>
+  {% elif aktif.status == "belum" and not aktif.pernah_dikirim %}
+    <a href="{% url 'pegawai:formulir_pengajuan' %}" class="button is-warning">✎ Lanjutkan Draft</a>
+  {% else %}
+    <button type="button" class="button is-warning" disabled title="{{ alasan_blokir }}">✚ Tambah Usulan Baru</button>
   {% endif %}
 </div>
+
+{% if aktif and aktif.status != "belum" %}
+  <div class="notification paspor-msg is-info">
+    <strong>ⓘ Anda belum dapat mengajukan perjalanan baru:</strong> {{ alasan_blokir }}
+    {% if aktif.status == "selesai" and aktif.is_pdln %}
+      <a href="{% url 'pegawai:pelaporan' %}">Ke Pelaporan PDLN →</a>
+    {% endif %}
+  </div>
+{% endif %}
 
 {% if aktif.catatan_unor %}
   <div class="notification paspor-msg is-warning">
@@ -30,21 +43,23 @@
   <table class="table data-table is-fullwidth is-hoverable">
     <thead>
       <tr>
-        <th>Tujuan</th><th>Kategori</th><th>Tgl Pengajuan</th><th>Kanal</th><th>Status</th><th>Action</th>
+        <th>Jenis</th><th>Tujuan</th><th>Kategori</th><th>Tgl Pengajuan</th><th>Status</th><th>Action</th>
       </tr>
     </thead>
     <tbody>
       <tr>
+        <td><strong>{{ aktif.jenis_label }}</strong><br><span class="cell-muted">{{ aktif.kode }}</span></td>
         <td><strong>{{ aktif.tujuan_negara_display|default:"Belum diisi" }}</strong></td>
         <td>{{ aktif.kategori|default:"—" }}</td>
         <td>{{ aktif.tgl_pengajuan|date:"d M Y"|default:"—" }}</td>
-        <td>{{ aktif.get_kanal_display }}</td>
         <td><span class="tag paspor-status is-{{ aktif.status }}"><span class="dot"></span>{{ aktif.get_status_display }}</span></td>
         <td>
-          {% if aktif.status == "belum" %}
+          {% if aktif.status == "belum" and not aktif.form_saved %}
             <a href="{% url 'pegawai:formulir_pengajuan' %}" class="button is-small">Lanjutkan Formulir</a>
-          {% elif not aktif.submitted %}
+          {% elif aktif.status == "belum" %}
             <a href="{% url 'pegawai:upload_dokumen' kode=aktif.kode %}" class="button is-small">Lanjutkan Unggah</a>
+          {% elif aktif.status == "selesai" and aktif.is_pdln %}
+            <a href="{% url 'pegawai:pelaporan' %}" class="button is-small is-primary">Laporan PDLN</a>
           {% else %}
             <a href="{% url 'pegawai:monitor_progres' kode=aktif.kode %}" class="button is-small">Lihat Progres</a>
           {% endif %}
@@ -55,12 +70,15 @@
 </div>
 {% endif %}
 
-<div class="section-title" style="font-size:14px;">Riwayat</div>
+<div class="tab-bar" role="tablist">
+  <button type="button" class="button is-small {% if tab != 'nondinas' %}is-active{% endif %}" data-riwayat-tab="pdln">Riwayat PDLN</button>
+  <button type="button" class="button is-small {% if tab == 'nondinas' %}is-active{% endif %}" data-riwayat-tab="nondinas">Riwayat Non-Dinas</button>
+</div>
 <div class="table-wrap">
   <table id="riwayatTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
     <thead>
       <tr>
-        <th>Tujuan</th><th>Kategori</th><th>Tgl Pengajuan</th><th>Kanal</th><th>Status</th><th>Action</th>
+        <th>Jenis</th><th>Tujuan</th><th>Kategori</th><th>Tgl Pengajuan</th><th>Status</th><th>Laporan</th><th>Action</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -72,23 +90,46 @@
   <div class="modal-background"></div>
   <div class="modal-card">
     <div class="modal-card-body">
-      <h3>Pilih Jenis Perjalanan</h3>
-      <p class="modal-intro">Tentukan kategori perjalanan luar negeri yang akan diajukan.</p>
-      <div class="jenis-option disabled">
-        <div>
-          <div class="name">Perjalanan Dinas Luar Negeri (PDLN)</div>
-          <div class="desc">Melibatkan Admin BPSDM · Dibangun pada tahap berikutnya</div>
-        </div>
-        <span class="soon-tag">Segera</span>
+      <div class="jenis-step" data-jenis-step="1">
+        <h3>Pilih Jenis Perjalanan</h3>
+        <p class="modal-intro">Tentukan kategori perjalanan luar negeri yang akan diajukan.</p>
+        <button type="button" class="jenis-option active" data-jenis-next>
+          <div>
+            <div class="name">Perjalanan Dinas Luar Negeri (PDLN)</div>
+            <div class="desc">Pertemuan/pameran, pendidikan, pelatihan, penugasan khusus</div>
+          </div>
+          <span style="color:var(--navy-900);font-weight:800;">→</span>
+        </button>
+        <a href="{% url 'pegawai:formulir_pengajuan' %}?jenis=nondinas" class="jenis-option active">
+          <div>
+            <div class="name">Perjalanan Luar Negeri Non-Kedinasan</div>
+            <div class="desc">Ibadah, wisata, atau keperluan pribadi lainnya</div>
+          </div>
+          <span style="color:var(--navy-900);font-weight:800;">→</span>
+        </a>
+        <button type="button" class="button is-fullwidth" data-modal-close>Batal</button>
       </div>
-      <a href="{% url 'pegawai:formulir_pengajuan' %}" class="jenis-option active">
-        <div>
-          <div class="name">Perjalanan Luar Negeri Non-Kedinasan</div>
-          <div class="desc">Ibadah, wisata, atau keperluan pribadi lainnya</div>
-        </div>
-        <span style="color:var(--navy-900);font-weight:800;">→</span>
-      </a>
-      <button type="button" class="button is-fullwidth" data-modal-close>Batal</button>
+      <div class="jenis-step" data-jenis-step="2" hidden>
+        <h3>Pilih Tipe PDLN</h3>
+        <p class="modal-intro">Setiap tipe memiliki alur persetujuan dan pihak yang terlibat berbeda.</p>
+        <a href="{% url 'pegawai:formulir_pengajuan' %}?jenis=pdln&amp;tipe=T1" class="jenis-option active">
+          <div><div class="name">PDLN Tipe 1</div><div class="desc">Pertemuan bilateral/regional/multilateral, pameran/expo, advis teknis, pendampingan</div></div>
+          <span style="color:var(--navy-900);font-weight:800;">→</span>
+        </a>
+        <a href="{% url 'pegawai:formulir_pengajuan' %}?jenis=pdln&amp;tipe=T2P" class="jenis-option active">
+          <div><div class="name">PDLN Tipe 2 — Pendidikan</div><div class="desc">Tugas belajar (master/doctoral) — melibatkan Admin BPSDM</div></div>
+          <span style="color:var(--navy-900);font-weight:800;">→</span>
+        </a>
+        <a href="{% url 'pegawai:formulir_pengajuan' %}?jenis=pdln&amp;tipe=T2L" class="jenis-option active">
+          <div><div class="name">PDLN Tipe 2 — Pelatihan</div><div class="desc">Short course, seminar, workshop, konferensi — melibatkan Admin BPSDM</div></div>
+          <span style="color:var(--navy-900);font-weight:800;">→</span>
+        </a>
+        <a href="{% url 'pegawai:formulir_pengajuan' %}?jenis=pdln&amp;tipe=T3" class="jenis-option active">
+          <div><div class="name">PDLN Tipe 3 — Penugasan Khusus</div><div class="desc">Penugasan atas disposisi Menteri — alur sama seperti Tipe 1</div></div>
+          <span style="color:var(--navy-900);font-weight:800;">→</span>
+        </a>
+        <button type="button" class="button is-fullwidth" data-jenis-back>← Kembali</button>
+      </div>
     </div>
   </div>
 </div>
@@ -99,20 +140,25 @@
 <script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
 <script>
   $(function () {
-    $('#riwayatTable').DataTable({
+    var jenisAktif = '{% if tab == "nondinas" %}nondinas{% else %}pdln{% endif %}';
+    var tabel = $('#riwayatTable').DataTable({
       serverSide: true,
       processing: true,
       autoWidth: false,
-      ajax: { url: '{% url "pegawai:riwayat_data" %}', type: 'GET', cache: false },
+      ajax: {
+        url: '{% url "pegawai:riwayat_data" %}', type: 'GET', cache: false,
+        data: function (d) { d.jenis = jenisAktif; },
+      },
       columns: [
-        { data: 0, orderable: false, searchable: false },
-        { data: 1 },
+        { data: 0 },
+        { data: 1, orderable: false, searchable: false },
         { data: 2 },
-        { data: 3, orderable: false, searchable: false },
+        { data: 3 },
         { data: 4 },
         { data: 5, orderable: false, searchable: false },
+        { data: 6, orderable: false, searchable: false },
       ],
-      order: [[2, 'desc']],
+      order: [[3, 'desc']],
       pageLength: 10,
       lengthMenu: [10, 25, 50, 100],
       dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
@@ -128,6 +174,22 @@
         paginate: { previous: '‹ Sebelumnya', next: 'Berikutnya ›' },
       },
     });
+
+    $('[data-riwayat-tab]').on('click', function () {
+      jenisAktif = $(this).data('riwayat-tab');
+      $('[data-riwayat-tab]').removeClass('is-active');
+      $(this).addClass('is-active');
+      tabel.ajax.reload();
+    });
+
+    // Modal "Tambah Usulan Baru" dua langkah: jenis -> tipe PDLN.
+    function langkah(n) {
+      $('[data-jenis-step]').attr('hidden', true);
+      $('[data-jenis-step="' + n + '"]').removeAttr('hidden');
+    }
+    $('[data-jenis-next]').on('click', function () { langkah(2); });
+    $('[data-jenis-back]').on('click', function () { langkah(1); });
+    $('[data-modal-open="jenisModal"]').on('click', function () { langkah(1); });
   });
 </script>
 {% endblock %}

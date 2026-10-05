@@ -39,6 +39,8 @@ def role_redirect(request):
         return redirect("pegawai:beranda")
     if role == User.Role.ADMIN_UNOR:
         return redirect("unor:dashboard")
+    if role == User.Role.ADMIN_BPSDM:
+        return redirect("bpsdm:dashboard")
     if role == User.Role.ADMIN_PAKLN:
         return redirect("pakln:dashboard")
     return redirect("login")
