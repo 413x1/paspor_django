@@ -7,6 +7,8 @@
 > [SKENARIO_NOTIFIKASI_SURAT.md](SKENARIO_NOTIFIKASI_SURAT.md),
 > [MANAJEMEN_TEMPLATE.MD](MANAJEMEN_TEMPLATE.MD),
 > [AUTO_CALCULATE_DAYS.MD](AUTO_CALCULATE_DAYS.MD).
+> **Diagram & desain layout:** [wiki/perancangan/](../perancangan/README.md)
+> (use case, flowchart, state, sequence, class/ERD, menu & wireframe).
 
 ## Daftar Isi
 
