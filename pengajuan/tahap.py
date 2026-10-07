@@ -61,7 +61,10 @@ def proses_unggah(request, pengajuan, tahap, url_name):
     existing = model.objects.filter(pengajuan=pengajuan, jenis=jenis).first()
     form = FORM_TAHAP[tahap](request.POST, request.FILES, instance=existing)
     if not form.is_valid():
-        messages.error(request, "Gagal mengunggah dokumen. Periksa kembali berkas Anda.")
+        if "tanggal_surat" in form.errors:
+            messages.error(request, form.errors["tanggal_surat"][0] + ".")
+        else:
+            messages.error(request, "Gagal mengunggah dokumen. Periksa kembali berkas Anda.")
         return None
     if persyaratan.jenis_perlu_tanggal_surat(pengajuan, tahap, jenis) and not form.cleaned_data.get("tanggal_surat"):
         messages.error(request, "Isi Tanggal Surat untuk dokumen ini.")

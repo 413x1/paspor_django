@@ -5,6 +5,7 @@ from django import forms
 from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.forms.models import ModelChoiceIterator
+from django.utils import timezone
 
 from paspor.kalender import AKHIR_PEKAN, hitung_hari_kerja
 from paspor.models import HariLibur, KategoriPerjalanan, Negara, SumberPembiayaan, berlaku_untuk_tipe
@@ -131,7 +132,7 @@ class PengajuanForm(forms.ModelForm):
         berangkat = cleaned.get("tgl_berangkat")
         kembali = cleaned.get("tgl_kembali")
         if berangkat and kembali and kembali < berangkat:
-            raise forms.ValidationError("Tanggal kembali tidak boleh sebelum tanggal keberangkatan.")
+            raise forms.ValidationError("Tanggal kembali tidak boleh sebelum tanggal keberangkatan")
 
         hari_kerja = hitung_hari_kerja(berangkat, kembali)
         self.instance.jumlah_hari_kerja = hari_kerja
@@ -304,7 +305,23 @@ class PdlnForm(forms.ModelForm):
         return detail
 
 
-class DokumenPegawaiForm(forms.ModelForm):
+class TanggalSuratMixin:
+    """Tanggal Surat tidak boleh melewati hari ini. Batas `max` pada widget
+    diisi di __init__ (bukan di deklarasi class) supaya selalu hari ini,
+    bukan tanggal saat server dinyalakan."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["tanggal_surat"].widget.attrs["max"] = timezone.localdate().isoformat()
+
+    def clean_tanggal_surat(self):
+        tanggal = self.cleaned_data.get("tanggal_surat")
+        if tanggal and tanggal > timezone.localdate():
+            raise forms.ValidationError("Tanggal surat tidak boleh melebihi hari ini")
+        return tanggal
+
+
+class DokumenPegawaiForm(TanggalSuratMixin, forms.ModelForm):
     class Meta:
         model = DokumenPegawai
         fields = ["file", "tanggal_surat"]
@@ -314,7 +331,7 @@ class DokumenPegawaiForm(forms.ModelForm):
         }
 
 
-class DokumenUnorForm(forms.ModelForm):
+class DokumenUnorForm(TanggalSuratMixin, forms.ModelForm):
     class Meta:
         model = DokumenUnor
         fields = ["file", "tanggal_surat"]
@@ -324,7 +341,7 @@ class DokumenUnorForm(forms.ModelForm):
         }
 
 
-class DokumenBpsdmForm(forms.ModelForm):
+class DokumenBpsdmForm(TanggalSuratMixin, forms.ModelForm):
     class Meta:
         model = DokumenBpsdm
         fields = ["file", "tanggal_surat"]
@@ -334,7 +351,7 @@ class DokumenBpsdmForm(forms.ModelForm):
         }
 
 
-class DokumenPaklnForm(forms.ModelForm):
+class DokumenPaklnForm(TanggalSuratMixin, forms.ModelForm):
     class Meta:
         model = DokumenPakln
         fields = ["file", "tanggal_surat"]
