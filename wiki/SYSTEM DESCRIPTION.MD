@@ -124,7 +124,7 @@ workflow state.
 
 | Group | Fields |
 |---|---|
-| Identity | `kode` (auto `PSP-<year>-<0001>`, generated in `save()`), `pegawai` (FK → User) |
+| Identity | `kode` (auto `PLN<kode unor>-<ddmmyy>-<NOURUT 3 digit>`, generated in `save()` — see `wiki/instructions/PENGKODEAN_AJUAN.MD`), `pegawai` (FK → User) |
 | Travel detail (employee-entered) | `kategori`, `maksud`, `tujuan_negara`, `sumber_pembiayaan`, `tgl_berangkat`, `tgl_kembali`, `jumlah_hari_kerja` |
 | Channel / state | `kanal` (`mobile` / `web`, default `web`), `status` |
 | Workflow flags | `form_saved`, `submitted`, `preview_unor_agree`, `preview_pakln_agree` (all boolean) — mirror the mockup's JS state, re-checked server-side to unlock each next page |
