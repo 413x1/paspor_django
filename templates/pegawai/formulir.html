@@ -205,6 +205,13 @@
           if (xhr.responseJSON && xhr.responseJSON.error) { $rincian.text(xhr.responseJSON.error); }
         });
     }
+    // Tanggal kembali tidak boleh lebih awal dari tanggal keberangkatan.
+    function batasiKembali() {
+      if ($b.val()) { $k.attr('min', $b.val()); } else { $k.removeAttr('min'); }
+    }
+    $b.on('change', batasiKembali);
+    batasiKembali();
+
     $b.add($k).on('change', hitung);
     hitung();
   });

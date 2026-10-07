@@ -75,7 +75,7 @@
       <p class="modal-intro">Isi tanggal surat pada dokumen yang baru saja Anda pilih, sebelum berkasnya diunggah.</p>
       <div class="field">
         <label class="label">Tanggal Surat</label>
-        <div class="control"><input type="date" id="tanggalSuratInput" class="input"></div>
+        <div class="control"><input type="date" id="tanggalSuratInput" class="input" max="{% now 'Y-m-d' %}"></div>
       </div>
       <button type="button" id="tanggalSuratSimpan" class="button is-primary is-fullwidth">Simpan</button>
       <button type="button" class="button is-fullwidth" style="margin-top:8px;" data-modal-close>Batal</button>

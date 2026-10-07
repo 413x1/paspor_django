@@ -126,22 +126,26 @@ class Pengajuan(models.Model):
             self.kode = self._generate_kode()
         super().save(*args, **kwargs)
 
+    def _kode_unor(self):
+        """Kode Unor (2 karakter) pegawai pemohon: dari profil kepegawaian,
+        lalu dari User; "00" bila keduanya belum punya unit organisasi."""
+        profile = getattr(self.pegawai, "profile", None)
+        unit = (profile.unit_organisasi if profile else None) or self.pegawai.unit_organisasi
+        return unit.code if unit else "00"
+
     def _generate_kode(self):
-        """Non-Dinas: PSP-<tahun>-<urutan> (mis. PSP-2026-0142); PDLN:
-        PDLN-<tahun>-<tipe>-<urutan> (mis. PDLN-2026-T2P-0001). Nomor urut
-        dihitung per prefiks per tahun."""
-        year = timezone.now().year
-        if self.jenis_perjalanan == self.JenisPerjalanan.PDLN and self.tipe_pdln:
-            prefix = f"PDLN-{year}-{self.tipe_pdln}-"
-        else:
-            prefix = f"PSP-{year}-"
-        last = (
-            Pengajuan.objects.filter(kode__startswith=prefix)
-            .order_by("-kode")
-            .first()
+        """Format PLN[Kode Unor]-ddmmyy-NOURUT (mis. PLN01-071026-020).
+        NOURUT 3 digit dan mulai lagi dari 001 tiap hari per Kode Unor —
+        lihat wiki/instructions/PENGKODEAN_AJUAN.MD."""
+        prefix = f"PLN{self._kode_unor()}-{timezone.localdate():%d%m%y}-"
+        terakhir = max(
+            (
+                int(kode.rsplit("-", 1)[1])
+                for kode in Pengajuan.objects.filter(kode__startswith=prefix).values_list("kode", flat=True)
+            ),
+            default=0,
         )
-        next_num = int(last.kode.split("-")[-1]) + 1 if last else 1
-        return f"{prefix}{next_num:04d}"
+        return f"{prefix}{terakhir + 1:03d}"
 
     @property
     def tujuan_negara_display(self):
