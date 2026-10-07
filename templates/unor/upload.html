@@ -36,10 +36,10 @@
 
   {% if pendukung %}
   <div class="section-title" style="font-size:14px;margin:20px 0 4px;">2.d Dokumen Pendukung</div>
-  <p class="helptext" style="margin:0 0 12px;">Unggah berkas dokumen pendukung — boleh diganti kapan saja.</p>
+  <p class="helptext" style="margin:0 0 12px;">Opsional — unggah bila ada dokumen pendukung; boleh diganti kapan saja.</p>
   <div class="doc-row {% if pendukung.file %}uploaded{% endif %}">
     <div class="info">
-      <h4>Berkas Dokumen Pendukung <span class="badge-auto">Wajib</span></h4>
+      <h4>Berkas Dokumen Pendukung <span class="badge-auto is-optional">Opsional</span></h4>
       {% if pendukung.file %}
         <p style="color:var(--green);">✓ Sudah diunggah — {{ pendukung.uploaded_at|date:"d M Y H:i" }}</p>
       {% else %}
@@ -49,7 +49,7 @@
     <div class="actions">
       {% if pendukung.file %}
         <button type="button" class="button is-small" data-doc-preview="{{ pendukung.file.url }}" data-doc-title="Dokumen Pendukung">👁 Pratinjau</button>
-        <form method="post" style="margin:0;" onsubmit="return confirm('Hapus berkas dokumen pendukung ini?');">
+        <form method="post" style="margin:0;" data-confirm="Hapus berkas dokumen pendukung ini?" data-confirm-type="danger" data-confirm-title="Hapus" data-confirm-ok="Hapus">
           {% csrf_token %}
           <button type="submit" name="pendukung_hapus" class="button is-small is-danger">🗑 Hapus</button>
         </form>
@@ -77,16 +77,19 @@
       </div>
     {% endif %}
     <div class="agree-box">
-      <input type="checkbox" id="agree" name="agree" required>
+      <input type="checkbox" id="agree" name="agree" required data-agree {% if not lengkap or dibekukan %}disabled{% endif %}>
       <label for="agree">
         Seluruh dokumen administrasi Unor telah lengkap, untuk selanjutnya diteruskan ke {{ tujuan_label }}.
       </label>
     </div>
-    <button type="submit" name="teruskan" class="button is-warning is-fullwidth" {% if not lengkap or dibekukan %}disabled{% endif %}>
+    <button type="submit" name="teruskan" class="button is-warning is-fullwidth" data-agree-submit
+      {% if not lengkap or dibekukan %}data-locked{% endif %} disabled>
       Teruskan ke {{ tujuan_label }} →
     </button>
     {% if not lengkap %}
       <p class="helptext">Lengkapi dokumen wajib untuk melanjutkan{% if dokumen_kurang %}: {{ dokumen_kurang|join:", " }}{% endif %}.</p>
+    {% elif not dibekukan %}
+      <p class="helptext">Centang pernyataan di atas untuk meneruskan ke {{ tujuan_label }}.</p>
     {% endif %}
   </form>
 </div>

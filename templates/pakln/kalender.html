@@ -181,12 +181,17 @@
     });
 
     $('#liburTable tbody').on('click', '[data-libur-hapus]', function () {
-      if (!confirm('Hapus tanggal libur ini?')) { return; }
       var url = $(this).data('libur-hapus');
-      $.ajax({
-        url: url, type: 'POST', headers: { 'X-CSRFToken': csrfToken() },
-        success: function () { $table.ajax.reload(null, false); },
-        error: function () { alert('Gagal menghapus tanggal libur.'); },
+      pasporConfirm({ type: 'danger', title: 'Hapus', message: 'Hapus tanggal libur ini?', confirmText: 'Hapus' }).then(function (ok) {
+        if (!ok) { return; }
+        $.ajax({
+          url: url, type: 'POST', headers: { 'X-CSRFToken': csrfToken() },
+          success: function () {
+            $table.ajax.reload(null, false);
+            pasporAlert({ message: 'Tanggal libur berhasil dihapus.' });
+          },
+          error: function () { pasporAlert({ type: 'error', title: 'Gagal', message: 'Gagal menghapus tanggal libur.' }); },
+        });
       });
     });
   });

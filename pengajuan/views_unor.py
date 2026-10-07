@@ -186,7 +186,7 @@ def upload_dokumen(request, kode):
 
     if request.method == "POST":
         if "teruskan" in request.POST:
-            hasil = _teruskan(request, pengajuan, pendukung, ke_bpsdm)
+            hasil = _teruskan(request, pengajuan, ke_bpsdm)
             if hasil:
                 return hasil
         elif "pendukung_upload" in request.POST and pendukung:
@@ -212,7 +212,8 @@ def upload_dokumen(request, kode):
                 return hasil
 
     dok = tahap.konteks_dokumen(pengajuan, "unor")
-    lengkap = dok["lengkap"] and (pendukung is None or pendukung.is_lengkap())
+    # Dokumen Pendukung Unor opsional — tidak memengaruhi kelengkapan.
+    lengkap = dok["lengkap"]
     dari, catatan_kembali = _catatan_kembali(pengajuan)
     context = {
         "pengajuan": pengajuan,
@@ -230,15 +231,13 @@ def upload_dokumen(request, kode):
     return render(request, "unor/upload.html", context)
 
 
-def _teruskan(request, pengajuan, pendukung, ke_bpsdm):
+def _teruskan(request, pengajuan, ke_bpsdm):
     # Penerusan ulang setelah dikembalikan tahap berikutnya wajib disertai
     # catatan balasan (BISNIS_PROSES_PDLN.MD §7).
     is_ulang = bool(pengajuan.catatan_bpsdm if ke_bpsdm else pengajuan.catatan_pakln)
     catatan = request.POST.get("catatan", "").strip() if is_ulang else ""
     tujuan_label = "Admin BPSDM" if ke_bpsdm else "Admin Biro PAKLN"
     kurang = tahap.konteks_dokumen(pengajuan, "unor")["dokumen_kurang"]
-    if pendukung is not None and not pendukung.is_lengkap():
-        kurang.append("Dokumen Pendukung")
     if kurang:
         messages.error(request, "Lengkapi dokumen administrasi Unor sebelum meneruskan: " + ", ".join(kurang) + ".")
         return None

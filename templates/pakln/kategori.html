@@ -118,15 +118,20 @@
     });
 
     $('#kategoriTable tbody').on('click', '[data-kategori-hapus]', function () {
-      if (!confirm('Hapus kategori ini?')) { return; }
       var url = $(this).data('kategori-hapus');
-      $.ajax({
-        url: url, type: 'POST', headers: { 'X-CSRFToken': csrfToken() },
-        success: function () { $table.ajax.reload(null, false); },
-        error: function (xhr) {
-          var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Gagal menghapus kategori.';
-          alert(msg);
-        },
+      pasporConfirm({ type: 'danger', title: 'Hapus', message: 'Hapus kategori ini?', confirmText: 'Hapus' }).then(function (ok) {
+        if (!ok) { return; }
+        $.ajax({
+          url: url, type: 'POST', headers: { 'X-CSRFToken': csrfToken() },
+          success: function () {
+            $table.ajax.reload(null, false);
+            pasporAlert({ message: 'Kategori berhasil dihapus.' });
+          },
+          error: function (xhr) {
+            var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Gagal menghapus kategori.';
+            pasporAlert({ type: 'error', title: 'Gagal', message: msg });
+          },
+        });
       });
     });
   });

@@ -63,7 +63,7 @@
     Gunakan ini jika formulir atau dokumen pengajuan perlu diperbaiki pegawai sebelum dapat diproses lebih lanjut.
     Pengajuan akan berstatus <strong>Belum Diajukan</strong> kembali sampai pegawai mengirim ulang.
   </p>
-  <form method="post" onsubmit="return confirm('Kembalikan pengajuan ini ke pegawai beserta catatan?');">
+  <form method="post" data-confirm="Kembalikan pengajuan ini ke pegawai beserta catatan?" data-confirm-title="Kembalikan Pengajuan" data-confirm-ok="Kembalikan">
     {% csrf_token %}
     <div class="field">
       <label class="label" for="catatan">Catatan untuk Pegawai</label>

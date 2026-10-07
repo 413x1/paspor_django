@@ -47,6 +47,15 @@ class User(AbstractUser):
     def is_admin_pakln(self):
         return self.role == self.Role.ADMIN_PAKLN
 
+    def get_unit_organisasi(self):
+        """Unit organisasi efektif: dari PegawaiProfile untuk Pegawai, dari
+        field `unit_organisasi` untuk role lainnya."""
+        if self.is_pegawai():
+            profile = getattr(self, "profile", None)
+            if profile and profile.unit_organisasi_id:
+                return profile.unit_organisasi
+        return self.unit_organisasi
+
     def __str__(self):
         return f"{self.get_full_name() or self.username} ({self.get_role_display()})"
 

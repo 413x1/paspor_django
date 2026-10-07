@@ -113,6 +113,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "notifications.context_processors.notifications",
                 "pengajuan.context_processors.badge_sidebar",
+                "pengajuan.context_processors.breadcrumbs",
             ],
         },
     },

@@ -24,3 +24,12 @@ def badge_sidebar(request):
             pengajuan__pegawai=user, status=LaporanPdln.Status.DIKEMBALIKAN
         ).count()
     return {"sidebar_badge": badge}
+
+
+def breadcrumbs(request):
+    user = getattr(request, "user", None)
+    if not user or not user.is_authenticated:
+        return {}
+    from .breadcrumbs import build
+
+    return {"breadcrumbs": build(request)}
