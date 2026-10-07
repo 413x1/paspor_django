@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Pratinjau Pengajuan{% endblock %}
+{% block wrap_extra_class %} narrow{% endblock %}
+
+{% block content %}
+{% if catatan_pakln %}
+  <div class="notification paspor-msg is-warning">
+    <strong>⚠ Dikembalikan oleh Admin PKLN untuk diperbaiki:</strong> {{ catatan_pakln }}
+  </div>
+{% endif %}
+{% if catatan_perbaikan %}
+  <div class="notification paspor-msg is-info">
+    <strong>↻ Perbaikan dari Admin Unor:</strong> {{ catatan_perbaikan|linebreaksbr }}
+  </div>
+{% endif %}
+{% if pembatalan_terbuka %}
+  <div class="notification paspor-msg is-warning">
+    <strong>✕ Permohonan pembatalan sedang diproses ({{ pembatalan_terbuka.get_status_display }}).</strong> {{ pembatalan_terbuka.alasan }}
+  </div>
+{% endif %}
+
+<div class="preview-split">
+<div class="box">
+  <div class="section-title">Pratinjau Pengajuan {{ pengajuan.jenis_label }} — {{ pengajuan.kode }}</div>
+  <p class="sub" style="margin:-10px 0 12px;"><span class="tag paspor-status is-{{ pengajuan.status }}"><span class="dot"></span>{{ pengajuan.get_status_display }}</span></p>
+  {% include "partials/_ringkasan_pengajuan.html" %}
+</div>
+
+<div class="box">
+  <div class="section-title">Unggahan Pegawai &amp; Admin Unor</div>
+  {% include "partials/_direktori_dokumen.html" %}
+
+  {% if pengajuan.status == "proses_bpsdm" and not dibekukan %}
+    {% if pengajuan.preview_bpsdm_agree %}
+      <a href="{% url 'bpsdm:upload_dokumen' kode=pengajuan.kode %}" class="button is-primary is-fullwidth" style="margin-top:16px;">Lanjut ke Administrasi BPSDM →</a>
+    {% else %}
+      <form method="post" style="margin-top:16px;">
+        {% csrf_token %}
+        <div class="agree-box">
+          <input type="checkbox" id="confirm" name="confirm" required>
+          <label for="confirm">Dokumen dan formulir telah <strong>ditinjau dan sesuai</strong>, untuk selanjutnya diproses administrasi oleh Admin BPSDM.</label>
+        </div>
+        <button type="submit" name="lanjutkan" class="button is-primary is-fullwidth">Lanjutkan ke Administrasi BPSDM →</button>
+      </form>
+    {% endif %}
+  {% endif %}
+</div>
+</div>
+
+<div class="preview-split">
+{% if pengajuan.status == "proses_bpsdm" and not dibekukan %}
+<div class="box is-danger-soft">
+  <div class="section-title" style="font-size:14px;">↩ Kembalikan ke Admin Unor</div>
+  <p class="cell-muted" style="margin:-8px 0 14px;">Pengajuan akan berstatus <strong>Dalam Proses Unor</strong> kembali sampai Admin Unor meneruskan ulang.</p>
+  <form method="post" data-confirm="Kembalikan pengajuan ini ke Admin Unor beserta catatan?" data-confirm-title="Kembalikan Pengajuan" data-confirm-ok="Kembalikan">
+    {% csrf_token %}
+    <div class="field">
+      <label class="label" for="catatan">Catatan untuk Admin Unor</label>
+      <div class="control"><textarea class="textarea" id="catatan" name="catatan" rows="3" required></textarea></div>
+    </div>
+    <button type="submit" name="kembalikan" class="button is-danger is-fullwidth">↩ Kembalikan ke Admin Unor</button>
+  </form>
+</div>
+{% endif %}
+
+{% include "partials/_riwayat_pengajuan.html" %}
+</div>
+
+<a href="{% url 'bpsdm:dashboard' %}" class="button is-fullwidth">← Kembali ke Dasbor</a>
+{% endblock %}

@@ -6,16 +6,15 @@ from django.db import models
 
 class User(AbstractUser):
     """
-    User kustom dengan field `role`, merepresentasikan 3 peran pada PASPOR:
-    Pegawai, Admin Unor, dan Admin Biro PAKLN.
-
-    Role tambahan "Admin BPSDM" untuk alur PDLN (Perjalanan Dinas Luar
-    Negeri) akan ditambahkan pada tahap pengembangan berikutnya.
+    User kustom dengan field `role`, merepresentasikan 4 peran pada PASPOR:
+    Pegawai, Admin Unor, Admin BPSDM (khusus PDLN Tipe 2), dan Admin Biro
+    PAKLN — lihat wiki/instructions/BISNIS_PROSES_PDLN.MD §3.
     """
 
     class Role(models.TextChoices):
         PEGAWAI = "pegawai", "Pegawai"
         ADMIN_UNOR = "admin_unor", "Admin Unor"
+        ADMIN_BPSDM = "admin_bpsdm", "Admin BPSDM"
         ADMIN_PAKLN = "admin_pakln", "Admin Biro PAKLN"
 
     role = models.CharField(max_length=20, choices=Role.choices)
@@ -42,8 +41,20 @@ class User(AbstractUser):
     def is_admin_unor(self):
         return self.role == self.Role.ADMIN_UNOR
 
+    def is_admin_bpsdm(self):
+        return self.role == self.Role.ADMIN_BPSDM
+
     def is_admin_pakln(self):
         return self.role == self.Role.ADMIN_PAKLN
+
+    def get_unit_organisasi(self):
+        """Unit organisasi efektif: dari PegawaiProfile untuk Pegawai, dari
+        field `unit_organisasi` untuk role lainnya."""
+        if self.is_pegawai():
+            profile = getattr(self, "profile", None)
+            if profile and profile.unit_organisasi_id:
+                return profile.unit_organisasi
+        return self.unit_organisasi
 
     def __str__(self):
         return f"{self.get_full_name() or self.username} ({self.get_role_display()})"
@@ -79,3 +90,61 @@ class PegawaiProfile(models.Model):
 
     def __str__(self):
         return f"{self.nama} ({self.nip})"
+
+
+# ---------------------------------------------------------------------------
+# Menu Profil (wiki/instructions/BISNIS_PROSES_PDLN.MD §8.3)
+# ---------------------------------------------------------------------------
+
+class PasporPegawai(models.Model):
+    """Data paspor milik pegawai (Profil → Data Paspor)."""
+
+    class Jenis(models.TextChoices):
+        BIASA = "biasa", "Paspor Biasa"
+        DINAS = "dinas", "Paspor Dinas"
+        DIPLOMATIK = "diplomatik", "Paspor Diplomatik"
+
+    pegawai = models.ForeignKey(User, on_delete=models.CASCADE, related_name="paspor_list")
+    nomor = models.CharField("Nomor Paspor", max_length=20)
+    jenis = models.CharField("Jenis Paspor", max_length=20, choices=Jenis.choices, default=Jenis.BIASA)
+    tgl_expired = models.DateField("Tanggal Expired")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-tgl_expired"]
+        verbose_name = "Paspor Pegawai"
+        verbose_name_plural = "Paspor Pegawai"
+
+    def __str__(self):
+        return f"{self.nomor} ({self.get_jenis_display()})"
+
+
+def dokumen_kepegawaian_path(instance, filename):
+    return f"kepegawaian/{instance.user_id}/{instance.jenis}/{filename}"
+
+
+class DokumenKepegawaian(models.Model):
+    """Dokumen kepegawaian (Profil) — satu berkas per jenis per user. SK
+    Penugasan dipakai oleh akun admin."""
+
+    class Jenis(models.TextChoices):
+        KTP = "ktp", "KTP"
+        KK = "kk", "Kartu Keluarga"
+        KARTU_PEGAWAI = "kartu_pegawai", "Kartu Pegawai/SK Pengangkatan PNS"
+        IJAZAH = "ijazah", "Akta Kelahiran/Ijazah Terakhir"
+        SK_PANGKAT = "sk_pangkat", "SK Kenaikan Pangkat Terakhir"
+        PAS_FOTO = "pas_foto", "Pas Foto (4x6 latar putih)"
+        SK_PENUGASAN = "sk_penugasan", "SK Penugasan Admin"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="dokumen_kepegawaian")
+    jenis = models.CharField(max_length=20, choices=Jenis.choices)
+    file = models.FileField(upload_to=dokumen_kepegawaian_path)
+    uploaded_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("user", "jenis")
+        verbose_name = "Dokumen Kepegawaian"
+        verbose_name_plural = "Dokumen Kepegawaian"
+
+    def __str__(self):
+        return f"{self.user} — {self.get_jenis_display()}"

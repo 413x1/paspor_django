@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from .models import PegawaiProfile, User
+from .models import DokumenKepegawaian, PasporPegawai, PegawaiProfile, User
 
 
 class PegawaiProfileInline(admin.StackedInline):
@@ -33,3 +33,17 @@ class PegawaiProfileAdmin(admin.ModelAdmin):
     list_filter = ("unit_organisasi",)
     search_fields = ("nama", "nip")
     autocomplete_fields = ("user", "unit_organisasi")
+
+
+@admin.register(PasporPegawai)
+class PasporPegawaiAdmin(admin.ModelAdmin):
+    list_display = ("nomor", "jenis", "pegawai", "tgl_expired")
+    list_filter = ("jenis",)
+    search_fields = ("nomor", "pegawai__username", "pegawai__profile__nama")
+
+
+@admin.register(DokumenKepegawaian)
+class DokumenKepegawaianAdmin(admin.ModelAdmin):
+    list_display = ("user", "jenis", "uploaded_at")
+    list_filter = ("jenis",)
+    search_fields = ("user__username",)

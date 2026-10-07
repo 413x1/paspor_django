@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Profil{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Profil</h2>
+    <p class="sub">{{ user.get_role_display }}</p>
+  </div>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;">Data Personal <span class="badge-auto">Sinkronisasi e-HRM</span></div>
+  <dl class="kv-list">
+    {% if profile %}
+      <dt>Nama</dt><dd>{{ profile.nama }}</dd>
+      <dt>NIP</dt><dd>{{ profile.nip }}</dd>
+      <dt>Jabatan</dt><dd>{{ profile.jabatan }}</dd>
+      <dt>Pangkat/Golongan</dt><dd>{{ profile.pangkat_golongan }}</dd>
+      <dt>Unit Kerja</dt><dd>{{ profile.unit_kerja }}</dd>
+      <dt>Unit Organisasi</dt><dd>{{ profile.unit_organisasi.name|default:"—" }}</dd>
+    {% else %}
+      <dt>Nama</dt><dd>{{ user.get_full_name|default:user.username }}</dd>
+      <dt>Username</dt><dd>{{ user.username }}</dd>
+      <dt>Unit Kerja</dt><dd>{{ user.unit_kerja|default:"—" }}</dd>
+      <dt>Unit Organisasi</dt><dd>{{ user.unit_organisasi.name|default:"—" }}</dd>
+    {% endif %}
+  </dl>
+  <p class="helptext" style="margin-top:10px;">Data personal lengkap (NIK, TTL, alamat, kontak, riwayat pendidikan) akan tersinkron saat integrasi e-HRM tersedia.</p>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;">{% if user.role == "pegawai" %}Dokumen Kepegawaian{% else %}Dokumen Penugasan{% endif %}</div>
+  {% for jenis, label, dok in jenis_dokumen %}
+    <div class="doc-row {% if dok %}uploaded{% endif %}">
+      <div class="info">
+        <h4>{{ label }}</h4>
+        {% if dok %}<p style="color:var(--green);">✓ Diunggah {{ dok.uploaded_at|date:"d M Y H:i" }}</p>{% else %}<p>Belum diunggah.</p>{% endif %}
+      </div>
+      <div class="actions">
+        {% if dok %}<button type="button" class="button is-small" data-doc-preview="{{ dok.file.url }}" data-doc-title="{{ label }}">👁 Lihat</button>{% endif %}
+        <form method="post" enctype="multipart/form-data" class="actions doc-upload-form" style="margin:0;">
+          {% csrf_token %}
+          <input type="hidden" name="aksi" value="unggah_dokumen">
+          <input type="hidden" name="jenis" value="{{ jenis }}">
+          <input type="file" name="file" required class="doc-file-input" style="font-size:12.5px;max-width:160px;">
+          <button type="submit" class="button is-small doc-upload-submit">⬆ Unggah</button>
+        </form>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+{% if user.role == "pegawai" %}
+<div class="box">
+  <div class="section-title" style="font-size:14px;">Data Paspor</div>
+  <div class="table-wrap">
+    <table class="table data-table is-fullwidth">
+      <thead><tr><th>Nomor Paspor</th><th>Jenis</th><th>Tgl Expired</th><th></th></tr></thead>
+      <tbody>
+        {% for x in paspor_list %}
+          <tr>
+            <td><strong>{{ x.nomor }}</strong></td><td>{{ x.get_jenis_display }}</td><td>{{ x.tgl_expired|date:"d M Y" }}</td>
+            <td>
+              <form method="post" data-confirm="Hapus data paspor ini?" data-confirm-type="danger" data-confirm-title="Hapus" data-confirm-ok="Hapus" style="margin:0;">
+                {% csrf_token %}<input type="hidden" name="aksi" value="hapus_paspor"><input type="hidden" name="id" value="{{ x.pk }}">
+                <button type="submit" class="button is-small is-danger">🗑</button>
+              </form>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="cell-muted">Belum ada data paspor.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <form method="post" class="filter-bar" style="margin-top:12px;">
+    {% csrf_token %}
+    <input type="hidden" name="aksi" value="tambah_paspor">
+    <div class="field"><label class="label">Nomor Paspor</label><input class="input" name="nomor" required placeholder="cth. D 7654321"></div>
+    <div class="field"><label class="label">Jenis</label>
+      <div class="select"><select name="jenis">{% for v, l in jenis_paspor %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></div></div>
+    <div class="field"><label class="label">Tgl Expired</label><input class="input" type="date" name="tgl_expired" required></div>
+    <button type="submit" class="button is-primary">➕ Tambah Paspor</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

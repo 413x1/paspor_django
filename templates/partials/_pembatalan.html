@@ -1,0 +1,59 @@
+{# Banner + tombol + modal pembatalan perjalanan (mekanisme interim, BISNIS_PROSES_PDLN.MD §4.5). #}
+{# Context: pengajuan, pembatalan_terbuka, pembatalan_alasan_tidak_bisa, pembatalan_url, pembatalan_draft, tarik_url_name (opsional, nama URL tarik permohonan dengan arg pk). #}
+{% if pembatalan_terbuka %}
+  <div class="notification paspor-msg is-warning">
+    <strong>✕ Permohonan pembatalan sedang diproses — {{ pembatalan_terbuka.get_status_display }}.</strong>
+    Alasan: {{ pembatalan_terbuka.alasan }}
+    {% if pembatalan_terbuka.unor_waktu and pembatalan_terbuka.status == "menunggu_pakln" %}
+      <br><span class="cell-muted">Jenjang Unor disetujui {{ pembatalan_terbuka.unor_waktu|date:"d M Y H:i" }}{% if pembatalan_terbuka.unor_catatan %} — {{ pembatalan_terbuka.unor_catatan }}{% endif %}.</span>
+    {% endif %}
+    <br><span class="cell-muted">Selama permohonan diproses, aksi lain pada pengajuan ini dibekukan.</span>
+    {% if tarik_url_name and pembatalan_terbuka.diajukan_oleh_id == user.pk %}
+      <form method="post" action="{% url tarik_url_name pembatalan_terbuka.pk %}" style="margin-top:8px;" data-confirm="Tarik permohonan pembatalan ini?" data-confirm-title="Tarik Permohonan" data-confirm-ok="Tarik">
+        {% csrf_token %}
+        <button type="submit" class="button is-small">↶ Tarik Permohonan</button>
+      </form>
+    {% endif %}
+  </div>
+{% elif not pembatalan_alasan_tidak_bisa %}
+  <button type="button" class="button is-small is-danger is-light" data-modal-open="pembatalanModal">
+    ✕ {% if pembatalan_draft %}Batalkan Draft{% else %}Ajukan Pembatalan{% endif %}
+  </button>
+
+  <div id="pembatalanModal" class="modal paspor-modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+      <div class="modal-card-body">
+        <h3>{% if pembatalan_draft %}Batalkan Draft{% else %}Ajukan Pembatalan Perjalanan{% endif %}</h3>
+        <p class="modal-intro">
+          {{ pengajuan.kode }} · {{ pengajuan.jenis_label }} · {{ pengajuan.tujuan_negara_display|default:"—" }}
+          {% if pengajuan.tgl_berangkat %}· {{ pengajuan.tgl_berangkat|date:"d M Y" }}–{{ pengajuan.tgl_kembali|date:"d M Y" }}{% endif %}
+        </p>
+        <form method="post" action="{{ pembatalan_url }}">
+          {% csrf_token %}
+          <div class="field">
+            <label class="label" for="alasanPembatalan">Alasan pembatalan <span style="color:#c0392b;">*</span></label>
+            <div class="control">
+              <textarea class="textarea" id="alasanPembatalan" name="alasan" rows="3" required
+                placeholder="cth. Agenda pertemuan diundur oleh penyelenggara."></textarea>
+            </div>
+          </div>
+          <p class="helptext">
+            {% if pembatalan_draft %}
+              Draft yang belum pernah dikirim langsung dibatalkan tanpa persetujuan.
+            {% elif user.role == "admin_unor" %}
+              Permohonan langsung diteruskan ke Admin Biro PAKLN untuk diputuskan.
+            {% else %}
+              Permohonan memerlukan persetujuan Admin Unor lalu Admin Biro PAKLN. Selama diproses,
+              pengajuan tidak dapat diproses lebih lanjut.
+            {% endif %}
+          </p>
+          <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px;">
+            <button type="button" class="button" data-modal-close>Batal</button>
+            <button type="submit" class="button is-danger">{% if pembatalan_draft %}Batalkan Draft{% else %}Ajukan Pembatalan{% endif %}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endif %}

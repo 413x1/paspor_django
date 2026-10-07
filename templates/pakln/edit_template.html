@@ -53,6 +53,17 @@
             {{ form.untuk_admin_unor }} {{ form.fields.untuk_admin_unor.label }}
           </label>
         </div>
+        {% if form.untuk_admin_bpsdm %}
+        <div class="field">
+          <label class="checkbox" for="{{ form.untuk_admin_bpsdm.id_for_label }}">
+            {{ form.untuk_admin_bpsdm }} {{ form.fields.untuk_admin_bpsdm.label }}
+          </label>
+        </div>
+        <div class="field">
+          <label class="label" for="{{ form.jenis_perjalanan.id_for_label }}">{{ form.fields.jenis_perjalanan.label }}</label>
+          <div class="control"><div class="select is-fullwidth">{{ form.jenis_perjalanan }}</div></div>
+        </div>
+        {% endif %}
         {% if form.non_field_errors %}<p class="help is-danger">{{ form.non_field_errors }}</p>{% endif %}
       </div>
       <div class="column">

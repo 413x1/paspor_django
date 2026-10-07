@@ -1,0 +1,46 @@
+{# Baris dokumen satu tahap dari registri `pengajuan.persyaratan` (lihat pengajuan/tahap.py). #}
+{# Context: syarat_list, pengajuan, hapus_url (nama URL hapus dokumen: kode + jenis), readonly (bool, opsional — sembunyikan unggah/hapus). #}
+{% for b in syarat_list %}
+  <div class="doc-row {% if b.dok %}uploaded{% endif %}">
+    <div class="info">
+      <h4>
+        {{ b.label }}
+        {% if b.wajib %}<span class="badge-auto">Wajib</span>{% else %}<span class="badge-auto is-optional">Opsional</span>{% endif %}
+      </h4>
+      {% if b.keterangan %}<p class="cell-muted">{{ b.keterangan }}</p>{% endif %}
+      {% if b.aksi == "format" %}
+        <p class="cell-muted">📄 Format tersedia pada <em>Template Dokumen</em> (bila disediakan Admin Biro PAKLN).</p>
+      {% elif b.aksi == "generate" %}
+        <p class="cell-muted">⚙️ Generate otomatis menyusul (menunggu format resmi) — unggah berkas secara manual.</p>
+      {% endif %}
+      {% if b.dok %}
+        <p style="color:var(--green);">✓ Sudah diunggah — {{ b.dok.uploaded_at|date:"d M Y H:i" }}</p>
+        {% if b.dok.tanggal_surat %}<p class="cell-muted">📅 Tanggal Surat: {{ b.dok.tanggal_surat|date:"d M Y" }}</p>{% endif %}
+      {% else %}
+        <p>Belum diunggah.</p>
+      {% endif %}
+    </div>
+    <div class="actions">
+      {% if b.dok %}
+        <button type="button" class="button is-small" data-doc-preview="{{ b.dok.file.url }}" data-doc-title="{{ b.label }}">👁 Pratinjau</button>
+      {% endif %}
+      {% if not readonly %}
+        {% if b.dok %}
+          <form method="post" action="{% url hapus_url kode=pengajuan.kode jenis=b.jenis %}" style="margin:0;" data-confirm="Hapus dokumen ini?" data-confirm-type="danger" data-confirm-title="Hapus" data-confirm-ok="Hapus">
+            {% csrf_token %}
+            <button type="submit" class="button is-small is-danger">🗑 Hapus</button>
+          </form>
+        {% endif %}
+        <form method="post" enctype="multipart/form-data" class="actions doc-upload-form" style="margin:0;"{% if b.tanggal_surat %} data-tanggal-surat="1"{% endif %}>
+          {% csrf_token %}
+          <input type="hidden" name="jenis" value="{{ b.jenis }}">
+          <input type="hidden" name="tanggal_surat" class="doc-tanggal-surat-input">
+          <input type="file" name="file" required class="doc-file-input" style="font-size:12.5px;max-width:160px;">
+          <button type="submit" class="button is-small doc-upload-submit">⬆ {% if b.dok %}Ganti{% else %}Unggah{% endif %}</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+{% empty %}
+  <p class="cell-muted">Tidak ada dokumen yang dipersyaratkan pada tahap ini.</p>
+{% endfor %}

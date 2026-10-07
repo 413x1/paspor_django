@@ -59,6 +59,17 @@
             {{ form.untuk_admin_unor }} {{ form.fields.untuk_admin_unor.label }}
           </label>
         </div>
+        {% if form.untuk_admin_bpsdm %}
+        <div class="field">
+          <label class="checkbox" for="{{ form.untuk_admin_bpsdm.id_for_label }}">
+            {{ form.untuk_admin_bpsdm }} {{ form.fields.untuk_admin_bpsdm.label }}
+          </label>
+        </div>
+        <div class="field">
+          <label class="label" for="{{ form.jenis_perjalanan.id_for_label }}">{{ form.fields.jenis_perjalanan.label }}</label>
+          <div class="control"><div class="select is-fullwidth">{{ form.jenis_perjalanan }}</div></div>
+        </div>
+        {% endif %}
         {% if form.non_field_errors %}<p class="help is-danger">{{ form.non_field_errors }}</p>{% endif %}
       </div>
       <div class="column">
@@ -152,12 +163,17 @@
     });
 
     $('#templateTable tbody').on('click', '[data-template-hapus]', function () {
-      if (!confirm('Hapus template ini?')) { return; }
       var url = $(this).data('template-hapus');
-      $.ajax({
-        url: url, type: 'POST', headers: { 'X-CSRFToken': csrfToken() },
-        success: function () { $table.ajax.reload(null, false); },
-        error: function () { alert('Gagal menghapus template.'); },
+      pasporConfirm({ type: 'danger', title: 'Hapus', message: 'Hapus template ini?', confirmText: 'Hapus' }).then(function (ok) {
+        if (!ok) { return; }
+        $.ajax({
+          url: url, type: 'POST', headers: { 'X-CSRFToken': csrfToken() },
+          success: function () {
+            $table.ajax.reload(null, false);
+            pasporAlert({ message: 'Template berhasil dihapus.' });
+          },
+          error: function () { pasporAlert({ type: 'error', title: 'Gagal', message: 'Gagal menghapus template.' }); },
+        });
       });
     });
   });

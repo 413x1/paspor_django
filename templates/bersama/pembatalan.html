@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Pembatalan{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Pembatalan</h2>
+    <p class="sub">Permohonan pembatalan perjalanan (mekanisme interim) — persetujuan berjenjang Admin Unor → Admin Biro PAKLN.</p>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <a href="?" class="button is-small {% if not semua %}is-active{% endif %}">Menunggu Saya ({{ jumlah_menunggu }})</a>
+  <a href="?tampil=semua" class="button is-small {% if semua %}is-active{% endif %}">Semua Permohonan</a>
+</div>
+
+<div class="box">
+  <div class="table-wrap">
+    <table class="table data-table is-fullwidth is-hoverable">
+      <thead>
+        <tr><th>Pengajuan</th><th>Pegawai</th><th>Diajukan</th><th>Status saat diajukan</th><th>Alasan</th><th>Jenjang Unor</th><th>Jenjang PAKLN</th><th>Status</th><th>Aksi</th></tr>
+      </thead>
+      <tbody>
+        {% for m in daftar %}
+          <tr>
+            <td><a href="{% url preview_url kode=m.pengajuan.kode %}"><strong>{{ m.pengajuan.kode }}</strong></a><br><span class="cell-muted">{{ m.pengajuan.jenis_label }}</span></td>
+            <td>{{ m.pengajuan.pegawai.profile.nama }}<br><span class="cell-muted">{{ m.pengajuan.pegawai.profile.nip }}</span></td>
+            <td>{{ m.created_at|date:"d M Y H:i" }}<br><span class="cell-muted">{% if m.diajukan_role == "pegawai" %}Pegawai{% else %}Admin Unor{% endif %}</span></td>
+            <td>{{ m.get_status_pengajuan_saat_diajukan_display }}</td>
+            <td>{{ m.alasan }}</td>
+            <td>{% if m.unor_waktu %}{{ m.unor_waktu|date:"d M Y" }}{% if m.unor_catatan %}<br><span class="cell-muted">{{ m.unor_catatan }}</span>{% endif %}{% else %}—{% endif %}</td>
+            <td>{% if m.pakln_waktu %}{{ m.pakln_waktu|date:"d M Y" }}{% if m.pakln_catatan %}<br><span class="cell-muted">{{ m.pakln_catatan }}</span>{% endif %}{% else %}—{% endif %}</td>
+            <td>{{ m.get_status_display }}</td>
+            <td>
+              {% if putuskan_url and m.status == menunggu %}
+                <button type="button" class="button is-small is-warning" data-modal-open="putuskan-{{ m.pk }}">Tinjau</button>
+              {% else %}
+                <a href="{% url preview_url kode=m.pengajuan.kode %}" class="button is-small">Lihat</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="9" class="cell-muted">Tidak ada permohonan.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if putuskan_url %}
+{% for m in daftar %}
+  {% if m.status == menunggu %}
+  <div id="putuskan-{{ m.pk }}" class="modal paspor-modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+      <div class="modal-card-body">
+        <h3>Permohonan Pembatalan — {{ m.pengajuan.kode }}</h3>
+        <dl class="kv-list" style="margin:8px 0 12px;">
+          <dt>Pegawai</dt><dd>{{ m.pengajuan.pegawai.profile.nama }}</dd>
+          <dt>Diajukan</dt><dd>{{ m.created_at|date:"d M Y H:i" }} oleh {% if m.diajukan_role == "pegawai" %}Pegawai{% else %}Admin Unor{% endif %}</dd>
+          <dt>Alasan</dt><dd>{{ m.alasan }}</dd>
+          {% if m.unor_waktu %}<dt>Jenjang Unor</dt><dd>✓ {{ m.unor_waktu|date:"d M Y H:i" }}{% if m.unor_catatan %} — {{ m.unor_catatan }}{% endif %}</dd>{% endif %}
+        </dl>
+        <form method="post" action="{% url putuskan_url m.pk %}">
+          {% csrf_token %}
+          <div class="field">
+            <label class="label">Catatan keputusan <span class="cell-muted">(wajib bila menolak)</span></label>
+            <div class="control"><textarea class="textarea" name="catatan" rows="3"></textarea></div>
+          </div>
+          <div style="display:flex; gap:8px; justify-content:flex-end;">
+            <button type="button" class="button" data-modal-close>Batal</button>
+            <button type="submit" name="keputusan" value="tolak" class="button is-danger is-light">Tolak</button>
+            <button type="submit" name="keputusan" value="setuju" class="button is-danger"
+              data-confirm="Setujui pembatalan {{ m.pengajuan.kode }}?" data-confirm-type="danger" data-confirm-title="Setujui Pembatalan" data-confirm-ok="Setujui">Setujui Pembatalan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+{% endfor %}
+{% endif %}
+{% endblock %}

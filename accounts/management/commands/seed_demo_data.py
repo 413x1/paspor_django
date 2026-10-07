@@ -25,7 +25,7 @@ ORG_UNITS = [
 
 class Command(BaseCommand):
     help = (
-        "Membuat akun demo (Pegawai, Admin Unor, Admin Biro PAKLN) beserta "
+        "Membuat akun demo (Pegawai, Admin Unor, Admin BPSDM, Admin Biro PAKLN) beserta "
         "contoh data pengajuan, meniru data dummy pada mockup PASPOR "
         "Tahap 1 (alur Non-Kedinasan)."
     )
@@ -93,6 +93,20 @@ class Command(BaseCommand):
             admin_pakln.set_password("paspor123")
             admin_pakln.save()
             self.stdout.write(self.style.SUCCESS("User 'admin.pakln' dibuat."))
+
+        # --- Admin BPSDM (PDLN Tipe 2) -----------------------------------
+        bpsdm = UnitOrganisasi.objects.get(code="10")
+        admin_bpsdm, created = User.objects.get_or_create(
+            username="admin.bpsdm",
+            defaults={
+                "first_name": "Admin", "last_name": "BPSDM", "role": User.Role.ADMIN_BPSDM,
+                "unit_organisasi": bpsdm, "unit_kerja": "Biro Pengembangan Sumber Daya Manusia",
+            },
+        )
+        if created:
+            admin_bpsdm.set_password("paspor123")
+            admin_bpsdm.save()
+            self.stdout.write(self.style.SUCCESS("User 'admin.bpsdm' dibuat."))
 
         # --- Contoh riwayat pengajuan (status selesai) -------------------
         # `tujuan_negara` adalah ManyToManyField — tidak bisa masuk
@@ -164,5 +178,6 @@ class Command(BaseCommand):
             "\nSelesai. Akun demo (password sama untuk semua: 'paspor123'):\n"
             "  - andra.wibisono   -> role Pegawai\n"
             "  - admin.unor       -> role Admin Unor\n"
+            "  - admin.bpsdm      -> role Admin BPSDM\n"
             "  - admin.pakln      -> role Admin Biro PAKLN\n"
         ))
