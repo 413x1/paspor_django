@@ -28,7 +28,7 @@
             <td>
               <a href="{% url 'pegawai:monitor_progres' kode=m.pengajuan.kode %}" class="button is-small">Lihat</a>
               {% if m.terbuka and m.diajukan_oleh_id == user.pk %}
-                <form method="post" action="{% url 'pegawai:tarik_pembatalan' m.pk %}" style="display:inline;" onsubmit="return confirm('Tarik permohonan ini?');">
+                <form method="post" action="{% url 'pegawai:tarik_pembatalan' m.pk %}" style="display:inline;" data-confirm="Tarik permohonan ini?" data-confirm-title="Tarik Permohonan" data-confirm-ok="Tarik">
                   {% csrf_token %}<button type="submit" class="button is-small">↶ Tarik</button>
                 </form>
               {% endif %}

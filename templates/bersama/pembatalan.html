@@ -71,7 +71,7 @@
             <button type="button" class="button" data-modal-close>Batal</button>
             <button type="submit" name="keputusan" value="tolak" class="button is-danger is-light">Tolak</button>
             <button type="submit" name="keputusan" value="setuju" class="button is-danger"
-              onclick="return confirm('Setujui pembatalan {{ m.pengajuan.kode }}?');">Setujui Pembatalan</button>
+              data-confirm="Setujui pembatalan {{ m.pengajuan.kode }}?" data-confirm-type="danger" data-confirm-title="Setujui Pembatalan" data-confirm-ok="Setujui">Setujui Pembatalan</button>
           </div>
         </form>
       </div>

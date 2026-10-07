@@ -9,7 +9,7 @@
     {% endif %}
     <br><span class="cell-muted">Selama permohonan diproses, aksi lain pada pengajuan ini dibekukan.</span>
     {% if tarik_url_name and pembatalan_terbuka.diajukan_oleh_id == user.pk %}
-      <form method="post" action="{% url tarik_url_name pembatalan_terbuka.pk %}" style="margin-top:8px;" onsubmit="return confirm('Tarik permohonan pembatalan ini?');">
+      <form method="post" action="{% url tarik_url_name pembatalan_terbuka.pk %}" style="margin-top:8px;" data-confirm="Tarik permohonan pembatalan ini?" data-confirm-title="Tarik Permohonan" data-confirm-ok="Tarik">
         {% csrf_token %}
         <button type="submit" class="button is-small">↶ Tarik Permohonan</button>
       </form>

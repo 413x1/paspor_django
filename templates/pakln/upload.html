@@ -35,7 +35,7 @@
       {% endif %}
       {% if dapat_diubah %}
         {% if pendukung.file %}
-          <form method="post" style="margin:0;" onsubmit="return confirm('Hapus berkas dokumen lainnya ini?');">
+          <form method="post" style="margin:0;" data-confirm="Hapus berkas dokumen lainnya ini?" data-confirm-type="danger" data-confirm-title="Hapus" data-confirm-ok="Hapus">
             {% csrf_token %}
             <button type="submit" name="pendukung_hapus" class="button is-small is-danger">🗑 Hapus</button>
           </form>

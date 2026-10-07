@@ -220,18 +220,6 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .header-user-menu form { margin: 0; }
 .header-user-menu .logout-menu-item:hover { background-color: #fef2f2; color: #dc2626; }
 
-/* Tombol "Keluar" di dalam modal konfirmasi logout — bahasa visual sama
-   dengan hover "Keluar" di dropdown profil (soft red), netral di state
-   normal (sengaja tanpa .is-danger supaya tidak bentrok dengan style ini). */
-.btn-logout-confirm {
-  transition: transform var(--duration-instant) var(--ease-apple), background-color var(--duration-fast) var(--ease-apple),
-    color var(--duration-fast) var(--ease-apple), border-color var(--duration-fast) var(--ease-apple),
-    box-shadow var(--duration-fast) var(--ease-apple), opacity var(--duration-fast) var(--ease-apple);
-}
-/* Di-scope dengan #logoutConfirmModal (selector ID) supaya spesifisitasnya
-   pasti menang dari rule hover tombol netral bawaan (`.button:not(...):hover`
-   di atas, yang punya banyak klausa :not() sehingga spesifisitasnya tinggi). */
-#logoutConfirmModal .btn-logout-confirm:hover { background-color: #fef2f2; color: #dc2626; border-color: #fca5a5; }
 .paspor-role {
   background: var(--topbar-role-bg); color: var(--white);
   font-size: 10px; font-weight: 700; border-radius: 6px; padding: 2px 8px;
@@ -269,6 +257,15 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 /* Konten mengisi penuh lebar area di samping sidebar (fluid). Kelas
    .narrow / .medium dari template lama sengaja tidak membatasi lebar lagi. */
 .page-wrap { width: 100%; max-width: none; margin: 0; padding: 24px 28px 60px; }
+
+/* ---------- Breadcrumb (partials/_breadcrumb.html) ---------- */
+.app-breadcrumb { margin-bottom: 16px; font-size: 13px; }
+.app-breadcrumb ol { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; margin: 0; padding: 0; list-style: none; }
+.app-breadcrumb li { display: inline-flex; align-items: center; color: var(--slate-400); }
+.app-breadcrumb li + li::before { content: "›"; margin: 0 8px; color: var(--slate-400); }
+.app-breadcrumb a { color: var(--teal); }
+.app-breadcrumb a:hover { text-decoration: underline; }
+.app-breadcrumb [aria-current="page"] { color: var(--slate-900); font-weight: 600; }
 @media (max-width: 640px) { .page-wrap { padding: 20px 16px 48px; } }
 
 /* ---------- Notifikasi / messages ---------- */
@@ -334,6 +331,12 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 }
 .input, .select select { height: auto; padding: 10px 12px; }
 .textarea { padding: 10px 12px; }
+/* Ikon kalender di ujung kanan (Bulma .input memakai inline-flex + flex-start). */
+.input[type="date"], .input[type="datetime-local"], .input[type="month"], .input[type="time"] {
+  display: block; width: 100%;
+}
+.input::-webkit-datetime-edit { flex: 1 1 auto; }
+.input::-webkit-calendar-picker-indicator { margin-left: auto; cursor: pointer; }
 .input:focus, .textarea:focus, .select select:focus {
   border-color: var(--teal); box-shadow: 0 0 0 2px rgba(36, 129, 155, .25);
 }
@@ -625,6 +628,42 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .soon-tag {
   font-size: 9.5px; font-weight: 700; background: #eceff3; color: var(--slate-400);
   padding: 2px 7px; border-radius: 6px; white-space: nowrap;
+}
+
+/* ---------- Dialog konfirmasi & notifikasi (#pasporDialog, gaya SweetAlert) ---------- */
+.modal.paspor-dialog { z-index: 60; }
+.paspor-dialog .modal-card-body { text-align: center; padding: 28px 24px 22px; }
+.paspor-dialog h3 { font-size: 18px; margin-bottom: 6px; }
+.paspor-dialog .modal-intro { white-space: pre-line; font-size: 14px; color: var(--slate-600); margin-bottom: 20px; }
+.paspor-dialog .dialog-icon {
+  --dialog-tone: var(--gold-600); --dialog-tone-bg: var(--gold-bg);
+  width: 64px; height: 64px; margin: 0 auto 14px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--dialog-tone-bg); color: var(--dialog-tone);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--dialog-tone-bg) 50%, transparent);
+  transform: scale(.6); transition: transform 400ms cubic-bezier(.34, 1.56, .64, 1);
+}
+.paspor-dialog.is-active .dialog-icon { transform: scale(1); }
+.paspor-dialog .dialog-icon svg {
+  width: 32px; height: 32px; fill: none; stroke: currentColor;
+  stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round;
+}
+.paspor-dialog.is-danger .dialog-icon, .paspor-dialog.is-error .dialog-icon { --dialog-tone: #dc2626; --dialog-tone-bg: #fdecea; }
+.paspor-dialog.is-success .dialog-icon { --dialog-tone: var(--green); --dialog-tone-bg: var(--green-bg); }
+.paspor-dialog.is-info .dialog-icon { --dialog-tone: var(--teal); --dialog-tone-bg: var(--blue-bg); }
+/* Centang sukses digambar (stroke animation) saat dialog muncul. */
+.paspor-dialog .dialog-check { stroke-dasharray: 24; stroke-dashoffset: 24; }
+.paspor-dialog.is-active .dialog-check { animation: dialog-check-draw 450ms 180ms var(--ease-apple) forwards; }
+@keyframes dialog-check-draw { to { stroke-dashoffset: 0; } }
+.paspor-dialog .dialog-actions { display: flex; gap: 8px; justify-content: center; }
+.paspor-dialog .dialog-actions .button { min-width: 110px; font-weight: 700; }
+#pasporDialog .dialog-ok { background: var(--navy-900); border-color: var(--navy-900); color: var(--white); }
+#pasporDialog.is-danger .dialog-ok, #pasporDialog.is-error .dialog-ok { background: #dc2626; border-color: #dc2626; }
+#pasporDialog.is-success .dialog-ok { background: var(--green); border-color: var(--green); }
+#pasporDialog .dialog-ok:hover, #pasporDialog .dialog-ok:focus { color: var(--white); filter: brightness(1.08); }
+@media (prefers-reduced-motion: reduce) {
+  .paspor-dialog .dialog-icon { transition: none; transform: none; }
+  .paspor-dialog .dialog-check { stroke-dashoffset: 0; animation: none; }
 }
 
 /* ---------- Modal pratinjau dokumen ---------- */

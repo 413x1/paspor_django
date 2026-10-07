@@ -40,7 +40,7 @@
       <button type="button" class="header-user-btn" data-dropdown-toggle aria-haspopup="true" aria-expanded="false">
         <span class="header-user-text">
           <strong>{{ user.get_full_name|default:user.username }}</strong>
-          <small>{{ user.get_role_display }}</small>
+          <small>{{ user.get_role_display }}{% with unit=user.get_unit_organisasi %}{% if unit %} | {{ unit.alias }}{% endif %}{% endwith %}</small>
         </span>
         <span class="avatar-chip">{{ user.get_full_name|default:user.username|initials }}</span>
         <span class="sidebar-chevron" aria-hidden="true"></span>
@@ -48,7 +48,7 @@
       <div class="header-user-menu" data-dropdown-panel>
         <div class="header-user-menu-head">
           <strong>{{ user.get_full_name|default:user.username }}</strong>
-          <small>{{ user.get_role_display }}</small>
+          <small>{{ user.get_role_display }}{% with unit=user.get_unit_organisasi %}{% if unit %} | {{ unit.alias }}{% endif %}{% endwith %}</small>
         </div>
         <a href="{% url 'notifications:list' %}">Notifikasi</a>
         <form method="post" action="{% url 'logout' %}">

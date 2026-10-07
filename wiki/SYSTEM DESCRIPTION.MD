@@ -164,9 +164,9 @@ files are stored under `media/pengajuan/<kode>/<stage>/<jenis>/<filename>`.
 the fields still exist on the model (Admin Biro PAKLN's Pratinjau page
 still reads them for older submissions) but are no longer settable from
 the Unor upload page. Uploading/replacing the file is the only action left
-there (`"pendukung_upload"` / `"pendukung_hapus"` POST branches). "Lengkap"
-= all 3 `DokumenUnor` wajib present **and** `DokumenUnorPendukung.is_lengkap()`
-(file present — no longer requires any flag set).
+there (`"pendukung_upload"` / `"pendukung_hapus"` POST branches). The file
+is **optional**: "Lengkap" = all 3 `DokumenUnor` wajib present; a missing
+`DokumenUnorPendukung` file does not block "Teruskan".
 
 Upload size cap: 10 MB (`DATA_UPLOAD_MAX_MEMORY_SIZE`,
 `FILE_UPLOAD_MAX_MEMORY_SIZE` in `settings.py`).
@@ -217,7 +217,7 @@ viewer's role/unit and the current `pengajuan.kategori`.
 |---|---|---|
 | Dasbor | `unor:dashboard` | All applications with `status ≠ belum` + counts (total / proses / proses_pakln / selesai). |
 | Pratinjau | `unor:preview` (`<kode>`) | Read-only view. "Lanjutkan" sets `preview_unor_agree = True`. "Kembalikan ke Pegawai" (requires a note) resets `status = belum`, `submitted = False`, `preview_unor_agree = False`, and stores the note in `catatan_unor` — the application drops out of both dashboards and reappears as the employee's active (draft-status) application with the note shown on Beranda/Formulir/Upload; `catatan_unor` is cleared when the employee resubmits. |
-| Unggah Dokumen | `unor:upload_dokumen` (`<kode>`) | Requires `preview_unor_agree`. Upload the 3 wajib `DokumenUnor` documents individually, plus the independent `DokumenUnorPendukung` upload/checklist (§5.4). "Teruskan" requires all 3 wajib + `DokumenUnorPendukung.is_lengkap()` + acknowledgement → sets `status = proses_pakln`, `tgl_masuk_pakln = today`. |
+| Unggah Dokumen | `unor:upload_dokumen` (`<kode>`) | Requires `preview_unor_agree`. Upload the 3 wajib `DokumenUnor` documents individually, plus the independent `DokumenUnorPendukung` upload/checklist (§5.4). "Teruskan" requires all 3 wajib + acknowledgement (Dokumen Pendukung optional) → sets `status = proses_pakln`, `tgl_masuk_pakln = today`. |
 | Export Database | `unor:export` | HTML table; `?format=csv` streams `paspor_pengajuan_unor.csv`. |
 
 ### Stage 3 — Admin Biro PAKLN (`views_pakln.py`, namespace `pakln`)

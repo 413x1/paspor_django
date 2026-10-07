@@ -57,7 +57,7 @@
     Gunakan ini jika ada kekurangan atau kesalahan berkas administrasi {{ tujuan_kembali }} yang perlu diperbaiki.
     Pengajuan akan kembali ke tahap {{ tujuan_kembali }} sampai diteruskan ulang.
   </p>
-  <form method="post" onsubmit="return confirm('Kembalikan pengajuan ini ke {{ tujuan_kembali }} beserta catatan?');">
+  <form method="post" data-confirm="Kembalikan pengajuan ini ke {{ tujuan_kembali }} beserta catatan?" data-confirm-title="Kembalikan Pengajuan" data-confirm-ok="Kembalikan">
     {% csrf_token %}
     <div class="field">
       <label class="label" for="catatan_pakln">Catatan untuk {{ tujuan_kembali }}</label>

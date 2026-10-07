@@ -119,15 +119,20 @@
     });
 
     $('#negaraTable tbody').on('click', '[data-negara-hapus]', function () {
-      if (!confirm('Hapus negara ini?')) { return; }
       var url = $(this).data('negara-hapus');
-      $.ajax({
-        url: url, type: 'POST', headers: { 'X-CSRFToken': csrfToken() },
-        success: function () { $table.ajax.reload(null, false); },
-        error: function (xhr) {
-          var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Gagal menghapus negara.';
-          alert(msg);
-        },
+      pasporConfirm({ type: 'danger', title: 'Hapus', message: 'Hapus negara ini?', confirmText: 'Hapus' }).then(function (ok) {
+        if (!ok) { return; }
+        $.ajax({
+          url: url, type: 'POST', headers: { 'X-CSRFToken': csrfToken() },
+          success: function () {
+            $table.ajax.reload(null, false);
+            pasporAlert({ message: 'Negara berhasil dihapus.' });
+          },
+          error: function (xhr) {
+            var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Gagal menghapus negara.';
+            pasporAlert({ type: 'error', title: 'Gagal', message: msg });
+          },
+        });
       });
     });
   });

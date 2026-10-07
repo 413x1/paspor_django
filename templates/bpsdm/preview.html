@@ -52,7 +52,7 @@
 <div class="box is-danger-soft">
   <div class="section-title" style="font-size:14px;">↩ Kembalikan ke Admin Unor</div>
   <p class="cell-muted" style="margin:-8px 0 14px;">Pengajuan akan berstatus <strong>Dalam Proses Unor</strong> kembali sampai Admin Unor meneruskan ulang.</p>
-  <form method="post" onsubmit="return confirm('Kembalikan pengajuan ini ke Admin Unor beserta catatan?');">
+  <form method="post" data-confirm="Kembalikan pengajuan ini ke Admin Unor beserta catatan?" data-confirm-title="Kembalikan Pengajuan" data-confirm-ok="Kembalikan">
     {% csrf_token %}
     <div class="field">
       <label class="label" for="catatan">Catatan untuk Admin Unor</label>

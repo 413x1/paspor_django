@@ -41,7 +41,7 @@
       <div class="actions">
         <button type="button" class="button is-small" data-doc-preview="{% url 'fileupload:view' f.pk %}" data-doc-title="{{ f.original_filename }}">👁 Pratinjau</button>
         <a class="button is-small" href="{% url 'fileupload:view' f.pk %}" target="_blank" rel="noopener">⬇ Buka</a>
-        <form method="post" action="{% url 'fileupload:delete' f.pk %}" style="margin:0;" onsubmit="return confirm('Hapus berkas ini?');">
+        <form method="post" action="{% url 'fileupload:delete' f.pk %}" style="margin:0;" data-confirm="Hapus berkas ini?" data-confirm-type="danger" data-confirm-title="Hapus" data-confirm-ok="Hapus">
           {% csrf_token %}
           <button type="submit" class="button is-small is-danger">🗑 Hapus</button>
         </form>

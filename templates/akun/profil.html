@@ -63,7 +63,7 @@
           <tr>
             <td><strong>{{ x.nomor }}</strong></td><td>{{ x.get_jenis_display }}</td><td>{{ x.tgl_expired|date:"d M Y" }}</td>
             <td>
-              <form method="post" onsubmit="return confirm('Hapus data paspor ini?');" style="margin:0;">
+              <form method="post" data-confirm="Hapus data paspor ini?" data-confirm-type="danger" data-confirm-title="Hapus" data-confirm-ok="Hapus" style="margin:0;">
                 {% csrf_token %}<input type="hidden" name="aksi" value="hapus_paspor"><input type="hidden" name="id" value="{{ x.pk }}">
                 <button type="submit" class="button is-small is-danger">🗑</button>
               </form>

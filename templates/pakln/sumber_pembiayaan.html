@@ -125,15 +125,20 @@
     });
 
     $('#sumberTable tbody').on('click', '[data-sumber-hapus]', function () {
-      if (!confirm('Hapus sumber pembiayaan ini?')) { return; }
       var url = $(this).data('sumber-hapus');
-      $.ajax({
-        url: url, type: 'POST', headers: { 'X-CSRFToken': csrfToken() },
-        success: function () { $table.ajax.reload(null, false); },
-        error: function (xhr) {
-          var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Gagal menghapus sumber pembiayaan.';
-          alert(msg);
-        },
+      pasporConfirm({ type: 'danger', title: 'Hapus', message: 'Hapus sumber pembiayaan ini?', confirmText: 'Hapus' }).then(function (ok) {
+        if (!ok) { return; }
+        $.ajax({
+          url: url, type: 'POST', headers: { 'X-CSRFToken': csrfToken() },
+          success: function () {
+            $table.ajax.reload(null, false);
+            pasporAlert({ message: 'Sumber pembiayaan berhasil dihapus.' });
+          },
+          error: function (xhr) {
+            var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Gagal menghapus sumber pembiayaan.';
+            pasporAlert({ type: 'error', title: 'Gagal', message: msg });
+          },
+        });
       });
     });
   });
