@@ -17,6 +17,7 @@
 9. [Akses Lewat Domain HTTPS (Opsional)](#9-akses-lewat-domain-https-opsional)
 10. [Troubleshooting](#10-troubleshooting)
 11. [Catatan Keamanan](#11-catatan-keamanan)
+12. [Log Sistem](#12-log-sistem)
 
 ---
 
@@ -114,6 +115,10 @@ DJANGO_SUPERUSER_EMAIL=admin@contoh.go.id
 DJANGO_SUPERUSER_PASSWORD=PASSWORD_SUPERUSER_YANG_KUAT
 
 MAIL_ALLOW_SEND=false
+
+# Log Sistem (opsional; lihat bagian "Log Sistem" di bawah)
+ACTIVITY_LOG_TRUST_PROXY=False
+LOG_DIR=/app/var/log
 ```
 
 Aturan penulisan:
@@ -290,3 +295,26 @@ alamat tersebut.
 - Jangan pernah commit `.env`.
 - `DJANGO_DEBUG` harus `False` di produksi.
 - Matikan SSH NAS bila tidak dipakai.
+
+## 12. Log Sistem
+
+Fitur Log Sistem (menu **Log Sistem** untuk Admin Biro PAKLN) mencatat aktivitas
+pengguna ke database. Rancangan lengkap: `wiki/instructions/SYSTEM_LOGGING.MD`.
+
+- **Migrasi:** tabel `logs_activitylog` dibuat otomatis oleh `migrate`
+  (`DJANGO_MIGRATE_ON_START=True`).
+- **`ACTIVITY_LOG_TRUST_PROXY`** (bawaan `False`): menentukan apakah header
+  `X-Forwarded-For` dipercaya untuk mencatat IP klien.
+  - Selama aplikasi diakses langsung lewat `IP:8000` tanpa reverse proxy,
+    biarkan `False` — IP yang tercatat adalah IP koneksi langsung.
+  - Bila aplikasi diakses lewat reverse proxy Synology (bagian 9), IP yang
+    tercatat akan selalu IP proxy. Set `True` **hanya** jika proxy tersebut
+    tepercaya dan aplikasi tidak bisa diakses langsung tanpa proxy; bila
+    tidak, pengguna dapat memalsukan header dan IP di log menjadi tidak sahih.
+- **Log teknis** (error/peringatan sistem) ditulis ke konsol container dan ke
+  file `paspor.log` (bergilir, 5 MB x 5 berkas) di `LOG_DIR`. Bila folder tidak
+  bisa dibuat, log hanya ke konsol. Pasang volume pada `LOG_DIR` bila ingin log
+  teknis bertahan setelah container dibuat ulang.
+- **Reset Log:** tombol Reset Log di halaman monitoring menghapus log
+  **permanen**. Dari terminal: `python manage.py bersihkan_log --hari 30`
+  (tambahkan `--dry-run` untuk simulasi).

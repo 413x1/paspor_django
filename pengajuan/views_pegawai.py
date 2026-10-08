@@ -12,6 +12,8 @@ from django.utils.html import escape, format_html
 from django.views.decorators.http import require_POST
 
 from accounts.models import DokumenKepegawaian, PasporPegawai
+from logs.models import ActivityLog
+from logs.utils import catat_riwayat, record_activity
 from notifications import services as notif
 from notifications.services import notify_resubmit_unor, notify_submit_unor
 from paspor.integrasi import pintar
@@ -187,8 +189,16 @@ def formulir_pengajuan(request):
                 pengajuan.form_saved = True
                 pengajuan.save()
                 form.save_m2m()
+            record_activity(
+                request, ActivityLog.Aktivitas.SIMPAN_FORMULIR, f"Menyimpan formulir pengajuan {pengajuan.kode}",
+                target_type="pengajuan", target_id=pengajuan.kode,
+            )
             messages.success(request, "Formulir pengajuan berhasil disimpan.")
             return redirect("pegawai:upload_dokumen", kode=pengajuan.kode)
+        record_activity(
+            request, ActivityLog.Aktivitas.SIMPAN_FORMULIR, "Menyimpan formulir pengajuan",
+            status=ActivityLog.Status.GAGAL, detail="Validasi gagal: " + ", ".join(form.errors),  # nama field saja
+        )
     else:
         form = PengajuanForm(instance=aktif, profile=profile)
 
@@ -219,8 +229,16 @@ def _formulir_pdln(request, aktif, tipe, profile):
                 pengajuan.save()
                 form.save_m2m()
                 form.save_detail(pengajuan)
+            record_activity(
+                request, ActivityLog.Aktivitas.SIMPAN_FORMULIR, f"Menyimpan formulir pengajuan {pengajuan.kode}",
+                target_type="pengajuan", target_id=pengajuan.kode,
+            )
             messages.success(request, "Formulir pengajuan berhasil disimpan.")
             return redirect("pegawai:upload_dokumen", kode=pengajuan.kode)
+        record_activity(
+            request, ActivityLog.Aktivitas.SIMPAN_FORMULIR, "Menyimpan formulir pengajuan",
+            status=ActivityLog.Status.GAGAL, detail="Validasi gagal: " + ", ".join(form.errors),  # nama field saja
+        )
     else:
         form = PdlnForm(instance=instance, tipe=tipe, pencalonan=pencalonan)
 
@@ -332,6 +350,7 @@ def _kirim(request, pengajuan):
             RiwayatPengajuan.Aksi.DIKIRIM_ULANG if is_resubmit else RiwayatPengajuan.Aksi.DIKIRIM,
             request.user, status_dari, catatan=catatan,
         )
+        catat_riwayat(request, p, RiwayatPengajuan.Aksi.DIKIRIM_ULANG if is_resubmit else RiwayatPengajuan.Aksi.DIKIRIM)
 
     if is_resubmit:
         notify_resubmit_unor(p, catatan)
@@ -486,6 +505,7 @@ def unggah_laporan(request, kode):
         laporan.uploaded_at = timezone.now()
         laporan.save()
         riwayat.catat(p, RiwayatPengajuan.Aksi.LAPORAN_DIUNGGAH, request.user, p.status, catatan=catatan if ulang else "")
+        catat_riwayat(request, p, RiwayatPengajuan.Aksi.LAPORAN_DIUNGGAH)
 
     notif.notify_laporan_diunggah(p, catatan if ulang else "")
     messages.success(request, f"Laporan PDLN {p.kode} berhasil dikirim untuk diverifikasi Biro PAKLN.")

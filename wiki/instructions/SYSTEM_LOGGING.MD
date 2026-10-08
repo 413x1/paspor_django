@@ -4,8 +4,9 @@ Dokumen rancangan fitur **Log Sistem**: pencatatan aktivitas tiap pengguna
 pada sistem PASPOR (alur Non-Dinas dan PDLN), halaman monitoring untuk Admin
 Biro PAKLN, dan mekanisme reset log.
 
-> **Status:** model `ActivityLog` dan fungsi `record_activity` sudah dibuat (app `logs`).
-> View, endpoint DataTables, dan template belum dibuat.
+> **Status:** sudah diimplementasi (app `logs`): model `ActivityLog`, `record_activity`, dekorator
+> `@log_aktivitas`, signal login/logout/login gagal, pencatatan di view utama (lihat 2.3), command
+> `bersihkan_log`, halaman monitoring + endpoint DataTables, tombol Reset Log, dan konfigurasi `LOGGING`.
 
 ## 1. Tujuan dan ruang lingkup
 
@@ -43,7 +44,7 @@ Lokasi usulan: `logs/utils.py`.
 
 ```python
 record_activity(request, aktivitas, deskripsi="", *, status="success",
-                target_type="", target_id="", detail="", username="")
+                target_type="", target_id="", detail="", username="", user=None)
 ```
 
 - `request`: sumber `user`, IP, User-Agent, method, dan path.
@@ -53,6 +54,8 @@ record_activity(request, aktivitas, deskripsi="", *, status="success",
 - `target_type` dan `target_id`: objek terkait (mis. `pengajuan` dan kode
   pengajuan).
 - `username`: dipakai bila belum ada pengguna login (mis. login gagal).
+- `user`: menyebut pengguna secara eksplisit (mis. dari signal login/logout). Bila
+  kosong, dipakai `request.user`.
 - `status`: `success` atau `failed`.
 - `detail`: teks atau dict kecil, mis. alasan gagal.
 
@@ -75,7 +78,14 @@ Dipakai untuk view sederhana. Hasil ditentukan dari response:
 - Status HTTP di bawah 400 (termasuk redirect) dicatat `success`.
 - Status 400 ke atas, atau exception, dicatat `failed`.
 
-Untuk view dengan beberapa hasil (validasi gagal atau berhasil), panggil
+Untuk view form yang menampilkan ulang halaman (status 200) saat validasi gagal,
+pakai `sukses_redirect=True`: hanya response redirect (3xx) yang dicatat `success`,
+response 200 dicatat `failed` dengan detail "Validasi formulir gagal".
+Hanya request ber-method `methods` (bawaan `POST`) yang dicatat, jadi membuka
+halaman (GET) tidak menambah log. Letakkan dekorator **di bawah** `@role_required`
+dan `@require_POST`, agar hanya akses yang sah yang tercatat.
+
+Untuk view dengan beberapa hasil berbeda (mis. kirim pengajuan), panggil
 `record_activity` langsung di dalam view.
 
 ### 2.3 Katalog aktivitas (awal)
@@ -96,15 +106,39 @@ Untuk view dengan beberapa hasil (validasi gagal atau berhasil), panggil
 | `master.ubah` | Mengubah data master (negara, kategori, template, setting) | View PAKLN |
 | `log.reset` | Reset Log | View reset |
 
-Katalog ini dikelola sebagai `TextChoices` agar dropdown filter di halaman
-monitoring otomatis ikut.
+Katalog ini dikelola sebagai `TextChoices` (`ActivityLog.Aktivitas`) agar dropdown
+filter di halaman monitoring otomatis ikut. Kode `pengajuan.proses` dipakai sebagai
+cadangan untuk transisi status yang belum punya kode sendiri.
+
+**Titik pemasangan (implementasi):**
+
+| Aktivitas | Dipasang di |
+|---|---|
+| `auth.*` | `logs/signals.py` (signal Django) |
+| `pengajuan.simpan_formulir` | `views_pegawai.formulir_pengajuan` dan `_formulir_pdln` (berhasil dan gagal validasi) |
+| `pengajuan.kirim/teruskan/kembalikan/selesai` | `logs.utils.catat_riwayat(...)` tepat setelah tiap `riwayat.catat(...)` di view Pegawai, Unor, BPSDM, dan PAKLN, sehingga selalu sejalan dengan Riwayat Pemrosesan |
+| `dokumen.unggah/hapus` | `pengajuan/tahap.py` (`proses_unggah`, `hapus`) dan dokumen pendukung di view Unor dan PAKLN |
+| `dokumen.generate_nd` | `views_pakln._simpan_log_generate` |
+| `master.ubah` | Dekorator `@log_aktivitas` pada view Manajemen PAKLN (user, template, negara, kalender, sumber pembiayaan, kategori, setting dokumen); impor kalender dicatat langsung di view |
+| `log.reset` | Command `bersihkan_log` |
+
+Isi catatan (alasan pengembalian) tidak disalin ke Log Sistem, cukup di Riwayat
+Pemrosesan. Pada validasi gagal, hanya **nama field** yang dicatat, tidak pernah nilainya.
 
 ### 2.4 Mengambil IP
 
 Secara bawaan IP = `request.META["REMOTE_ADDR"]`. Bila aplikasi berjalan di
 belakang reverse proxy (mis. Synology), baca `X-Forwarded-For` **hanya** jika
 proxy tersebut tepercaya. Bila tidak, header ini bisa dipalsukan pengguna.
-Keputusan ini dicatat di `DEPLOY_SYNOLOGY.MD`.
+Dikendalikan setting `ACTIVITY_LOG_TRUST_PROXY` (bawaan `False`, bisa diisi lewat
+`.env`). Penjelasan operasional ada di `DEPLOY_SYNOLOGY.MD` bagian 12.
+
+### 2.5 Log teknis (file)
+
+Konfigurasi `LOGGING` di `settings.py`: logger `logs`, `pengajuan`, dan
+`django.request` ditulis ke konsol dan file `paspor.log` (RotatingFileHandler, 5 MB x 5)
+di `LOG_DIR` (bawaan `var/log/`, bisa diubah lewat `.env`). Bila folder tidak bisa
+dibuat, log hanya ke konsol. Kegagalan `record_activity` ditulis ke log ini.
 
 ## 3. Skema database: model `ActivityLog`
 
@@ -168,8 +202,10 @@ Merender `pakln/log_sistem.html` dengan:
 
 ### 4.3 Endpoint DataTables (server-side)
 
-Memakai protokol DataTables 2.x (`serverSide: true`) dan memakai ulang helper
-`report.datatable(...)` yang sudah dipakai dasbor lain, bila cocok.
+Memakai protokol DataTables 2.x (`serverSide: true`) dengan pola yang sama seperti
+endpoint dasbor lain. Endpoint ditulis sendiri (`logs/views.py`), tidak memakai
+`report.datatable(...)`, karena helper itu mengurutkan sekunder berdasarkan
+`created_at` milik `Pengajuan`, sedangkan `ActivityLog` memakai `timestamp`.
 
 **Parameter yang dibaca:**
 
@@ -236,12 +272,16 @@ Aturan:
 3. Setelah selesai, command menulis **satu entri baru** `log.reset`: siapa
    pelakunya, kriteria, dan jumlah baris yang dihapus. Entri ini tidak ikut
    terhapus.
-4. Keluaran command: jumlah baris dihapus dan waktu proses.
+4. Keluaran command: satu baris `Dihapus: N baris (...) dalam X detik.` Format ini dibaca oleh
+   view reset untuk menampilkan jumlah, jadi tidak boleh diubah sembarangan.
+5. Entri audit `log.reset` mencatat `username` pelaku (dan akunnya bila ada), tetapi tidak
+   mencatat IP, karena command tidak memiliki `request`.
 
 ### 5.2 Tombol "Reset Log" di halaman monitoring
 
-- Tombol membuka **modal konfirmasi** (memakai dialog `data-confirm` yang sudah
-  ada di `base.html`).
+- Tombol membuka **modal** berisi pilihan rentang. Saat form dikirim, muncul
+  **dialog konfirmasi** (atribut `data-confirm` yang sudah ada di `base.html`)
+  sebelum penghapusan benar-benar dijalankan.
 - Pilihan di modal:
   - Lebih lama dari 7 hari (1 minggu)
   - Lebih lama dari 30 hari (1 bulan)
