@@ -19,3 +19,6 @@ staticfiles/
 # Dokumentasi & mockup tidak dibutuhkan saat runtime
 wiki/
 PASPOR_Mockup_*.html
+
+# Log lokal tidak ikut ke image
+var/

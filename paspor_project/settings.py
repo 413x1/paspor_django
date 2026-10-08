@@ -251,6 +251,10 @@ LOG_DIR = Path(env("LOG_DIR", str(BASE_DIR / "var" / "log")))
 _LOG_HANDLERS = {"console": {"class": "logging.StreamHandler", "formatter": "ringkas"}}
 try:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
+    # Pastikan file log bisa ditulis user proses ini (mis. file milik root
+    # sisa build image), agar dictConfig tidak gagal saat startup.
+    with open(LOG_DIR / "paspor.log", "a", encoding="utf-8"):
+        pass
     _LOG_HANDLERS["file"] = {
         "class": "logging.handlers.RotatingFileHandler",
         "filename": str(LOG_DIR / "paspor.log"),
@@ -260,7 +264,7 @@ try:
         "formatter": "ringkas",
     }
 except OSError:
-    pass  # folder log tidak bisa dibuat (mis. FS read-only): cukup ke konsol
+    pass  # folder/file log tidak bisa ditulis (mis. FS read-only): cukup ke konsol
 
 LOGGING = {
     "version": 1,

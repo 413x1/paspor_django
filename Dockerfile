@@ -65,8 +65,12 @@ RUN DJANGO_SECRET_KEY=build-only S3_ACCESS_KEY=build-only S3_SECRET_KEY=build-on
 # Pastikan entrypoint ber-line-ending LF (aman walau di-commit dari Windows).
 RUN sed -i 's/\r$//' docker/entrypoint.sh && chmod +x docker/entrypoint.sh
 
-# Jalankan sebagai user non-root.
-RUN useradd --create-home --uid 1000 app
+# Jalankan sebagai user non-root. Folder log dibuat ulang milik user app
+# (collectstatic di atas berjalan sebagai root dan sudah membuat paspor.log).
+RUN useradd --create-home --uid 1000 app \
+    && rm -rf /app/var \
+    && mkdir -p /app/var/log \
+    && chown -R app:app /app/var
 USER app
 
 EXPOSE 8000
