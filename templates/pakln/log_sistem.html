@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Log Sistem{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Log Sistem</h2>
+    <p class="sub">Catatan aktivitas pengguna: siapa melakukan apa, hasilnya, kapan, dan memakai apa.</p>
+  </div>
+  <button type="button" class="button is-danger is-small" data-modal-open="resetLogModal">Reset Log</button>
+</div>
+
+<div class="box">
+  <form id="logFilter" novalidate>
+    <div class="columns is-multiline">
+      <div class="column is-3">
+        <div class="field">
+          <label class="label" for="fDari">Dari tanggal</label>
+          <div class="control"><input type="date" id="fDari" class="input"></div>
+        </div>
+      </div>
+      <div class="column is-3">
+        <div class="field">
+          <label class="label" for="fSampai">Sampai tanggal</label>
+          <div class="control"><input type="date" id="fSampai" class="input"></div>
+        </div>
+      </div>
+      <div class="column is-3">
+        <div class="field">
+          <label class="label" for="fAktivitas">Aktivitas</label>
+          <div class="control"><div class="select is-fullwidth">
+            <select id="fAktivitas">
+              <option value="">Semua aktivitas</option>
+              {% for kode, label in aktivitas_choices %}<option value="{{ kode }}">{{ label }}</option>{% endfor %}
+            </select>
+          </div></div>
+        </div>
+      </div>
+      <div class="column is-3">
+        <div class="field">
+          <label class="label" for="fStatus">Hasil</label>
+          <div class="control"><div class="select is-fullwidth">
+            <select id="fStatus">
+              <option value="">Semua hasil</option>
+              {% for kode, label in status_choices %}<option value="{{ kode }}">{{ label }}</option>{% endfor %}
+            </select>
+          </div></div>
+        </div>
+      </div>
+      <div class="column is-4">
+        <div class="field">
+          <label class="label" for="fPengguna">Pengguna</label>
+          <div class="control"><input type="text" id="fPengguna" class="input" placeholder="Username"></div>
+        </div>
+      </div>
+    </div>
+    <div class="buttons">
+      <button type="submit" class="button is-primary is-small">Terapkan Filter</button>
+      <button type="button" id="logFilterReset" class="button is-small">Hapus Filter</button>
+    </div>
+  </form>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;margin-bottom:14px;">Riwayat Aktivitas (<span id="logCount">{{ total }}</span>)</div>
+  <div class="table-wrap">
+    <table id="logTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
+      <thead>
+        <tr>
+          <th>Waktu</th><th>Pengguna</th><th>Aktivitas</th><th>Objek</th><th>Hasil</th><th>IP</th><th>Perangkat</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="resetLogModal" class="modal paspor-modal">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <div class="modal-card-body">
+      <form method="post" action="{% url 'pakln:log_sistem_reset' %}" data-confirm="Log yang dipilih akan dihapus permanen dan tidak dapat dikembalikan. Lanjutkan?" data-confirm-type="danger" data-confirm-title="Reset Log" data-confirm-ok="Ya, Hapus Log">
+        {% csrf_token %}
+        <h3>Reset Log</h3>
+        <p class="modal-intro">Log yang dipilih akan <strong>dihapus permanen</strong> dari database dan
+          <strong>tidak dapat dikembalikan</strong>. Satu catatan "Reset Log" tetap disimpan sebagai jejak audit.</p>
+        <div class="field">
+          <label class="label" for="rentangReset">Hapus log</label>
+          <div class="control"><div class="select is-fullwidth">
+            <select id="rentangReset" name="rentang">
+              <option value="7">Lebih lama dari 7 hari (1 minggu)</option>
+              <option value="30">Lebih lama dari 30 hari (1 bulan)</option>
+              <option value="semua">Semua log</option>
+            </select>
+          </div></div>
+        </div>
+        <button type="submit" class="button is-danger is-fullwidth">Hapus Log</button>
+        <button type="button" class="button is-fullwidth" style="margin-top:8px;" data-modal-close>Batal</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
+<script>
+  $(function () {
+    var $tabel = $('#logTable').DataTable({
+      serverSide: true,
+      processing: true,
+      autoWidth: false,
+      ajax: {
+        url: '{% url "pakln:log_sistem_data" %}', type: 'GET', cache: false,
+        data: function (d) {
+          d.tgl_dari = $('#fDari').val();
+          d.tgl_sampai = $('#fSampai').val();
+          d.aktivitas = $('#fAktivitas').val();
+          d.status = $('#fStatus').val();
+          d.pengguna = $('#fPengguna').val().trim();
+        },
+      },
+      columns: [
+        { data: 0, width: '14%' },
+        { data: 1, width: '13%' },
+        { data: 2, width: '24%', orderable: false },
+        { data: 3, width: '13%', orderable: false },
+        { data: 4, width: '12%' },
+        { data: 5, width: '9%', orderable: false },
+        { data: 6, width: '15%', orderable: false },
+      ],
+      order: [[0, 'desc']],
+      pageLength: 10,
+      lengthMenu: [10, 25, 50, 100],
+      dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
+      language: {
+        search: '',
+        searchPlaceholder: 'Cari log...',
+        lengthMenu: 'Tampilkan _MENU_ log',
+        info: 'Menampilkan _START_–_END_ dari _TOTAL_ log',
+        infoEmpty: 'Belum ada log',
+        infoFiltered: '(disaring dari _MAX_ total log)',
+        zeroRecords: 'Tidak ada log yang cocok.',
+        processing: 'Memuat…',
+        paginate: { previous: '‹ Sebelumnya', next: 'Berikutnya ›' },
+      },
+    }).on('xhr.dt', function (e, settings, json) {
+      if (json) { $('#logCount').text(json.recordsTotal); }
+    });
+
+    $('#logFilter').on('submit', function (e) {
+      e.preventDefault();
+      $tabel.ajax.reload();
+    });
+    $('#logFilterReset').on('click', function () {
+      $('#logFilter')[0].reset();
+      $tabel.ajax.reload();
+    });
+  });
+</script>
+{% endblock %}

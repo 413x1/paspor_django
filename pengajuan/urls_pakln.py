@@ -1,5 +1,7 @@
 from django.urls import path
 
+from logs import views as log_views
+
 from . import views_pakln as views
 from . import views_report
 
@@ -12,6 +14,9 @@ urlpatterns = [
     path("generate-nd-karo/unduh-pdf/", views.download_nd_karo_pdf, name="download_nd_karo_pdf"),
     path("histori-generate/", views.histori_generate, name="histori_generate"),
     path("histori-generate/data/", views.histori_generate_data, name="histori_generate_data"),
+    path("log-sistem/", log_views.log_sistem, name="log_sistem"),
+    path("log-sistem/data/", log_views.log_sistem_data, name="log_sistem_data"),
+    path("log-sistem/reset/", log_views.log_sistem_reset, name="log_sistem_reset"),
     path("pengaturan/", views.pengaturan_dokumen, name="pengaturan_dokumen"),
     path("users/", views.kelola_user, name="kelola_user"),
     path("users/data/", views.users_data, name="users_data"),

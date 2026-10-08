@@ -17,6 +17,8 @@ from django.views.decorators.http import require_POST
 
 from accounts.forms import EditUserForm, TambahUserForm
 from accounts.models import User
+from logs.models import ActivityLog
+from logs.utils import catat_riwayat, log_aktivitas, record_activity
 from notifications import services as notif
 from notifications.services import notify_complete_pkln, notify_reject_pakln_to_unor
 from paspor.impor_libur import ImporError, baca_berkas, buat_template_xlsx, simpan
@@ -194,6 +196,11 @@ def _simpan_log_generate(request, jenis, pdf_bytes, filename):
     log.save()
     if pengajuan_qs.exists():
         log.pengajuan.set(pengajuan_qs)
+    record_activity(
+        request, ActivityLog.Aktivitas.GENERATE_ND,
+        f"Generate dokumen {log.get_jenis_display()} ({log.jumlah_pengajuan} pengajuan)",
+        target_type="dokumen", target_id=filename,
+    )
 
 
 @role_required("admin_pakln")
@@ -338,6 +345,7 @@ def download_nd_karo_pdf(request):
 
 
 @role_required("admin_pakln")
+@log_aktivitas("master.ubah", "Mengubah setting dokumen (pejabat penandatangan)", target_type="pengaturan", sukses_redirect=True)
 def pengaturan_dokumen(request):
     """Menu "Setting" — Admin Biro PAKLN mengatur default "Jabatan Pejabat
     Penandatangan" & "Nama Pejabat" yang dipakai form Generate ND Kabag
@@ -538,6 +546,7 @@ def dashboard_data(request):
 
 
 @role_required("admin_pakln")
+@log_aktivitas("master.ubah", "Menambah user", target_type="user", sukses_redirect=True)
 def kelola_user(request):
     """Manajemen User — Admin Biro PAKLN membuat akun baru untuk
     Pegawai atau Admin Unor."""
@@ -643,6 +652,7 @@ def users_data(request):
 
 
 @role_required("admin_pakln")
+@log_aktivitas("master.ubah", "Mengubah user", target_type="user", target_kwarg="user_id", sukses_redirect=True)
 def edit_user(request, user_id):
     """Sunting user (Pegawai / Admin Unor) yang sudah ada."""
     user_obj = get_object_or_404(
@@ -681,6 +691,7 @@ def edit_user(request, user_id):
 
 
 @role_required("admin_pakln")
+@log_aktivitas("master.ubah", "Menambah template dokumen", target_type="template", sukses_redirect=True)
 def kelola_template(request):
     """Manajemen Template — Admin Biro PAKLN mengunggah berkas template
     (PDF/DOCX) yang dapat diunduh Pegawai dan/atau Admin Unor, dengan
@@ -806,6 +817,7 @@ def templates_data(request):
 
 
 @role_required("admin_pakln")
+@log_aktivitas("master.ubah", "Mengubah template dokumen", target_type="template", target_kwarg="template_id", sukses_redirect=True)
 def edit_template(request, template_id):
     """Sunting template yang sudah ada."""
     template = get_object_or_404(DokumenTemplate, pk=template_id)
@@ -825,6 +837,7 @@ def edit_template(request, template_id):
 
 @role_required("admin_pakln")
 @require_POST
+@log_aktivitas("master.ubah", "Menampilkan/menyembunyikan template dokumen", target_type="template", target_kwarg="template_id")
 def toggle_template(request, template_id):
     """Tampilkan/sembunyikan template (AJAX, dipanggil dari tabel Data
     Table Server-Side) tanpa membuka form edit."""
@@ -836,6 +849,7 @@ def toggle_template(request, template_id):
 
 @role_required("admin_pakln")
 @require_POST
+@log_aktivitas("master.ubah", "Menghapus template dokumen", target_type="template", target_kwarg="template_id")
 def hapus_template(request, template_id):
     """Hapus template beserta berkasnya (AJAX)."""
     template = get_object_or_404(DokumenTemplate, pk=template_id)
@@ -845,6 +859,7 @@ def hapus_template(request, template_id):
 
 
 @role_required("admin_pakln")
+@log_aktivitas("master.ubah", "Menambah negara", target_type="negara", sukses_redirect=True)
 def kelola_negara(request):
     """Manajemen Negara — Admin Biro PAKLN mengelola daftar negara yang
     menjadi sumber pilihan pada dropdown "Tujuan Negara" di Formulir
@@ -944,6 +959,7 @@ def negara_data(request):
 
 
 @role_required("admin_pakln")
+@log_aktivitas("master.ubah", "Mengubah negara", target_type="negara", target_kwarg="negara_id", sukses_redirect=True)
 def edit_negara(request, negara_id):
     """Sunting negara yang sudah ada."""
     negara = get_object_or_404(Negara, pk=negara_id)
@@ -963,6 +979,7 @@ def edit_negara(request, negara_id):
 
 @role_required("admin_pakln")
 @require_POST
+@log_aktivitas("master.ubah", "Mengaktifkan/menonaktifkan negara", target_type="negara", target_kwarg="negara_id")
 def toggle_negara(request, negara_id):
     """Aktifkan/nonaktifkan negara (AJAX, dipanggil dari tabel Data Table
     Server-Side) tanpa membuka form edit. Negara nonaktif tidak lagi
@@ -976,6 +993,7 @@ def toggle_negara(request, negara_id):
 
 @role_required("admin_pakln")
 @require_POST
+@log_aktivitas("master.ubah", "Menghapus negara", target_type="negara", target_kwarg="negara_id")
 def hapus_negara(request, negara_id):
     """Hapus permanen data negara (AJAX). Ditolak jika negara ini masih
     dipakai pada satu atau lebih pengajuan (riwayat/jejak audit) — gunakan
@@ -1004,6 +1022,7 @@ def _tahun_kalender(request):
 
 
 @role_required("admin_pakln")
+@log_aktivitas("master.ubah", "Menambah hari libur", target_type="hari_libur", sukses_redirect=True)
 def kelola_kalender(request):
     """Setting Kalender — Admin Biro PAKLN mengelola tanggal merah (libur
     nasional & cuti bersama) yang dikecualikan dari perhitungan Jumlah Hari
@@ -1155,6 +1174,7 @@ def kalender_data(request):
 
 
 @role_required("admin_pakln")
+@log_aktivitas("master.ubah", "Mengubah hari libur", target_type="hari_libur", target_kwarg="libur_id", sukses_redirect=True)
 def edit_hari_libur(request, libur_id):
     """Sunting satu tanggal libur."""
     libur = get_object_or_404(HariLibur, pk=libur_id)
@@ -1174,6 +1194,7 @@ def edit_hari_libur(request, libur_id):
 
 @role_required("admin_pakln")
 @require_POST
+@log_aktivitas("master.ubah", "Mengaktifkan/menonaktifkan hari libur", target_type="hari_libur", target_kwarg="libur_id")
 def toggle_hari_libur(request, libur_id):
     """Aktifkan/nonaktifkan tanggal libur (AJAX) — mis. ada revisi SKB —
     tanpa kehilangan datanya. Pengajuan yang sudah dikirim tidak
@@ -1186,6 +1207,7 @@ def toggle_hari_libur(request, libur_id):
 
 @role_required("admin_pakln")
 @require_POST
+@log_aktivitas("master.ubah", "Menghapus hari libur", target_type="hari_libur", target_kwarg="libur_id")
 def hapus_hari_libur(request, libur_id):
     """Hapus permanen satu tanggal libur (AJAX)."""
     get_object_or_404(HariLibur, pk=libur_id).delete()
@@ -1213,6 +1235,10 @@ def impor_kalender(request):
     try:
         baris = baca_berkas(form.cleaned_data["berkas"])
     except ImporError as e:
+        record_activity(
+            request, ActivityLog.Aktivitas.UBAH_MASTER, "Impor hari libur",
+            status=ActivityLog.Status.GAGAL, target_type="hari_libur", detail=f"{len(e.errors)} kesalahan pada berkas",
+        )
         messages.error(request, "Impor gagal — tidak ada data yang disimpan. Perbaiki berkas lalu unggah ulang.")
         for pesan in e.errors[:_MAKS_PESAN_IMPOR]:
             messages.error(request, pesan)
@@ -1225,6 +1251,11 @@ def impor_kalender(request):
         return redirect("pakln:kelola_kalender")
 
     hasil = simpan(baris, timpa=form.cleaned_data["timpa"], user=request.user)
+    record_activity(
+        request, ActivityLog.Aktivitas.UBAH_MASTER,
+        f"Impor hari libur: {hasil['dibuat']} ditambahkan, {hasil['diperbarui']} diperbarui",
+        target_type="hari_libur",
+    )
     messages.success(
         request,
         f"Impor selesai: {hasil['dibuat']} ditambahkan, {hasil['diperbarui']} diperbarui, "
@@ -1248,6 +1279,7 @@ def template_kalender(request):
 
 
 @role_required("admin_pakln")
+@log_aktivitas("master.ubah", "Menambah sumber pembiayaan", target_type="sumber_pembiayaan", sukses_redirect=True)
 def kelola_sumber_pembiayaan(request):
     """Manajemen Sumber Pembiayaan — Admin Biro PAKLN mengelola daftar
     sumber pembiayaan yang menjadi pilihan pada dropdown "Sumber
@@ -1351,6 +1383,7 @@ def sumber_pembiayaan_data(request):
 
 
 @role_required("admin_pakln")
+@log_aktivitas("master.ubah", "Mengubah sumber pembiayaan", target_type="sumber_pembiayaan", target_kwarg="sumber_id", sukses_redirect=True)
 def edit_sumber_pembiayaan(request, sumber_id):
     """Sunting sumber pembiayaan yang sudah ada."""
     sumber = get_object_or_404(SumberPembiayaan, pk=sumber_id)
@@ -1370,6 +1403,7 @@ def edit_sumber_pembiayaan(request, sumber_id):
 
 @role_required("admin_pakln")
 @require_POST
+@log_aktivitas("master.ubah", "Mengaktifkan/menonaktifkan sumber pembiayaan", target_type="sumber_pembiayaan", target_kwarg="sumber_id")
 def toggle_sumber_pembiayaan(request, sumber_id):
     """Aktifkan/nonaktifkan sumber pembiayaan (AJAX, dipanggil dari tabel
     Data Table Server-Side) tanpa membuka form edit. Sumber nonaktif tidak
@@ -1383,6 +1417,7 @@ def toggle_sumber_pembiayaan(request, sumber_id):
 
 @role_required("admin_pakln")
 @require_POST
+@log_aktivitas("master.ubah", "Menghapus sumber pembiayaan", target_type="sumber_pembiayaan", target_kwarg="sumber_id")
 def hapus_sumber_pembiayaan(request, sumber_id):
     """Hapus permanen data sumber pembiayaan (AJAX). Ditolak jika masih
     dipakai pada satu atau lebih pengajuan (riwayat/jejak audit) — gunakan
@@ -1401,6 +1436,7 @@ def hapus_sumber_pembiayaan(request, sumber_id):
 
 
 @role_required("admin_pakln")
+@log_aktivitas("master.ubah", "Menambah kategori perjalanan", target_type="kategori", sukses_redirect=True)
 def kelola_kategori(request):
     """Manajemen Kategori Perjalanan — Admin Biro PAKLN mengelola daftar
     kategori yang menjadi pilihan pada dropdown "Kategori Perjalanan" di
@@ -1503,6 +1539,7 @@ def kategori_data(request):
 
 
 @role_required("admin_pakln")
+@log_aktivitas("master.ubah", "Mengubah kategori perjalanan", target_type="kategori", target_kwarg="kategori_id", sukses_redirect=True)
 def edit_kategori(request, kategori_id):
     """Sunting kategori perjalanan yang sudah ada."""
     kategori = get_object_or_404(KategoriPerjalanan, pk=kategori_id)
@@ -1522,6 +1559,7 @@ def edit_kategori(request, kategori_id):
 
 @role_required("admin_pakln")
 @require_POST
+@log_aktivitas("master.ubah", "Mengaktifkan/menonaktifkan kategori perjalanan", target_type="kategori", target_kwarg="kategori_id")
 def toggle_kategori(request, kategori_id):
     """Aktifkan/nonaktifkan kategori perjalanan (AJAX, dipanggil dari
     tabel Data Table Server-Side) tanpa membuka form edit."""
@@ -1533,6 +1571,7 @@ def toggle_kategori(request, kategori_id):
 
 @role_required("admin_pakln")
 @require_POST
+@log_aktivitas("master.ubah", "Menghapus kategori perjalanan", target_type="kategori", target_kwarg="kategori_id")
 def hapus_kategori(request, kategori_id):
     """Hapus permanen data kategori perjalanan (AJAX). Ditolak jika masih
     dipakai pada satu atau lebih pengajuan/template dokumen (riwayat/jejak
@@ -1591,6 +1630,7 @@ def preview(request, kode):
                 p.catatan_pakln = catatan
                 p.save()
                 riwayat.catat(p, RiwayatPengajuan.Aksi.DIKEMBALIKAN_PAKLN, request.user, status_dari, catatan=catatan)
+                catat_riwayat(request, p, RiwayatPengajuan.Aksi.DIKEMBALIKAN_PAKLN)
             notify_reject_pakln_to_unor(p, catatan)
             messages.success(request, f"Pengajuan {p.kode} dikembalikan ke {tujuan_kembali} beserta catatan.")
             return redirect("pakln:dashboard")
@@ -1636,6 +1676,10 @@ def upload_dokumen(request, kode):
                 pendukung.file = file_obj
                 pendukung.uploaded_at = timezone.now()
                 pendukung.save(update_fields=["file", "uploaded_at"])
+                record_activity(
+                    request, ActivityLog.Aktivitas.UNGGAH_DOKUMEN, f"Mengunggah dokumen pendukung — {pengajuan.kode}",
+                    target_type="pengajuan", target_id=pengajuan.kode,
+                )
                 messages.success(request, "Dokumen pendukung berhasil diunggah.")
                 return redirect("pakln:upload_dokumen", kode=kode)
         elif "pendukung_hapus" in request.POST and pendukung:
@@ -1643,6 +1687,10 @@ def upload_dokumen(request, kode):
             pendukung.file = ""
             pendukung.uploaded_at = None
             pendukung.save(update_fields=["file", "uploaded_at"])
+            record_activity(
+                request, ActivityLog.Aktivitas.HAPUS_DOKUMEN, f"Menghapus dokumen pendukung — {pengajuan.kode}",
+                target_type="pengajuan", target_id=pengajuan.kode,
+            )
             messages.success(request, "Berkas dokumen pendukung dihapus.")
             return redirect("pakln:upload_dokumen", kode=kode)
         elif "toggle_pendukung" in request.POST and pendukung:
@@ -1702,6 +1750,7 @@ def _selesaikan(request, pengajuan):
         p.tgl_selesai = timezone.now().date()
         p.save()
         riwayat.catat(p, RiwayatPengajuan.Aksi.SELESAI, request.user, status_dari)
+        catat_riwayat(request, p, RiwayatPengajuan.Aksi.SELESAI)
 
     notify_complete_pkln(p)
     if p.is_pdln:
@@ -1772,6 +1821,7 @@ def verifikasi_laporan(request, kode):
             aksi = RiwayatPengajuan.Aksi.LAPORAN_DIKEMBALIKAN
         laporan.save()
         riwayat.catat(p, aksi, request.user, p.status, catatan=catatan)
+        catat_riwayat(request, p, aksi)
 
     if keputusan == "setujui":
         notif.notify_laporan_disetujui(p)

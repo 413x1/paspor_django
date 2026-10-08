@@ -79,6 +79,7 @@ INSTALLED_APPS = [
     "accounts",
     "pengajuan",
     "notifications",
+    "logs",
     "fileupload",
 ]
 
@@ -234,3 +235,43 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 PINTAR_API_URL = env("PINTAR_API_URL", "")
 PINTAR_API_TOKEN = env("PINTAR_API_TOKEN", "")
 PINTAR_API_TIMEOUT = int(env("PINTAR_API_TIMEOUT", "5"))
+
+
+# ---------------------------------------------------------------------------
+# Log Sistem (lihat wiki/instructions/SYSTEM_LOGGING.MD)
+# ---------------------------------------------------------------------------
+# Percayai header X-Forwarded-For untuk mengambil IP klien pada Log Sistem.
+# Aktifkan HANYA bila aplikasi berjalan di belakang reverse proxy tepercaya
+# (mis. Synology); bila tidak, header ini bisa dipalsukan pengguna.
+ACTIVITY_LOG_TRUST_PROXY = env("ACTIVITY_LOG_TRUST_PROXY", "False") == "True"
+
+# Log teknis (error/peringatan sistem) -> konsol + file bergilir. Log aktivitas
+# pengguna TIDAK di sini, melainkan di database (model logs.ActivityLog).
+LOG_DIR = Path(env("LOG_DIR", str(BASE_DIR / "var" / "log")))
+_LOG_HANDLERS = {"console": {"class": "logging.StreamHandler", "formatter": "ringkas"}}
+try:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    _LOG_HANDLERS["file"] = {
+        "class": "logging.handlers.RotatingFileHandler",
+        "filename": str(LOG_DIR / "paspor.log"),
+        "maxBytes": 5 * 1024 * 1024,
+        "backupCount": 5,
+        "encoding": "utf-8",
+        "formatter": "ringkas",
+    }
+except OSError:
+    pass  # folder log tidak bisa dibuat (mis. FS read-only): cukup ke konsol
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "ringkas": {"format": "{asctime} {levelname} {name}: {message}", "style": "{"},
+    },
+    "handlers": _LOG_HANDLERS,
+    "loggers": {
+        "logs": {"handlers": list(_LOG_HANDLERS), "level": "INFO", "propagate": False},
+        "pengajuan": {"handlers": list(_LOG_HANDLERS), "level": "INFO", "propagate": False},
+        "django.request": {"handlers": list(_LOG_HANDLERS), "level": "WARNING", "propagate": False},
+    },
+}

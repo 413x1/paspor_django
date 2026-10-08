@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import escape, format_html
 
+from logs.utils import catat_riwayat
 from notifications.services import notify_approve_unor, notify_reject_bpsdm
 
 from . import alur, persyaratan, report, riwayat, tahap
@@ -100,6 +101,7 @@ def preview(request, kode):
                     p.catatan_bpsdm = catatan
                     p.save()
                     riwayat.catat(p, Aksi.DIKEMBALIKAN_BPSDM, request.user, status_dari, catatan=catatan)
+                    catat_riwayat(request, p, Aksi.DIKEMBALIKAN_BPSDM)
                 notify_reject_bpsdm(p, catatan)
                 messages.success(request, f"Pengajuan {p.kode} dikembalikan ke Admin Unor beserta catatan.")
                 return redirect("bpsdm:dashboard")
@@ -166,6 +168,7 @@ def _teruskan(request, pengajuan):
         p.catatan_pakln = ""
         p.save()
         riwayat.catat(p, Aksi.DITERUSKAN_ULANG if is_ulang else Aksi.DITERUSKAN_PAKLN, request.user, status_dari, catatan=catatan)
+        catat_riwayat(request, p, Aksi.DITERUSKAN_ULANG if is_ulang else Aksi.DITERUSKAN_PAKLN)
 
     notify_approve_unor(p, catatan, dari_bpsdm=True)
     messages.success(request, f"Pengajuan {p.kode} diteruskan ke Admin Biro PAKLN.")

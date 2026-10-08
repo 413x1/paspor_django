@@ -117,6 +117,12 @@
             <span>Rekap</span>
           </a>
         </li>
+        <li>
+          <a class="sidebar-link {% if vn == 'pakln:log_sistem' %}is-active{% endif %}" href="{% url 'pakln:log_sistem' %}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <span>Log Sistem</span>
+          </a>
+        </li>
         {# Grup "Manajemen" terbuka otomatis bila halaman aktif ada di dalamnya #}
         <li class="sidebar-group{% if vn == 'pakln:kelola_user' or vn == 'pakln:edit_user' or vn == 'pakln:kelola_template' or vn == 'pakln:edit_template' or vn == 'pakln:kelola_negara' or vn == 'pakln:edit_negara' or vn == 'pakln:kelola_sumber_pembiayaan' or vn == 'pakln:edit_sumber_pembiayaan' or vn == 'pakln:kelola_kategori' or vn == 'pakln:edit_kategori' or vn == 'pakln:kelola_kalender' or vn == 'pakln:edit_hari_libur' or vn == 'pakln:histori_generate' %} is-open is-active-route{% endif %}" data-sidebar-group>
           <button type="button" class="sidebar-link" data-sidebar-group-toggle>

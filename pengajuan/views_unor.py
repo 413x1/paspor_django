@@ -6,6 +6,8 @@ from django.utils import timezone
 from django.utils.html import escape, format_html
 from django.views.decorators.http import require_POST
 
+from logs.models import ActivityLog
+from logs.utils import catat_riwayat, record_activity
 from notifications.services import notify_approve_unor, notify_forward_bpsdm, notify_reject_unor
 
 from . import alur, pembatalan, persyaratan, report, riwayat, tahap
@@ -153,6 +155,7 @@ def preview(request, kode):
                 p.catatan_unor = catatan
                 p.save()
                 riwayat.catat(p, Aksi.DIKEMBALIKAN_UNOR, request.user, status_dari, catatan=catatan)
+                catat_riwayat(request, p, Aksi.DIKEMBALIKAN_UNOR)
             notify_reject_unor(p, catatan)
             messages.success(request, f"Pengajuan {p.kode} dikembalikan ke pegawai beserta catatan.")
             return redirect("unor:dashboard")
@@ -197,6 +200,10 @@ def upload_dokumen(request, kode):
                 pendukung.file = file_obj
                 pendukung.uploaded_at = timezone.now()
                 pendukung.save(update_fields=["file", "uploaded_at"])
+                record_activity(
+                    request, ActivityLog.Aktivitas.UNGGAH_DOKUMEN, f"Mengunggah dokumen pendukung — {pengajuan.kode}",
+                    target_type="pengajuan", target_id=pengajuan.kode,
+                )
                 messages.success(request, "Dokumen pendukung berhasil diunggah.")
                 return redirect("unor:upload_dokumen", kode=kode)
         elif "pendukung_hapus" in request.POST and pendukung:
@@ -204,6 +211,10 @@ def upload_dokumen(request, kode):
             pendukung.file = ""
             pendukung.uploaded_at = None
             pendukung.save(update_fields=["file", "uploaded_at"])
+            record_activity(
+                request, ActivityLog.Aktivitas.HAPUS_DOKUMEN, f"Menghapus dokumen pendukung — {pengajuan.kode}",
+                target_type="pengajuan", target_id=pengajuan.kode,
+            )
             messages.success(request, "Berkas dokumen pendukung dihapus.")
             return redirect("unor:upload_dokumen", kode=kode)
         else:
@@ -267,6 +278,7 @@ def _teruskan(request, pengajuan, ke_bpsdm):
             aksi = Aksi.DITERUSKAN_ULANG if is_ulang else Aksi.DITERUSKAN_PAKLN
         p.save()
         riwayat.catat(p, aksi, request.user, status_dari, catatan=catatan)
+        catat_riwayat(request, p, aksi)
 
     if ke_bpsdm:
         notify_forward_bpsdm(p, catatan)
