@@ -36,7 +36,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 # libmariadb3       : library client MySQL untuk mysqlclient
 # pango/harfbuzz    : dibutuhkan WeasyPrint untuk membuat PDF
-# fonts-liberation  : pengganti metrik-identik "Times New Roman" di template PDF
+# fonts-liberation  : "Liberation Sans", pengganti metrik-identik Arial di template PDF
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         libmariadb3 \
