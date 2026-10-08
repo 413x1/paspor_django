@@ -7,8 +7,30 @@
 {% if dibekukan %}<div class="notification paspor-msg is-warning">{{ dibekukan }}</div>{% endif %}
 
 <div class="box">
-  <div class="section-title">Unggah Dokumen Administrasi Biro PAKLN — {{ pengajuan.kode }}</div>
-  <p class="sub" style="margin:-10px 0 12px;">{{ pengajuan.jenis_label }} · <span class="tag paspor-status is-{{ pengajuan.status }}"><span class="dot"></span>{{ pengajuan.get_status_display }}</span></p>
+  <div class="level" style="margin-bottom:12px;">
+    <div class="level-left">
+      <div class="level-item" style="display:block;">
+        <div class="section-title">Unggah Dokumen Administrasi Biro PAKLN — {{ pengajuan.kode }}</div>
+        <p class="sub" style="margin:-10px 0 0;">{{ pengajuan.jenis_label }} · <span class="tag paspor-status is-{{ pengajuan.status }}"><span class="dot"></span>{{ pengajuan.get_status_display }}</span></p>
+      </div>
+    </div>
+
+    {% if pengajuan.status == 'proses_pakln' %}
+    <div class="level-right">
+      <div class="level-item">
+        <div class="table-head-actions" data-dropdown>
+          <button type="button" class="button is-small is-primary" data-dropdown-toggle aria-haspopup="true" aria-expanded="false">
+            📄 Generate ND<span class="navbar-manage-caret"></span>
+          </button>
+          <div class="table-head-menu" data-dropdown-panel>
+            <a href="{% url 'pakln:generate_nd_kabag' %}?pengajuan={{ pengajuan.kode }}" class="navbar-item" target="_blank" rel="noopener">ND Kabag</a>
+            <a href="{% url 'pakln:generate_nd_karo' %}?pengajuan={{ pengajuan.kode }}" class="navbar-item" target="_blank" rel="noopener">ND Karo</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
 
   {% include "partials/_dokumen_tahap.html" with hapus_url="pakln:hapus_dokumen" %}
 
