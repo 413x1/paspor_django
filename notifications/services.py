@@ -16,6 +16,7 @@ wiki/instructions/BISNIS_PROSES_PDLN.MD §11.
 
 from django.urls import reverse
 
+from . import email_queue
 from .models import Notification
 
 JENIS_SURAT = "Surat Izin Perjalanan Luar Negeri Non-Kedinasan"
@@ -92,6 +93,9 @@ def _create(recipients, *, pengajuan, event, level, title, body, redirect_url):
     ]
     if notifs:
         Notification.objects.bulk_create(notifs)
+        # Email dipicu dari titik yang sama agar sinkron dengan notifikasi in-app;
+        # tidak pernah melempar error (lihat email_queue.enqueue).
+        email_queue.enqueue(notifs)
 
 
 def _url_monitor(pengajuan):
