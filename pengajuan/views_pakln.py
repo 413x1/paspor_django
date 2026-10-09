@@ -597,6 +597,7 @@ def users_data(request):
             | Q(last_name__icontains=search_value)
             | Q(profile__nama__icontains=search_value)
             | Q(profile__nip__icontains=search_value)
+            | Q(email__icontains=search_value)
             | Q(unit_organisasi__name__icontains=search_value)
             | Q(profile__unit_organisasi__name__icontains=search_value)
         ).distinct()
@@ -635,7 +636,9 @@ def users_data(request):
         )
         data.append([
             format_html("<strong>{}</strong>", u.username),
-            escape(nama),
+            format_html(
+                '{}<br><span class="cell-muted">{}</span>', nama, u.email or "email belum diisi",
+            ),
             u.get_role_display(),
             escape(nip),
             escape(unit.name if unit else "—"),
@@ -677,6 +680,7 @@ def edit_user(request, user_id):
             "is_active": user_obj.is_active,
             "unit_organisasi": user_obj.unit_organisasi_id,
             "unit_kerja": user_obj.unit_kerja,
+            "email": user_obj.email,
         }
         if profile:
             initial.update({

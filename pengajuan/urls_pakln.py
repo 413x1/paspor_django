@@ -1,6 +1,7 @@
 from django.urls import path
 
 from logs import views as log_views
+from notifications import views_email
 
 from . import views_pakln as views
 from . import views_report
@@ -17,6 +18,9 @@ urlpatterns = [
     path("log-sistem/", log_views.log_sistem, name="log_sistem"),
     path("log-sistem/data/", log_views.log_sistem_data, name="log_sistem_data"),
     path("log-sistem/reset/", log_views.log_sistem_reset, name="log_sistem_reset"),
+    path("monitor-email/", views_email.monitor_email, name="monitor_email"),
+    path("monitor-email/data/", views_email.monitor_email_data, name="monitor_email_data"),
+    path("monitor-email/<int:pk>/kirim-ulang/", views_email.monitor_email_kirim_ulang, name="monitor_email_kirim_ulang"),
     path("pengaturan/", views.pengaturan_dokumen, name="pengaturan_dokumen"),
     path("users/", views.kelola_user, name="kelola_user"),
     path("users/data/", views.users_data, name="users_data"),

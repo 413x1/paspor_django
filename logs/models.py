@@ -29,6 +29,7 @@ class ActivityLog(models.Model):
         GENERATE_ND = "dokumen.generate_nd", "Generate/unduh Nota Dinas"
         UBAH_MASTER = "master.ubah", "Mengubah data master"
         RESET_LOG = "log.reset", "Reset Log"
+        KIRIM_ULANG_EMAIL = "email.kirim_ulang", "Kirim ulang email"
 
     class Status(models.TextChoices):
         BERHASIL = "success", "Berhasil"

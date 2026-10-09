@@ -45,6 +45,13 @@
       {% for e in form.nama.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
     </div>
 
+    <div class="field">
+      <label class="label" for="{{ form.email.id_for_label }}">Email <span class="badge-auto is-optional">Opsional</span></label>
+      <div class="control">{{ form.email }}</div>
+      {% for e in form.email.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+      {% if form.email.help_text %}<p class="helptext">{{ form.email.help_text }}</p>{% endif %}
+    </div>
+
     <div class="columns">
       <div class="column">
         <div class="field">

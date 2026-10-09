@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Monitor Email{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Monitor Email</h2>
+    <p class="sub">Antrean dan riwayat email notifikasi. Email yang gagal dapat dikirim ulang.</p>
+  </div>
+</div>
+
+<div class="summary-grid is-wide" id="emailRingkasan">
+  {% for kode, label, n in ringkasan %}
+  <div class="summary-card{% if kode == 'failed' and n %} active{% endif %}{% if kode == 'sent' and n %} is-done{% endif %}">
+    <div class="num" data-ringkasan="{{ kode }}">{{ n }}</div>
+    <div class="label">{{ label }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="box">
+  <form id="emailFilter" novalidate>
+    <div class="columns is-multiline">
+      <div class="column is-4">
+        <div class="field">
+          <label class="label" for="fStatus">Status</label>
+          <div class="control"><div class="select is-fullwidth">
+            <select id="fStatus">
+              <option value="">Semua status</option>
+              {% for kode, label in status_choices %}<option value="{{ kode }}">{{ label }}</option>{% endfor %}
+            </select>
+          </div></div>
+        </div>
+      </div>
+      <div class="column is-4">
+        <div class="field">
+          <label class="label" for="fDari">Dari tanggal</label>
+          <div class="control"><input type="date" id="fDari" class="input"></div>
+        </div>
+      </div>
+      <div class="column is-4">
+        <div class="field">
+          <label class="label" for="fSampai">Sampai tanggal</label>
+          <div class="control"><input type="date" id="fSampai" class="input"></div>
+        </div>
+      </div>
+    </div>
+    <div class="buttons">
+      <button type="submit" class="button is-primary is-small">Terapkan Filter</button>
+      <button type="button" id="emailFilterReset" class="button is-small">Hapus Filter</button>
+    </div>
+  </form>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:14px;margin-bottom:14px;">Daftar Email (<span id="emailCount">{{ total }}</span>)</div>
+  <div class="table-wrap">
+    <table id="emailTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
+      <thead>
+        <tr>
+          <th>Waktu</th><th>Penerima</th><th>Subjek</th><th>Status</th><th>Percobaan</th><th>Terkirim</th><th>Keterangan</th><th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
+<script>
+  $(function () {
+    function csrfToken() {
+      var match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+      return match ? decodeURIComponent(match[1]) : '';
+    }
+
+    var $tabel = $('#emailTable').DataTable({
+      serverSide: true,
+      processing: true,
+      autoWidth: false,
+      ajax: {
+        url: '{% url "pakln:monitor_email_data" %}', type: 'GET', cache: false,
+        data: function (d) {
+          d.status = $('#fStatus').val();
+          d.tgl_dari = $('#fDari').val();
+          d.tgl_sampai = $('#fSampai').val();
+        },
+      },
+      columns: [
+        { data: 0, width: '12%' },
+        { data: 1, width: '17%' },
+        { data: 2, width: '22%', orderable: false },
+        { data: 3, width: '11%' },
+        { data: 4, width: '7%', orderable: false },
+        { data: 5, width: '12%' },
+        { data: 6, width: '12%', orderable: false },
+        { data: 7, width: '7%', orderable: false },
+      ],
+      order: [[0, 'desc']],
+      pageLength: 10,
+      lengthMenu: [10, 25, 50, 100],
+      dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
+      language: {
+        search: '',
+        searchPlaceholder: 'Cari penerima/subjek...',
+        lengthMenu: 'Tampilkan _MENU_ email',
+        info: 'Menampilkan _START_–_END_ dari _TOTAL_ email',
+        infoEmpty: 'Belum ada email',
+        infoFiltered: '(disaring dari _MAX_ total email)',
+        zeroRecords: 'Tidak ada email yang cocok.',
+        processing: 'Memuat…',
+        paginate: { previous: '‹ Sebelumnya', next: 'Berikutnya ›' },
+      },
+    }).on('xhr.dt', function (e, settings, json) {
+      if (!json) { return; }
+      $('#emailCount').text(json.recordsTotal);
+      $.each(json.ringkasan || {}, function (kode, n) {
+        $('[data-ringkasan="' + kode + '"]').text(n);
+      });
+    });
+
+    $('#emailFilter').on('submit', function (e) {
+      e.preventDefault();
+      $tabel.ajax.reload();
+    });
+    $('#emailFilterReset').on('click', function () {
+      $('#emailFilter')[0].reset();
+      $tabel.ajax.reload();
+    });
+
+    $('#emailTable tbody').on('click', '[data-kirim-ulang]', function () {
+      var id = $(this).data('kirim-ulang');
+      pasporConfirm({
+        type: 'warning', title: 'Kirim Ulang',
+        message: 'Kembalikan email ini ke antrean? Percobaan pengiriman diulang dari awal.',
+        confirmText: 'Ya, Kirim Ulang',
+      }).then(function (ok) {
+        if (!ok) { return; }
+        $.ajax({
+          url: '{% url "pakln:monitor_email" %}' + id + '/kirim-ulang/', type: 'POST',
+          headers: { 'X-CSRFToken': csrfToken() },
+          success: function () {
+            $tabel.ajax.reload(null, false);
+            pasporAlert({ message: 'Email dikembalikan ke antrean.' });
+          },
+          error: function (xhr) {
+            var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Gagal mengirim ulang email.';
+            pasporAlert({ type: 'error', title: 'Gagal', message: msg });
+          },
+        });
+      });
+    });
+  });
+</script>
+{% endblock %}
