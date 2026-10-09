@@ -18,6 +18,7 @@
 10. [Troubleshooting](#10-troubleshooting)
 11. [Catatan Keamanan](#11-catatan-keamanan)
 12. [Log Sistem](#12-log-sistem)
+13. [Email Notifikasi](#13-email-notifikasi)
 
 ---
 
@@ -115,6 +116,11 @@ DJANGO_SUPERUSER_EMAIL=admin@contoh.go.id
 DJANGO_SUPERUSER_PASSWORD=PASSWORD_SUPERUSER_YANG_KUAT
 
 MAIL_ALLOW_SEND=false
+
+# Email notifikasi (lihat bagian "Email Notifikasi" di bawah)
+SITE_BASE_URL=http://10.101.21.55:8000
+MAIL_DB_QUEUE_ENABLE_WORKER=true
+MAIL_DB_QUEUE_SEND_PACING_MS=2000
 
 # Log Sistem (opsional; lihat bagian "Log Sistem" di bawah)
 ACTIVITY_LOG_TRUST_PROXY=False
@@ -318,3 +324,34 @@ pengguna ke database. Rancangan lengkap: `wiki/instructions/SYSTEM_LOGGING.MD`.
 - **Reset Log:** tombol Reset Log di halaman monitoring menghapus log
   **permanen**. Dari terminal: `python manage.py bersihkan_log --hari 30`
   (tambahkan `--dry-run` untuk simulasi).
+
+## 13. Email Notifikasi
+
+Email notifikasi dikirim lewat **antrean database** (tabel `notifications_emaillog`)
+dan sebuah **worker**. Rancangan lengkap: `wiki/instructions/EMAIL_NOTIF_IMPLEMENTATION_PLAN.MD`.
+
+- **Migrasi:** tabel dibuat otomatis oleh `migrate` (`DJANGO_MIGRATE_ON_START=True`).
+- **Variabel `.env`:** `MAIL_*` (SMTP), `MAIL_DB_QUEUE_*` (antrean), `SITE_BASE_URL`
+  (alamat dasar untuk tautan di email, mis. `http://10.101.21.55:8000`), dan
+  `MAIL_DEV_REDIRECT_TO` (opsional, alihkan semua email ke satu alamat untuk uji).
+- **Saklar pengaman `MAIL_ALLOW_SEND`:** bawaan `false`. Bila `false`, email tetap
+  dicatat dengan status **Dilewati** tetapi tidak dikirim. Set `true` hanya di produksi.
+- **Worker:** service `mail-worker` di `docker-compose.yml` memakai `profile: email`,
+  jadi tidak menyala otomatis. Aktifkan setelah `.env` benar
+  (`MAIL_ALLOW_SEND=true`, `MAIL_DB_QUEUE_ENABLE_WORKER=true`):
+
+  ```bash
+  docker compose --profile email up -d
+  docker compose logs -f mail-worker
+  ```
+
+  Tanpa Docker: `python manage.py kirim_email_antrean` (berjalan terus) atau
+  `python manage.py kirim_email_antrean --once` (satu putaran, cocok untuk cron).
+- **Pemantauan:** menu **Monitor Email** (Admin Biro PAKLN). Email yang gagal dapat
+  **Kirim Ulang**.
+- **Akun tanpa email** dilewati (status Dilewati). Isi email di **Manajemen User**.
+- **Office 365:** pastikan SMTP AUTH diaktifkan untuk kotak surat pengirim. Microsoft
+  membatasi kecepatan kirim, sehingga worker memberi jeda antar email
+  (`MAIL_DB_QUEUE_SEND_PACING_MS`).
+- **Retensi:** `python manage.py bersihkan_email_log --hari 90` menghapus riwayat
+  terkirim/dilewati yang lama (tambahkan `--termasuk-gagal` untuk email gagal).

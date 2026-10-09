@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class Notification(models.Model):
@@ -74,3 +75,65 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"[{self.event}] {self.title} -> {self.recipient}"
+
+
+class EmailLog(models.Model):
+    """
+    Antrean email SEKALIGUS riwayat pengiriman (lihat
+    wiki/instructions/EMAIL_NOTIF_IMPLEMENTATION_PLAN.MD).
+
+    Web hanya menulis baris ini (cepat, satu transaksi dengan data bisnis);
+    pengiriman SMTP dilakukan worker (`manage.py kirim_email_antrean`).
+
+    Alur status:
+        pending -> sending -> sent
+        sending -> pending (gagal sementara, `next_attempt_at` digeser)
+        sending -> failed  (gagal permanen setelah `max_attempts`)
+        skipped            (sengaja tidak dikirim: tanpa email / pengiriman dimatikan)
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Menunggu"
+        SENDING = "sending", "Dikirim"
+        SENT = "sent", "Terkirim"
+        FAILED = "failed", "Gagal"
+        SKIPPED = "skipped", "Dilewati"
+
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="email_logs",
+    )
+    to_email = models.CharField(max_length=254, blank=True)  # snapshot; kosong bila penerima tak punya email
+    to_name = models.CharField(max_length=150, blank=True)
+    pengajuan = models.ForeignKey(
+        "pengajuan.Pengajuan", null=True, blank=True, on_delete=models.SET_NULL, related_name="email_logs",
+    )
+    event = models.CharField(max_length=40, blank=True)
+
+    subject = models.CharField(max_length=255)
+    body_text = models.TextField(blank=True)
+    body_html = models.TextField(blank=True)
+
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    max_attempts = models.PositiveSmallIntegerField(default=5)
+    next_attempt_at = models.DateTimeField(default=timezone.now)
+    locked_at = models.DateTimeField(null=True, blank=True)
+    locked_by = models.CharField(max_length=100, blank=True)
+    last_error = models.TextField(blank=True)
+    status_note = models.CharField(max_length=255, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "next_attempt_at"], name="emaillog_status_next_idx"),
+            models.Index(fields=["created_at"], name="emaillog_created_idx"),
+        ]
+        verbose_name = "Log Email"
+        verbose_name_plural = "Log Email"
+
+    def __str__(self):
+        return f"[{self.status}] {self.subject} -> {self.to_email or '(tanpa email)'}"

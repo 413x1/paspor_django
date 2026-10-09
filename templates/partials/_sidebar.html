@@ -123,6 +123,12 @@
             <span>Log Sistem</span>
           </a>
         </li>
+        <li>
+          <a class="sidebar-link {% if vn == 'pakln:monitor_email' %}is-active{% endif %}" href="{% url 'pakln:monitor_email' %}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>
+            <span>Monitor Email</span>
+          </a>
+        </li>
         {# Grup "Manajemen" terbuka otomatis bila halaman aktif ada di dalamnya #}
         <li class="sidebar-group{% if vn == 'pakln:kelola_user' or vn == 'pakln:edit_user' or vn == 'pakln:kelola_template' or vn == 'pakln:edit_template' or vn == 'pakln:kelola_negara' or vn == 'pakln:edit_negara' or vn == 'pakln:kelola_sumber_pembiayaan' or vn == 'pakln:edit_sumber_pembiayaan' or vn == 'pakln:kelola_kategori' or vn == 'pakln:edit_kategori' or vn == 'pakln:kelola_kalender' or vn == 'pakln:edit_hari_libur' or vn == 'pakln:histori_generate' %} is-open is-active-route{% endif %}" data-sidebar-group>
           <button type="button" class="sidebar-link" data-sidebar-group-toggle>

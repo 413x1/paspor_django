@@ -18,3 +18,23 @@ services:
       timeout: 10s
       start_period: 60s
       retries: 3
+
+  # Worker antrean email (lihat wiki/instructions/EMAIL_NOTIF_IMPLEMENTATION_PLAN.MD).
+  # Memakai image yang sama dengan web; hanya "web" yang menjalankan migrate/seed.
+  # Tidak ikut menyala secara bawaan. Aktifkan dengan:
+  #   docker compose --profile email up -d
+  # dan set MAIL_DB_QUEUE_ENABLE_WORKER=true serta MAIL_ALLOW_SEND=true di .env.
+  mail-worker:
+    image: paspor-django:latest
+    container_name: paspor-mail-worker
+    profiles: ["email"]
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TZ: Asia/Jakarta
+      DJANGO_MIGRATE_ON_START: "False"
+      DJANGO_INIT_ON_START: "False"
+    command: ["python", "manage.py", "kirim_email_antrean"]
+    depends_on:
+      web:
+        condition: service_healthy

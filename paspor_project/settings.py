@@ -276,6 +276,51 @@ LOGGING = {
     "loggers": {
         "logs": {"handlers": list(_LOG_HANDLERS), "level": "INFO", "propagate": False},
         "pengajuan": {"handlers": list(_LOG_HANDLERS), "level": "INFO", "propagate": False},
+        "notifications": {"handlers": list(_LOG_HANDLERS), "level": "INFO", "propagate": False},
         "django.request": {"handlers": list(_LOG_HANDLERS), "level": "WARNING", "propagate": False},
     },
+}
+
+
+# ---------------------------------------------------------------------------
+# Email notifikasi (lihat wiki/instructions/EMAIL_NOTIF_IMPLEMENTATION_PLAN.MD)
+# ---------------------------------------------------------------------------
+def _env_bool(key, default="False"):
+    return str(env(key, default)).strip().lower() in ("1", "true", "yes", "on")
+
+
+# SALKLAR PENGAMAN: bila False (bawaan), email tetap dicatat di EmailLog dengan
+# status "skipped" tetapi TIDAK dikirim via SMTP. Aktifkan hanya di .env produksi.
+MAIL_ALLOW_SEND = _env_bool("MAIL_ALLOW_SEND", "False")
+
+EMAIL_BACKEND = {
+    "smtp": "django.core.mail.backends.smtp.EmailBackend",
+    "console": "django.core.mail.backends.console.EmailBackend",
+}.get(str(env("MAIL_DRIVER", "smtp")).strip().lower(), "django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = env("MAIL_HOST", "localhost")
+EMAIL_PORT = int(env("MAIL_PORT", "587"))
+EMAIL_HOST_USER = env("MAIL_USERNAME", "")
+EMAIL_HOST_PASSWORD = env("MAIL_PASSWORD", "")
+_MAIL_ENCRYPTION = str(env("MAIL_ENCRYPTION", "tls")).strip().lower()
+EMAIL_USE_TLS = _MAIL_ENCRYPTION == "tls"      # STARTTLS (port 587)
+EMAIL_USE_SSL = _MAIL_ENCRYPTION == "ssl"      # SSL langsung (port 465)
+EMAIL_TIMEOUT = int(env("MAIL_TIMEOUT_MS", "15000")) / 1000   # Django memakai detik
+DEFAULT_FROM_EMAIL = f'"{env("MAIL_FROM_NAME", "PASPOR PU")}" <{env("MAIL_FROM_EMAIL", "noreply@example.com")}>'
+
+MAIL_SITE_NAME = env("MAIL_SITE_NAME", "PASPOR PU")
+# Alamat dasar untuk tautan absolut di email (mis. http://10.101.21.55:8000).
+SITE_BASE_URL = str(env("SITE_BASE_URL", "http://127.0.0.1:8000")).rstrip("/")
+# Opsional: bila diisi, SEMUA email dialihkan ke alamat ini (untuk pengujian).
+MAIL_DEV_REDIRECT_TO = env("MAIL_DEV_REDIRECT_TO", "").strip()
+
+# Antrean email berbasis database (notifications.EmailLog).
+MAIL_QUEUE = {
+    "ENABLE_WORKER": _env_bool("MAIL_DB_QUEUE_ENABLE_WORKER", "False"),
+    "INTERVAL": int(env("MAIL_DB_QUEUE_WORKER_INTERVAL_MS", "15000")) / 1000,
+    "BATCH_SIZE": int(env("MAIL_DB_QUEUE_WORKER_BATCH_SIZE", "20")),
+    "MAX_ATTEMPTS": int(env("MAIL_DB_QUEUE_MAX_ATTEMPTS", "5")),
+    "RETRY_DELAY": int(env("MAIL_DB_QUEUE_RETRY_DELAY_MS", "30000")) / 1000,
+    "LOCK_TTL": int(env("MAIL_DB_QUEUE_LOCK_TTL_MS", "60000")) / 1000,
+    # Jeda antar email dalam satu putaran (detik); menjaga batas kecepatan SMTP.
+    "SEND_PACING": int(env("MAIL_DB_QUEUE_SEND_PACING_MS", "2000")) / 1000,
 }
