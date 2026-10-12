@@ -577,6 +577,13 @@ class HalamanDanReportTests(_Basis, TestCase):
                 self.assertEqual(resp.status_code, 200)
         self.assertEqual(self.get(self.admin_bpsdm, "bpsdm:dashboard_data").json()["recordsTotal"], 1)
 
+    def test_dashboard_data_bpsdm_saat_masih_di_unor(self):
+        p = self.isi_formulir("T2P")
+        self.kirim(p)
+        resp = self.get(self.admin_bpsdm, "bpsdm:dashboard_data")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("Menunggu Admin Unor", resp.json()["data"][0][8])
+
     def test_halaman_formulir_dan_unggah_tiap_tahap(self):
         for tipe in ("T1", "T2P", "T2L", "T3"):
             with self.subTest(tipe=tipe):
