@@ -13,6 +13,7 @@ from django.views.decorators.http import require_POST
 
 from accounts.models import DokumenKepegawaian, PasporPegawai
 from logs.models import ActivityLog
+from paspor.validators import periksa_pdf
 from logs.utils import catat_riwayat, record_activity
 from notifications import services as notif
 from notifications.services import notify_resubmit_unor, notify_submit_unor
@@ -497,6 +498,8 @@ def unggah_laporan(request, kode):
             pesan = "Laporan sedang menunggu verifikasi Biro PAKLN."
         elif not berkas:
             pesan = "Pilih berkas laporan terlebih dahulu."
+        elif (galat := periksa_pdf(request, berkas)):
+            pesan = galat
         elif laporan and laporan.status == LaporanPdln.Status.DIKEMBALIKAN and not catatan:
             pesan = "Isi catatan perbaikan untuk Biro PAKLN sebelum mengunggah ulang."
         if pesan:
@@ -600,6 +603,8 @@ def profil(request):
             berkas = request.FILES.get("file")
             if jenis not in dict(jenis_dokumen) or not berkas:
                 messages.error(request, "Pilih jenis dokumen dan berkasnya.")
+            elif (galat := periksa_pdf(request, berkas)):
+                messages.error(request, galat)
             else:
                 dok = DokumenKepegawaian.objects.filter(user=user, jenis=jenis).first()
                 if dok:

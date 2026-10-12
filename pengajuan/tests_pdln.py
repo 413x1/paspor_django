@@ -108,7 +108,7 @@ class _Basis:
         self.login(self.admin_bko)
         return self.client.post(reverse("bko:proses", kwargs={"kode": p.kode}), {
             "jenis": "sk_tubel", "tanggal_surat": date.today().isoformat(),
-            "file": SimpleUploadedFile("sk_tubel.pdf", b"%PDF-1.4 sk"),
+            "file": SimpleUploadedFile("sk_tubel.pdf", b"%PDF-1.4 sk", content_type="application/pdf"),
         })
 
     def pakln_selesai(self, p, kecuali=()):
@@ -122,7 +122,7 @@ class _Basis:
         self.login(self.pegawai)
         return self.client.post(
             reverse("pegawai:unggah_laporan", kwargs={"kode": p.kode}),
-            {"file": SimpleUploadedFile("laporan.pdf", b"%PDF-1.4 uji"), "catatan": catatan},
+            {"file": SimpleUploadedFile("laporan.pdf", b"%PDF-1.4 uji", content_type="application/pdf"), "catatan": catatan},
         )
 
     def refresh(self, p):
