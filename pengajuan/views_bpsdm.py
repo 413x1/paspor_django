@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import escape, format_html
+from django.utils.safestring import mark_safe
 
 from logs.utils import catat_riwayat
 from notifications.services import notify_approve_unor, notify_forward_bko, notify_info_bko, notify_reject_bpsdm
@@ -51,7 +52,7 @@ def dashboard_data(request):
             url = reverse("bpsdm:upload_dokumen" if p.preview_bpsdm_agree else "bpsdm:preview", args=[p.kode])
             aksi = format_html('<a href="{}" class="button is-warning is-small">TL →</a>', url)
         elif p.status in (S.PROSES, S.BELUM):
-            aksi = format_html('<span class="cell-muted">Menunggu Admin Unor</span>')
+            aksi = mark_safe('<span class="cell-muted">Menunggu Admin Unor</span>')
         else:
             aksi = format_html('<a href="{}" class="button is-small">Lihat</a>', reverse("bpsdm:preview", args=[p.kode]))
         detail = p.detail
