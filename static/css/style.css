@@ -605,8 +605,11 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
    animasi sempat jalan). Di sini `display:flex` dibuat permanen, lalu
    buka/tutupnya dikendalikan lewat opacity + visibility + pointer-events —
    sehingga satu aturan transition yang sama otomatis berlaku untuk animasi
-   masuk MAUPUN keluar (tidak perlu class terpisah per arah). */
+   masuk MAUPUN keluar (tidak perlu class terpisah per arah).
+   z-index 60 (bawaan Bulma 40) agar modal & latarnya menutupi sidebar
+   (z-index 50) — tanpa ini kartu pratinjau 960px tertutup sidebar di layar HD. */
 .modal {
+  --bulma-modal-z: 60; z-index: 60;
   display: flex; opacity: 0; visibility: hidden; pointer-events: none;
   transition: opacity var(--duration-base) var(--ease-apple), visibility 0s linear var(--duration-base);
 }
@@ -643,7 +646,8 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 }
 
 /* ---------- Dialog konfirmasi & notifikasi (#pasporDialog, gaya SweetAlert) ---------- */
-.modal.paspor-dialog { z-index: 60; }
+/* Dialog konfirmasi selalu di atas modal lain (mis. dibuka dari dalam modal). */
+.modal.paspor-dialog { --bulma-modal-z: 70; z-index: 70; }
 .paspor-dialog .modal-card-body { text-align: center; padding: 28px 24px 22px; }
 .paspor-dialog h3 { font-size: 18px; margin-bottom: 6px; }
 .paspor-dialog .modal-intro { white-space: pre-line; font-size: 14px; color: var(--slate-600); margin-bottom: 20px; }
