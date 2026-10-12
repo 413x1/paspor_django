@@ -577,6 +577,18 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 }
 .timeline .timeline-riwayat li { padding-bottom: 14px; }
 .timeline .timeline-riwayat li:last-child { padding-bottom: 0; }
+/* Sub-keterangan track paralel Admin BKO (PDLN Tipe 2 Pendidikan) */
+.timeline .timeline-sub {
+  display: inline-block; margin-top: 6px; padding: 3px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; background: var(--blue-bg); color: var(--navy-900);
+}
+.timeline .timeline-sub.is-success { background: var(--green-bg); color: var(--green); }
+.timeline .timeline-sub.is-warning { background: var(--gold-bg); color: var(--gold-dark); }
+
+/* Badge status track Admin BKO (partials/_status_bko.html) */
+.tag.bko-status { font-size: 11.5px; font-weight: 600; background: var(--blue-bg); color: var(--navy-900); }
+.tag.bko-status.is-diunggah { background: var(--green-bg); color: var(--green); }
+.tag.bko-status.is-ditutup { background: var(--gold-bg); color: var(--gold-dark); }
 
 /* Dua card bersebelahan (halaman Pratinjau Admin Unor / Biro PAKLN) */
 .preview-split {

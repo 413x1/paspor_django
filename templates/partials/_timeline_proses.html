@@ -9,6 +9,7 @@
       <div>
         <h4>{{ step.title }}</h4>
         <p>{{ step.desc }}</p>
+        {% if step.sub %}<p class="timeline-sub is-{{ step.sub_tone }}">{{ step.sub }}</p>{% endif %}
         {% if step.tanggal %}<div class="tgl">{{ step.tanggal|date:"d M Y" }}</div>{% endif %}
         {% if step.riwayat %}
           <ul class="riwayat-list timeline-riwayat">

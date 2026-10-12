@@ -3,7 +3,10 @@
 > **Status:** diimplementasikan — fase 1–5, 2b, 7, 8 (lihat [§16](#16-status-implementasi--peta-kode)).
 > Fase 6 (generate dokumen PDLN) belum: menunggu format resmi.
 > **Sumber:** mockup `20261005_PASPOR — Tahap 2_ PDLN Tipe 1–3 + PINTAR.html`.
-> **Pengguna:** Pegawai, Admin Unor, Admin BPSDM (baru), Admin Biro PAKLN.
+> **Pengguna:** Pegawai, Admin Unor, Admin BPSDM (baru), Admin Biro PAKLN, Admin BKO (v2 T2P).
+> **PDLN Tipe 2 Pendidikan (T2P) v2:** SK Tugas Belajar diunggah **Admin BKO** pada
+> track paralel dengan Biro PAKLN — aktor, dokumen, catatan, dan notifikasi T2P di
+> dokumen ini diperbarui oleh [PDLN_TIPE_2_FLOW.MD §8](PDLN_TIPE_2_FLOW.MD#8-versi-lanjutan-v2--sk-tubel-oleh-admin-bko).
 > **Terkait:** [RIWAYAT_PEMROSESAN_PENGAJUAN.MD](RIWAYAT_PEMROSESAN_PENGAJUAN.MD),
 > [SKENARIO_NOTIFIKASI_SURAT.md](SKENARIO_NOTIFIKASI_SURAT.md),
 > [MANAJEMEN_TEMPLATE.MD](MANAJEMEN_TEMPLATE.MD),

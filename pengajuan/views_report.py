@@ -13,7 +13,15 @@ from . import report
 from .decorators import role_required
 from .models import Pengajuan
 
-ADMIN_ROLES = ("admin_unor", "admin_bpsdm", "admin_pakln")
+ADMIN_ROLES = ("admin_unor", "admin_bpsdm", "admin_bko", "admin_pakln")
+
+
+def _opsi_tipe(role):
+    if role == "admin_bpsdm":
+        return [c for c in Pengajuan.TipePdln.choices if c[0] in ("T2P", "T2L")]
+    if role == "admin_bko":
+        return [c for c in Pengajuan.TipePdln.choices if c[0] == "T2P"]
+    return Pengajuan.TipePdln.choices
 
 
 def _konteks_filter(request):
@@ -25,8 +33,7 @@ def _konteks_filter(request):
         "query": params.urlencode(),
         "ns": request.resolver_match.namespace,
         "opsi_jenis": Pengajuan.JenisPerjalanan.choices,
-        "opsi_tipe": Pengajuan.TipePdln.choices if request.user.role != "admin_bpsdm"
-        else [c for c in Pengajuan.TipePdln.choices if c[0] in ("T2P", "T2L")],
+        "opsi_tipe": _opsi_tipe(request.user.role),
         "opsi_status": Pengajuan.Status.choices,
         "opsi_unor": UnitOrganisasi.objects.all() if request.user.role != "admin_unor" else [],
         "opsi_negara": Negara.objects.filter(is_active=True),

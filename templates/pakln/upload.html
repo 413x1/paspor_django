@@ -5,6 +5,7 @@
 
 {% block content %}
 {% if dibekukan %}<div class="notification paspor-msg is-warning">{{ dibekukan }}</div>{% endif %}
+{% include "partials/_status_bko.html" %}
 
 <div class="box">
   <div class="level" style="margin-bottom:12px;">
@@ -33,6 +34,28 @@
   </div>
 
   {% include "partials/_dokumen_tahap.html" with hapus_url="pakln:hapus_dokumen" %}
+
+  {% if pengajuan.pakai_bko %}
+  <div class="section-title" style="font-size:14px;margin:20px 0 8px;">SK Tugas Belajar — Admin BKO</div>
+  <div class="doc-row {% if sk_tubel %}uploaded{% endif %}">
+    <div class="info">
+      <h4>SK Tugas Belajar <span class="badge-auto">Wajib untuk Selesai</span></h4>
+      {% if sk_tubel %}
+        <p style="color:var(--green);">✓ Diunggah Admin BKO — {{ sk_tubel.uploaded_at|date:"d M Y H:i" }}</p>
+        {% if sk_tubel.tanggal_surat %}<p class="cell-muted">📅 Tanggal Surat: {{ sk_tubel.tanggal_surat|date:"d M Y" }}</p>{% endif %}
+      {% elif pengajuan.status_bko == "ditutup" %}
+        <p style="color:var(--gold-dark);">■ Pemrosesan ditutup Admin BKO — lihat alasan di atas.</p>
+      {% else %}
+        <p>Menunggu Admin BKO mengunggah SK Tugas Belajar.</p>
+      {% endif %}
+    </div>
+    <div class="actions">
+      {% if sk_tubel %}
+        <button type="button" class="button is-small" data-doc-preview="{{ sk_tubel.file.url }}" data-doc-title="SK Tugas Belajar">👁 Pratinjau</button>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 
   {% if pendukung %}
   <div class="section-title" style="font-size:14px;margin:20px 0 4px;">
@@ -96,15 +119,55 @@
         Admin Biro PAKLN menyatakan seluruh dokumen administrasi wajib telah <strong>lengkap dan sesuai</strong>, untuk selanjutnya menyelesaikan proses.
       </label>
     </div>
-    <button type="submit" name="selesaikan" class="button is-warning is-fullwidth" {% if not lengkap or dibekukan %}disabled{% endif %}>
+    <button type="submit" name="selesaikan" class="button is-warning is-fullwidth" {% if not lengkap or dibekukan or alasan_selesai_bko %}disabled{% endif %}>
       Selesaikan Proses ✓
     </button>
     {% if not lengkap %}
       <p class="helptext">Lengkapi dokumen wajib untuk melanjutkan: {{ dokumen_kurang|join:", " }}.</p>
     {% endif %}
+    {% if alasan_selesai_bko %}<p class="helptext">{{ alasan_selesai_bko }}</p>{% endif %}
   </form>
   {% endif %}
 </div>
+
+{% if dapat_diubah and not dibekukan and pengajuan.pakai_bko and pengajuan.status_bko == "ditutup" %}
+<div class="box is-danger-soft">
+  <div class="section-title" style="font-size:14px;">Tindak Lanjut Penutupan Admin BKO</div>
+  <p class="cell-muted" style="margin:-8px 0 14px;">Pilih salah satu: buka kembali pemrosesan BKO, lanjutkan tanpa SK Tugas Belajar, atau hentikan pengajuan.</p>
+
+  <form method="post" style="margin-bottom:18px;" data-confirm="Buka kembali pemrosesan SK Tugas Belajar untuk Admin BKO?" data-confirm-title="Buka Kembali" data-confirm-ok="Buka Kembali">
+    {% csrf_token %}
+    <div class="field">
+      <label class="label" for="catatan_buka">↻ Buka Kembali — catatan untuk semua pihak</label>
+      <div class="control"><textarea class="textarea" id="catatan_buka" name="catatan" rows="2" required></textarea></div>
+    </div>
+    <button type="submit" name="buka_kembali_bko" class="button is-primary is-fullwidth">↻ Buka Kembali Pemrosesan BKO</button>
+  </form>
+
+  <form method="post" style="margin-bottom:18px;" data-confirm="Selesaikan pengajuan tanpa SK Tugas Belajar?" data-confirm-title="Lanjutkan tanpa SK Tubel" data-confirm-ok="Selesaikan">
+    {% csrf_token %}
+    <div class="field">
+      <label class="label" for="catatan_lanjut">✓ Lanjutkan tanpa SK Tubel — catatan internal (hanya terlihat Biro PAKLN)</label>
+      <div class="control"><textarea class="textarea" id="catatan_lanjut" name="catatan" rows="2" required></textarea></div>
+    </div>
+    <div class="agree-box">
+      <input type="checkbox" id="agree_lanjut" name="agree" required>
+      <label for="agree_lanjut">Dokumen administrasi Biro PAKLN telah <strong>lengkap dan sesuai</strong>; pengajuan diselesaikan tanpa SK Tugas Belajar.</label>
+    </div>
+    <button type="submit" name="selesaikan_tanpa_sk_tubel" class="button is-warning is-fullwidth" {% if not lengkap %}disabled{% endif %}>✓ Lanjutkan tanpa SK Tubel</button>
+    {% if not lengkap %}<p class="helptext">Lengkapi dokumen wajib: {{ dokumen_kurang|join:", " }}.</p>{% endif %}
+  </form>
+
+  <form method="post" data-confirm="Hentikan (batalkan) pengajuan ini? Tindakan ini final." data-confirm-type="danger" data-confirm-title="Hentikan Pengajuan" data-confirm-ok="Hentikan">
+    {% csrf_token %}
+    <div class="field">
+      <label class="label" for="alasan_henti">✕ Hentikan Pengajuan — alasan pembatalan</label>
+      <div class="control"><textarea class="textarea" id="alasan_henti" name="alasan" rows="2" required>{{ pengajuan.catatan_bko }}</textarea></div>
+    </div>
+    <button type="submit" name="hentikan" class="button is-danger is-fullwidth">✕ Hentikan Pengajuan</button>
+  </form>
+</div>
+{% endif %}
 
 {% include "partials/_riwayat_pengajuan.html" %}
 

@@ -5,6 +5,7 @@ diganti saat rumusan resmi pembatalan tersedia.
 
     Pegawai    ──ajukan──► menunggu_unor ──Admin Unor setuju──► menunggu_pakln ──Admin PAKLN setuju──► disetujui
     Admin Unor ──ajukan──────────────────────────────────────► menunggu_pakln
+    Admin PAKLN ──hentikan (T2P, track BKO ditutup)─────────────────────────────────────► disetujui
     tolak (catatan wajib) → ditolak · pengaju menarik → ditarik
 
 Selama permohonan terbuka, aksi alur utama dibekukan (`alur.alasan_dibekukan`).
@@ -159,6 +160,43 @@ def putuskan(permohonan, user, setuju, catatan=""):
         notif.notify_pembatalan_ditolak(permohonan, catatan, "unor" if user.role == User.Role.ADMIN_UNOR else "pakln")
     elif permohonan.status == P.DISETUJUI:
         notif.notify_pembatalan_disetujui(permohonan)
+    return permohonan
+
+
+def hentikan_oleh_pakln(pengajuan, user, alasan):
+    """Admin Biro PAKLN menghentikan T2P setelah Admin BKO menutup
+    pemrosesan SK Tubel (PDLN_TIPE_2_FLOW.MD §8.9 #9): permohonan diajukan
+    sekaligus disetujui PAKLN — tanpa jenjang Admin Unor."""
+    if user.role != User.Role.ADMIN_PAKLN:
+        raise PembatalanError("Hanya Admin Biro PAKLN yang dapat menghentikan pengajuan.")
+    alasan = _wajib(alasan, "Alasan penghentian wajib diisi.")
+    with transaction.atomic():
+        p = alur.kunci(pengajuan)
+        if not p.pakai_bko or p.status_bko != Pengajuan.StatusBko.DITUTUP:
+            raise PembatalanError("Pengajuan hanya dapat dihentikan bila pemrosesan BKO ditutup.")
+        if p.status in (Pengajuan.Status.SELESAI, Pengajuan.Status.DIBATALKAN):
+            raise PembatalanError(f"Pengajuan {p.kode} sudah {p.get_status_display().lower()}.")
+        if p.pembatalan_terbuka:
+            raise PembatalanError("Sudah ada permohonan pembatalan yang sedang diproses.")
+        sekarang = timezone.now()
+        status_dari = p.status
+        permohonan = PermohonanPembatalan.objects.create(
+            pengajuan=p,
+            diajukan_oleh=user,
+            diajukan_role=user.role,
+            alasan=alasan,
+            status=P.DISETUJUI,
+            status_pengajuan_saat_diajukan=status_dari,
+            pakln_oleh=user,
+            pakln_waktu=sekarang,
+            pakln_catatan="Dihentikan Biro PAKLN — pemrosesan SK Tugas Belajar ditutup Admin BKO.",
+        )
+        riwayat.catat(p, Aksi.PEMBATALAN_DIAJUKAN, user, status_dari, catatan=alasan)
+        p.status = Pengajuan.Status.DIBATALKAN
+        p.tgl_dibatalkan = timezone.localdate()
+        p.save(update_fields=["status", "tgl_dibatalkan", "updated_at"])
+        riwayat.catat(p, Aksi.DIBATALKAN, user, status_dari, catatan=alasan)
+    notif.notify_pembatalan_disetujui(permohonan)
     return permohonan
 
 

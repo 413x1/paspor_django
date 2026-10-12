@@ -6,9 +6,10 @@ from django.db import models
 
 class User(AbstractUser):
     """
-    User kustom dengan field `role`, merepresentasikan 4 peran pada PASPOR:
-    Pegawai, Admin Unor, Admin BPSDM (khusus PDLN Tipe 2), dan Admin Biro
-    PAKLN — lihat wiki/instructions/BISNIS_PROSES_PDLN.MD §3.
+    User kustom dengan field `role`, merepresentasikan 5 peran pada PASPOR:
+    Pegawai, Admin Unor, Admin BPSDM (khusus PDLN Tipe 2), Admin Biro PAKLN,
+    dan Admin BKO (SK Tugas Belajar PDLN Tipe 2 Pendidikan) — lihat
+    wiki/instructions/BISNIS_PROSES_PDLN.MD §3 & PDLN_TIPE_2_FLOW.MD §8.
     """
 
     class Role(models.TextChoices):
@@ -16,6 +17,7 @@ class User(AbstractUser):
         ADMIN_UNOR = "admin_unor", "Admin Unor"
         ADMIN_BPSDM = "admin_bpsdm", "Admin BPSDM"
         ADMIN_PAKLN = "admin_pakln", "Admin Biro PAKLN"
+        ADMIN_BKO = "admin_bko", "Admin BKO"
 
     role = models.CharField(max_length=20, choices=Role.choices)
 
@@ -46,6 +48,9 @@ class User(AbstractUser):
 
     def is_admin_pakln(self):
         return self.role == self.Role.ADMIN_PAKLN
+
+    def is_admin_bko(self):
+        return self.role == self.Role.ADMIN_BKO
 
     def get_unit_organisasi(self):
         """Unit organisasi efektif: dari PegawaiProfile untuk Pegawai, dari

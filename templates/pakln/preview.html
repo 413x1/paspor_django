@@ -3,6 +3,7 @@
 {% block wrap_extra_class %} narrow{% endblock %}
 
 {% block content %}
+{% include "partials/_status_bko.html" %}
 {% if catatan_perbaikan %}
   <div class="notification paspor-msg is-info">
     <strong>↻ Perbaikan dari {% if pengajuan.is_tipe2 %}Admin BPSDM{% else %}Admin Unor{% endif %}:</strong> {{ catatan_perbaikan|linebreaksbr }}

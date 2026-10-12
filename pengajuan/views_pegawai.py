@@ -22,17 +22,19 @@ from paspor.kalender import rincian_hari
 from . import alur, pembatalan, riwayat, tahap
 from .decorators import role_required
 from .forms import PdlnForm, PengajuanForm
-from .models import DokumenPakln, LaporanPdln, Pengajuan, PermohonanPembatalan, RiwayatPengajuan
+from .models import DokumenBko, DokumenPakln, LaporanPdln, Pengajuan, PermohonanPembatalan, RiwayatPengajuan
 
 S = Pengajuan.Status
 JP = Pengajuan.JenisPerjalanan
 
-# Dokumen hasil tahap PAKLN yang boleh diunduh pegawai saat PDLN selesai
-# (BISNIS_PROSES_PDLN.MD §14 pertanyaan terbuka #3 — default).
+# Dokumen hasil PDLN yang boleh diunduh pegawai saat PDLN selesai
+# (BISNIS_PROSES_PDLN.MD §14 pertanyaan terbuka #3 — default): dari tahap
+# Biro PAKLN, ditambah SK Tugas Belajar dari Admin BKO (T2P).
 _UNDUH_HASIL_PDLN = {
     DokumenPakln.Jenis.SP_SETNEG, DokumenPakln.Jenis.EXIT_PERMIT, DokumenPakln.Jenis.VISA,
-    DokumenPakln.Jenis.SK_TUBEL, DokumenPakln.Jenis.ND_KARO_UNOR,
+    DokumenPakln.Jenis.ND_KARO_UNOR,
 }
+_UNDUH_HASIL_BKO = {DokumenBko.Jenis.SK_TUBEL}
 
 
 def _active_pengajuan(user):
@@ -260,7 +262,7 @@ _MAKS_RENTANG_HITUNG_HARI = 366
 _MAKS_RENTANG_HITUNG_HARI_PDLN = 366 * 6
 
 
-@role_required("pegawai", "admin_unor", "admin_bpsdm", "admin_pakln")
+@role_required("pegawai", "admin_unor", "admin_bpsdm", "admin_bko", "admin_pakln")
 def hitung_hari(request):
     """Endpoint JSON untuk mengisi otomatis Jumlah Hari Kalender & Jumlah
     Hari Kerja begitu tanggal berangkat/kembali diubah (lihat
@@ -392,6 +394,7 @@ def monitor_progres(request, kode):
     hasil_pdln = []
     if pengajuan.is_pdln and pengajuan.status == S.SELESAI:
         hasil_pdln = [d for d in pengajuan.dokumen_pakln.all() if d.jenis in _UNDUH_HASIL_PDLN]
+        hasil_pdln += [d for d in pengajuan.dokumen_bko.all() if d.jenis in _UNDUH_HASIL_BKO]
 
     return render(request, "pegawai/monitor.html", {
         "pengajuan": pengajuan,
@@ -439,11 +442,17 @@ def download_iln(request, kode):
 @role_required("pegawai")
 def unduh_hasil(request, kode, jenis):
     """Unduh dokumen hasil PDLN dari tahap Biro PAKLN (SP Setneg, Exit
-    Permit, Rekomendasi Visa, SK Tubel, ND Karo) setelah pengajuan selesai."""
+    Permit, Rekomendasi Visa, ND Karo) atau Admin BKO (SK Tubel) setelah
+    pengajuan selesai."""
     pengajuan = get_object_or_404(Pengajuan, kode=kode, pegawai=request.user)
-    if not pengajuan.is_pdln or pengajuan.status != S.SELESAI or jenis not in _UNDUH_HASIL_PDLN:
+    if not pengajuan.is_pdln or pengajuan.status != S.SELESAI:
         raise Http404
-    dok = get_object_or_404(DokumenPakln, pengajuan=pengajuan, jenis=jenis)
+    if jenis in _UNDUH_HASIL_PDLN:
+        dok = get_object_or_404(DokumenPakln, pengajuan=pengajuan, jenis=jenis)
+    elif jenis in _UNDUH_HASIL_BKO:
+        dok = get_object_or_404(DokumenBko, pengajuan=pengajuan, jenis=jenis)
+    else:
+        raise Http404
     respons = _kirim_berkas(dok, f"{jenis}_{pengajuan.kode}")
     if respons is None:
         messages.error(request, "Berkas tidak ditemukan di penyimpanan.")
@@ -561,7 +570,7 @@ def tarik_pembatalan(request, pk):
 # Profil (BISNIS_PROSES_PDLN.MD §9.1)
 # ---------------------------------------------------------------------------
 
-@role_required("pegawai", "admin_unor", "admin_bpsdm", "admin_pakln")
+@role_required("pegawai", "admin_unor", "admin_bpsdm", "admin_bko", "admin_pakln")
 def profil(request):
     user = request.user
     jenis_dokumen = (

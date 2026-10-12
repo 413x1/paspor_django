@@ -10,9 +10,9 @@ from django.utils import timezone
 from django.utils.html import escape, format_html
 
 from logs.utils import catat_riwayat
-from notifications.services import notify_approve_unor, notify_reject_bpsdm
+from notifications.services import notify_approve_unor, notify_forward_bko, notify_info_bko, notify_reject_bpsdm
 
-from . import alur, persyaratan, report, riwayat, tahap
+from . import alur, bko, persyaratan, report, riwayat, tahap
 from .decorators import role_required
 from .models import Pengajuan, PermohonanPembatalan, RiwayatPengajuan
 from .views_unor import status_html
@@ -169,9 +169,18 @@ def _teruskan(request, pengajuan):
         p.save()
         riwayat.catat(p, Aksi.DITERUSKAN_ULANG if is_ulang else Aksi.DITERUSKAN_PAKLN, request.user, status_dari, catatan=catatan)
         catat_riwayat(request, p, Aksi.DITERUSKAN_ULANG if is_ulang else Aksi.DITERUSKAN_PAKLN)
+        # T2P: track SK Tugas Belajar Admin BKO dibuka paralel (sekali saja).
+        track_baru = bko.buka_track(p, request.user)
+        if track_baru:
+            catat_riwayat(request, p, Aksi.DITERUSKAN_BKO)
 
     notify_approve_unor(p, catatan, dari_bpsdm=True)
-    messages.success(request, f"Pengajuan {p.kode} diteruskan ke Admin Biro PAKLN.")
+    if track_baru:
+        notify_forward_bko(p)
+    elif p.track_bko_terbuka:
+        notify_info_bko(p)
+    tujuan = "Admin Biro PAKLN dan Admin BKO" if p.track_bko_terbuka else "Admin Biro PAKLN"
+    messages.success(request, f"Pengajuan {p.kode} diteruskan ke {tujuan}.")
     return redirect("bpsdm:dashboard")
 
 
