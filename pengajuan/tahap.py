@@ -1,6 +1,6 @@
 """
 Helper bersama halaman unggah dokumen per tahap (Pegawai, Admin Unor,
-Admin BPSDM, Admin Biro PAKLN) — membaca registri `persyaratan` sehingga
+Admin BPSDM, Admin BKO, Admin Biro PAKLN) — membaca registri `persyaratan` sehingga
 setiap jenis/tipe perjalanan memakai satu jalur kode yang sama.
 """
 
@@ -11,13 +11,14 @@ from logs.models import ActivityLog
 from logs.utils import record_activity
 
 from . import persyaratan
-from .forms import DokumenBpsdmForm, DokumenPaklnForm, DokumenPegawaiForm, DokumenUnorForm
+from .forms import DokumenBkoForm, DokumenBpsdmForm, DokumenPaklnForm, DokumenPegawaiForm, DokumenUnorForm
 from .models import DokumenTemplate
 
 FORM_TAHAP = {
     "pegawai": DokumenPegawaiForm,
     "unor": DokumenUnorForm,
     "bpsdm": DokumenBpsdmForm,
+    "bko": DokumenBkoForm,
     "pakln": DokumenPaklnForm,
 }
 

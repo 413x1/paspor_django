@@ -1,0 +1,12 @@
+{# Status track paralel Admin BKO (PDLN Tipe 2 Pendidikan) — wiki/instructions/PDLN_TIPE_2_FLOW.MD §8. #}
+{# Context: pengajuan. Tampil hanya bila track BKO sudah dibuka. Mode: banner (default) atau badge (with badge=True). #}
+{% if pengajuan.track_bko_terbuka %}
+  {% if badge %}
+    <span class="tag bko-status is-{{ pengajuan.status_bko }}">BKO: {{ pengajuan.get_status_bko_display }}</span>
+  {% elif pengajuan.status_bko == "ditutup" %}
+    <div class="notification paspor-msg is-warning">
+      <strong>■ Pemrosesan SK Tugas Belajar ditutup Admin BKO{% if pengajuan.tgl_bko_ditutup %} ({{ pengajuan.tgl_bko_ditutup|date:"d M Y" }}){% endif %}:</strong>
+      {{ pengajuan.catatan_bko|linebreaksbr }}
+    </div>
+  {% endif %}
+{% endif %}

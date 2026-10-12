@@ -11,7 +11,7 @@ from paspor.kalender import AKHIR_PEKAN, hitung_hari_kerja
 from paspor.models import HariLibur, KategoriPerjalanan, Negara, SumberPembiayaan, berlaku_untuk_tipe
 
 from .models import (
-    DetailPdln, DokumenBpsdm, DokumenPakln, DokumenPegawai, DokumenTemplate, DokumenUnor, Pengajuan,
+    DetailPdln, DokumenBko, DokumenBpsdm, DokumenPakln, DokumenPegawai, DokumenTemplate, DokumenUnor, Pengajuan,
     PengaturanDokumen,
 )
 
@@ -344,6 +344,16 @@ class DokumenUnorForm(TanggalSuratMixin, forms.ModelForm):
 class DokumenBpsdmForm(TanggalSuratMixin, forms.ModelForm):
     class Meta:
         model = DokumenBpsdm
+        fields = ["file", "tanggal_surat"]
+        widgets = {
+            "file": forms.ClearableFileInput(attrs={"class": "form-control"}),
+            "tanggal_surat": forms.DateInput(attrs={"type": "date"}),
+        }
+
+
+class DokumenBkoForm(TanggalSuratMixin, forms.ModelForm):
+    class Meta:
+        model = DokumenBko
         fields = ["file", "tanggal_surat"]
         widgets = {
             "file": forms.ClearableFileInput(attrs={"class": "form-control"}),

@@ -8,7 +8,7 @@ lihat wiki/instructions/BISNIS_PROSES_PDLN.MD §2.1 & §4.
 status mana pun lewat `pengajuan.pembatalan`.
 """
 
-from .models import LaporanPdln, Pengajuan, PermohonanPembatalan
+from .models import LaporanPdln, Pengajuan, PermohonanPembatalan, RiwayatPengajuan
 
 S = Pengajuan.Status
 
@@ -59,10 +59,10 @@ _DESKRIPSI = {
     "T2P": {
         S.BELUM: "Pengisian Formulir Detail Tugas Belajar dan unggah berkas untuk disampaikan ke Unor.",
         S.PROSES: "Permohonan Surat Tugas Pimpinan Unor dan penyampaian berkas ke Admin BPSDM.",
-        S.PROSES_BPSDM: "Permohonan Izin Prinsip Menteri, penandatanganan Perjanjian Ikatan Dinas/SK Tugas "
-                        "Belajar, penyampaian berkas ke Biro PAKLN.",
-        S.PROSES_PAKLN: "Proses SP Setneg, Paspor Dinas, Exit Permit, Rekomendasi Visa (jika diperlukan), "
-                        "dan SK Tugas Belajar.",
+        S.PROSES_BPSDM: "Permohonan Izin Prinsip Menteri, penandatanganan Perjanjian Ikatan Dinas, "
+                        "penyampaian berkas ke Biro PAKLN dan Admin BKO.",
+        S.PROSES_PAKLN: "Proses SP Setneg, Paspor Dinas, Exit Permit, Rekomendasi Visa (jika diperlukan); "
+                        "SK Tugas Belajar oleh Admin BKO.",
         S.SELESAI: "Seluruh proses administrasi PDLN telah rampung — unggah Laporan PDLN setelah perjalanan.",
     },
     "T2L": {
@@ -126,6 +126,20 @@ def _status_saat_dibatalkan(pengajuan):
     return (permohonan.status_pengajuan_saat_diajukan if permohonan else S.BELUM), permohonan
 
 
+def _sub_bko(pengajuan, status):
+    """Sub-keterangan track paralel Admin BKO (T2P) pada Timeline Proses."""
+    if not pengajuan.track_bko_terbuka:
+        return None, None
+    if status == S.PROSES_PAKLN:
+        from .bko import keterangan_timeline
+        return keterangan_timeline(pengajuan)
+    if status == S.SELESAI and pengajuan.status == S.SELESAI and pengajuan.riwayat.filter(
+        aksi=RiwayatPengajuan.Aksi.SELESAI_TANPA_SK_TUBEL
+    ).exists():
+        return "Diselesaikan tanpa SK Tugas Belajar", "warning"
+    return None, None
+
+
 def timeline(pengajuan):
     """Tahap Timeline Proses: list dict {status, title, desc, tanggal,
     state}. `state` ∈ done/current/upcoming/cancelled. Pengajuan yang
@@ -156,10 +170,13 @@ def timeline(pengajuan):
             desc = _LABEL_LAPORAN[laporan.status if laporan else None]
             if laporan and laporan.status == LaporanPdln.Status.DISETUJUI:
                 state = "done"
+        sub, sub_tone = _sub_bko(pengajuan, status)
         hasil.append({
             "status": status,
             "title": _JUDUL[status],
             "desc": desc,
+            "sub": sub,
+            "sub_tone": sub_tone,
             "tanggal": _tanggal(pengajuan, status),
             "state": state,
         })

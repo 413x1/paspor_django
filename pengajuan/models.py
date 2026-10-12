@@ -42,6 +42,13 @@ class Pengajuan(models.Model):
         T2L = "T2L", "PDLN Tipe 2 — Pelatihan"
         T3 = "T3", "PDLN Tipe 3 — Penugasan Khusus"
 
+    class StatusBko(models.TextChoices):
+        """Status track paralel Admin BKO (khusus T2P) — terpisah dari
+        `status`, lihat wiki/instructions/PDLN_TIPE_2_FLOW.MD §8."""
+        MENUNGGU = "menunggu", "Menunggu SK Tubel"
+        DIUNGGAH = "diunggah", "SK Tubel Diunggah"
+        DITUTUP = "ditutup", "Ditutup Admin BKO"
+
     kode = models.CharField("Kode Pengajuan", max_length=20, unique=True, blank=True)
     pegawai = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="pengajuan_list"
@@ -100,6 +107,14 @@ class Pengajuan(models.Model):
     # sebelumnya (Admin Unor, atau Admin BPSDM untuk Tipe 2).
     catatan_pakln = models.TextField("Catatan Admin PKLN", blank=True)
 
+    # --- Track paralel Admin BKO (T2P): dibuka saat BPSDM meneruskan ke
+    # Biro PAKLN; bukan bagian `status` (lihat `pengajuan.bko`).
+    tgl_masuk_bko = models.DateField(null=True, blank=True)
+    status_bko = models.CharField(max_length=10, choices=StatusBko.choices, blank=True)
+    # Alasan Admin BKO menutup pemrosesan — terlihat semua pihak terlibat.
+    catatan_bko = models.TextField("Catatan Penutupan BKO", blank=True)
+    tgl_bko_ditutup = models.DateField(null=True, blank=True)
+
     # --- Tanggal penting untuk pelaporan / monitor progres ---
     tgl_pengajuan = models.DateField(null=True, blank=True)
     tgl_masuk_bpsdm = models.DateField(null=True, blank=True)
@@ -117,6 +132,7 @@ class Pengajuan(models.Model):
             models.Index(fields=["unit_organisasi", "status"]),
             models.Index(fields=["status", "tgl_pengajuan"]),
             models.Index(fields=["pegawai", "status"]),
+            models.Index(fields=["tipe_pdln", "status_bko"]),
         ]
         verbose_name = "Pengajuan"
         verbose_name_plural = "Pengajuan"
@@ -177,6 +193,16 @@ class Pengajuan(models.Model):
     @property
     def is_tipe2(self):
         return self.tipe_pdln in (self.TipePdln.T2P, self.TipePdln.T2L)
+
+    @property
+    def pakai_bko(self):
+        """SK Tugas Belajar diunggah Admin BKO — hanya PDLN Tipe 2 Pendidikan."""
+        return self.is_pdln and self.tipe_pdln == self.TipePdln.T2P
+
+    @property
+    def track_bko_terbuka(self):
+        """Sudah diteruskan BPSDM ke Biro PAKLN + Admin BKO."""
+        return self.pakai_bko and bool(self.status_bko)
 
     @property
     def kunci_alur(self):
@@ -400,7 +426,6 @@ class DokumenPakln(models.Model):
         PASPOR_DINAS = "paspor_dinas", "Paspor Dinas"
         EXIT_PERMIT = "exit_permit", "Exit Permit"
         VISA = "visa", "Rekomendasi Visa"
-        SK_TUBEL = "sk_tubel", "SK Tugas Belajar"
         ND_KARO_UNOR = "nd_karo_unor", "Nota Dinas Karo PAKLN ke Sekretaris Unor hal Penyampaian Dokumen PDLN"
 
     pengajuan = models.ForeignKey(Pengajuan, on_delete=models.CASCADE, related_name="dokumen_pakln")
@@ -430,7 +455,7 @@ class DokumenBpsdm(models.Model):
 
     class Jenis(models.TextChoices):
         IZIN_PRINSIP = "izin_prinsip", "Izin Prinsip Menteri"
-        IKATAN_DINAS_TTD = "ikatan_dinas_ttd", "Perjanjian Ikatan Dinas ttd full / SK Tugas Belajar"
+        IKATAN_DINAS_TTD = "ikatan_dinas_ttd", "Perjanjian Ikatan Dinas ttd full"
         ND_KABIRO_PAKLN = "nd_kabiro_pakln", "Nota Dinas Sekretaris BPSDM ke Kepala Biro PAKLN"
 
     pengajuan = models.ForeignKey(Pengajuan, on_delete=models.CASCADE, related_name="dokumen_bpsdm")
@@ -443,6 +468,32 @@ class DokumenBpsdm(models.Model):
         unique_together = ("pengajuan", "jenis")
         verbose_name = "Dokumen Administrasi BPSDM"
         verbose_name_plural = "Dokumen Administrasi BPSDM"
+
+    def __str__(self):
+        return f"{self.pengajuan.kode} — {self.get_jenis_display()}"
+
+
+def dokumen_bko_path(instance, filename):
+    return f"pengajuan/{instance.pengajuan.kode}/bko/{instance.jenis}/{filename}"
+
+
+class DokumenBko(models.Model):
+    """Dokumen administrasi Admin BKO (khusus PDLN Tipe 2 Pendidikan) —
+    status track BKO disinkronkan lewat `pengajuan.bko`."""
+
+    class Jenis(models.TextChoices):
+        SK_TUBEL = "sk_tubel", "SK Tugas Belajar"
+
+    pengajuan = models.ForeignKey(Pengajuan, on_delete=models.CASCADE, related_name="dokumen_bko")
+    jenis = models.CharField(max_length=30, choices=Jenis.choices)
+    file = models.FileField(upload_to=dokumen_bko_path)
+    tanggal_surat = models.DateField("Tanggal Surat", null=True, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("pengajuan", "jenis")
+        verbose_name = "Dokumen Administrasi BKO"
+        verbose_name_plural = "Dokumen Administrasi BKO"
 
     def __str__(self):
         return f"{self.pengajuan.kode} — {self.get_jenis_display()}"
@@ -670,6 +721,12 @@ class RiwayatPengajuan(models.Model):
         DITERUSKAN_BPSDM = "diteruskan_bpsdm", "Diteruskan ke Admin BPSDM"
         DITERUSKAN_ULANG_BPSDM = "diteruskan_ulang_bpsdm", "Perbaikan diteruskan ke Admin BPSDM"
         DIKEMBALIKAN_BPSDM = "dikembalikan_bpsdm", "Dikembalikan BPSDM ke Admin Unor"
+        # Track Admin BKO (PDLN Tipe 2 Pendidikan)
+        DITERUSKAN_BKO = "diteruskan_bko", "Diteruskan ke Admin BKO"
+        SK_TUBEL_DIUNGGAH = "sk_tubel_diunggah", "SK Tugas Belajar diunggah"
+        DITUTUP_BKO = "ditutup_bko", "Pemrosesan ditutup Admin BKO"
+        DIBUKA_ULANG_BKO = "dibuka_ulang_bko", "Pemrosesan BKO dibuka kembali"
+        SELESAI_TANPA_SK_TUBEL = "selesai_tanpa_sk_tubel", "Selesai diproses tanpa SK Tugas Belajar"
         # Pelaporan PDLN
         LAPORAN_DIUNGGAH = "laporan_diunggah", "Laporan PDLN diunggah"
         LAPORAN_DIKEMBALIKAN = "laporan_dikembalikan", "Laporan PDLN dikembalikan"

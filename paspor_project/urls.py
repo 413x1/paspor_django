@@ -16,6 +16,7 @@ urlpatterns = [
     path("pegawai/", include(("pengajuan.urls_pegawai", "pegawai"), namespace="pegawai")),
     path("admin-unor/", include(("pengajuan.urls_unor", "unor"), namespace="unor")),
     path("admin-bpsdm/", include(("pengajuan.urls_bpsdm", "bpsdm"), namespace="bpsdm")),
+    path("admin-bko/", include(("pengajuan.urls_bko", "bko"), namespace="bko")),
     path("admin-biropakln/", include(("pengajuan.urls_pakln", "pakln"), namespace="pakln")),
     path("profil/", views_pegawai.profil, name="profil"),
     path("notifikasi/", include(("notifications.urls", "notifications"), namespace="notifications")),

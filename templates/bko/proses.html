@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}SK Tugas Belajar{% endblock %}
+{% block wrap_extra_class %} narrow{% endblock %}
+
+{% block content %}
+{% include "partials/_status_bko.html" %}
+{% if pembatalan_terbuka %}
+  <div class="notification paspor-msg is-warning">
+    <strong>✕ Permohonan pembatalan sedang diproses ({{ pembatalan_terbuka.get_status_display }}).</strong> {{ pembatalan_terbuka.alasan }}
+  </div>
+{% endif %}
+{% if alasan_kunci %}<div class="notification paspor-msg is-info">{{ alasan_kunci }}</div>{% endif %}
+
+<div class="preview-split">
+<div class="box">
+  <div class="section-title">Data Pegawai &amp; Pengajuan — {{ pengajuan.kode }}</div>
+  <p class="sub" style="margin:-10px 0 12px;">
+    <span class="tag paspor-status is-{{ pengajuan.status }}"><span class="dot"></span>{{ pengajuan.get_status_display }}</span>
+    {% include "partials/_status_bko.html" with badge=True %}
+  </p>
+  {% include "partials/_ringkasan_pengajuan.html" %}
+</div>
+
+<div class="box">
+  <div class="section-title">Unggahan Pegawai, Admin Unor &amp; Admin BPSDM</div>
+  {% include "partials/_direktori_dokumen.html" %}
+</div>
+</div>
+
+<div class="box">
+  <div class="section-title">SK Tugas Belajar — Admin BKO</div>
+  <p class="sub" style="margin:-10px 0 12px;">Unggahan SK Tugas Belajar menyelesaikan tugas Admin BKO; Biro PAKLN baru dapat menyelesaikan pengajuan setelah SK Tubel tersedia.</p>
+  {% include "partials/_dokumen_tahap.html" with hapus_url="bko:hapus_dokumen" %}
+</div>
+
+{% if not alasan_kunci %}
+  {% if pengajuan.status_bko == "menunggu" %}
+  <div class="box is-danger-soft">
+    <div class="section-title" style="font-size:14px;">■ Tutup Pemrosesan</div>
+    <p class="cell-muted" style="margin:-8px 0 14px;">Gunakan bila SK Tugas Belajar <strong>tidak dapat diterbitkan</strong>. Alasan akan terlihat oleh Pegawai, Admin Unor, Admin BPSDM, dan Biro PAKLN. Pengajuan tidak dikembalikan.</p>
+    <form method="post" data-confirm="Tutup pemrosesan SK Tugas Belajar untuk pengajuan ini?" data-confirm-title="Tutup Pemrosesan" data-confirm-ok="Tutup">
+      {% csrf_token %}
+      <div class="field">
+        <label class="label" for="catatan_tutup">Alasan penutupan</label>
+        <div class="control"><textarea class="textarea" id="catatan_tutup" name="catatan" rows="3" required></textarea></div>
+      </div>
+      <button type="submit" name="tutup" class="button is-danger is-fullwidth">■ Tutup Pemrosesan</button>
+    </form>
+  </div>
+  {% elif pengajuan.status_bko == "ditutup" %}
+  <div class="box">
+    <div class="section-title" style="font-size:14px;">↻ Buka Kembali Pemrosesan</div>
+    <p class="cell-muted" style="margin:-8px 0 14px;">Buka kembali bila penyebab penutupan sudah teratasi, lalu unggah SK Tugas Belajar.</p>
+    <form method="post" data-confirm="Buka kembali pemrosesan SK Tugas Belajar?" data-confirm-title="Buka Kembali" data-confirm-ok="Buka Kembali">
+      {% csrf_token %}
+      <div class="field">
+        <label class="label" for="catatan_buka">Catatan</label>
+        <div class="control"><textarea class="textarea" id="catatan_buka" name="catatan" rows="3" required></textarea></div>
+      </div>
+      <button type="submit" name="buka_kembali" class="button is-primary is-fullwidth">↻ Buka Kembali</button>
+    </form>
+  </div>
+  {% endif %}
+{% endif %}
+
+{% include "partials/_riwayat_pengajuan.html" %}
+
+<a href="{% url 'bko:dashboard' %}" class="button is-fullwidth">← Kembali ke Dasbor</a>
+{% endblock %}

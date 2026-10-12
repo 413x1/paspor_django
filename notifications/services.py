@@ -12,6 +12,7 @@ wiki/instructions/BISNIS_PROSES_PDLN.MD §11.
     Event 4x (NOTIF_04*)                  — tahap BPSDM (PDLN Tipe 2)
     Event 5x (NOTIF_05*)                  — Laporan PDLN
     Event 6x (NOTIF_06*)                  — Pembatalan (mekanisme interim)
+    Event 7x (NOTIF_07*)                  — Track Admin BKO (PDLN Tipe 2 Pendidikan)
 """
 
 from django.urls import reverse
@@ -75,6 +76,12 @@ def _admin_pakln_recipients():
     from accounts.models import User
 
     return User.objects.filter(role=User.Role.ADMIN_PAKLN, is_active=True)
+
+
+def _admin_bko_recipients():
+    from accounts.models import User
+
+    return User.objects.filter(role=User.Role.ADMIN_BKO, is_active=True)
 
 
 def _create(recipients, *, pengajuan, event, level, title, body, redirect_url):
@@ -458,6 +465,8 @@ def notify_pembatalan_disetujui(permohonan):
     penerima = [p.pegawai, *_admin_unor_recipients(p)]
     if p.is_tipe2 and (p.tgl_masuk_bpsdm or permohonan.status_pengajuan_saat_diajukan == "proses_bpsdm"):
         penerima.extend(_admin_bpsdm_recipients())
+    if p.track_bko_terbuka:
+        penerima.extend(_admin_bko_recipients())
     _create(
         penerima,
         pengajuan=p,
@@ -483,4 +492,101 @@ def notify_pembatalan_ditarik(permohonan, status_sebelumnya):
         title=f"Permohonan Pembatalan Ditarik - {p.kode}",
         body=f"Permohonan pembatalan {p.kode} ditarik oleh pengaju. Proses pengajuan dilanjutkan.",
         redirect_url=url,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Track Admin BKO — PDLN Tipe 2 Pendidikan (wiki/instructions/PDLN_TIPE_2_FLOW.MD §8)
+# ---------------------------------------------------------------------------
+
+def notify_forward_bko(pengajuan):
+    """Event 7A: Admin BPSDM meneruskan T2P — Admin BKO diminta melengkapi
+    SK Tugas Belajar (paralel dengan proses Biro PAKLN)."""
+    _create(
+        _admin_bko_recipients(),
+        pengajuan=pengajuan,
+        event=Notification.Event.FORWARD_BKO,
+        level=Notification.Level.INFO,
+        title=f"Menunggu SK Tugas Belajar - {pengajuan.kode}",
+        body=(
+            f'Admin BPSDM meneruskan {pengajuan.jenis_label} atas nama {_nama_pegawai(pengajuan)} '
+            f'perihal "{_perihal(pengajuan)}". Mohon lengkapi SK Tugas Belajar.'
+        ),
+        redirect_url=reverse("bko:proses", args=[pengajuan.kode]),
+    )
+
+
+def notify_info_bko(pengajuan):
+    """Event 7E: info penerusan ulang BPSDM → Biro PAKLN (tanpa catatan
+    antar-admin)."""
+    _create(
+        _admin_bko_recipients(),
+        pengajuan=pengajuan,
+        event=Notification.Event.INFO_BKO,
+        level=Notification.Level.INFO,
+        title=f"Perbaikan Berkas Diteruskan Ulang - {pengajuan.kode}",
+        body=f"Admin BPSDM meneruskan ulang perbaikan berkas {pengajuan.kode} ke Biro PAKLN.",
+        redirect_url=reverse("bko:proses", args=[pengajuan.kode]),
+    )
+
+
+def notify_sk_tubel_diunggah(pengajuan):
+    """Event 7B: Admin BKO mengunggah SK Tugas Belajar."""
+    _create(
+        _admin_pakln_recipients(),
+        pengajuan=pengajuan,
+        event=Notification.Event.SK_TUBEL_DIUNGGAH,
+        level=Notification.Level.SUCCESS,
+        title=f"SK Tugas Belajar Tersedia - {pengajuan.kode}",
+        body=f"Admin BKO telah mengunggah SK Tugas Belajar atas nama {_nama_pegawai(pengajuan)}.",
+        redirect_url=reverse("pakln:preview", args=[pengajuan.kode]),
+    )
+
+
+def _penerima_bko_semua(pengajuan, kecuali_role=None):
+    """Pegawai, Admin Unor, Admin BPSDM, Admin PAKLN, Admin BKO — tanpa role
+    `kecuali_role` (pihak yang melakukan aksi)."""
+    from accounts.models import User
+
+    kelompok = {
+        User.Role.ADMIN_UNOR: _admin_unor_recipients(pengajuan),
+        User.Role.ADMIN_BPSDM: _admin_bpsdm_recipients(),
+        User.Role.ADMIN_PAKLN: _admin_pakln_recipients(),
+        User.Role.ADMIN_BKO: _admin_bko_recipients(),
+    }
+    penerima = [pengajuan.pegawai]
+    for role, qs in kelompok.items():
+        if role != kecuali_role:
+            penerima.extend(qs)
+    return penerima
+
+
+def notify_bko_ditutup(pengajuan, catatan):
+    """Event 7C: Admin BKO menutup pemrosesan — alasan terlihat semua pihak."""
+    from accounts.models import User
+
+    _create(
+        _penerima_bko_semua(pengajuan, kecuali_role=User.Role.ADMIN_BKO),
+        pengajuan=pengajuan,
+        event=Notification.Event.BKO_DITUTUP,
+        level=Notification.Level.WARNING,
+        title=f"Pemrosesan SK Tugas Belajar Ditutup - {pengajuan.kode}",
+        body=f'Admin BKO menutup pemrosesan SK Tugas Belajar {pengajuan.kode}. Alasan: "{catatan}".',
+        redirect_url="",
+    )
+
+
+def notify_bko_dibuka(pengajuan, catatan, aktor_role):
+    """Event 7D: track BKO dibuka kembali oleh Admin BKO atau Admin PAKLN."""
+    from accounts.models import User
+
+    oleh = "Admin BKO" if aktor_role == User.Role.ADMIN_BKO else "Biro PAKLN"
+    _create(
+        _penerima_bko_semua(pengajuan, kecuali_role=aktor_role),
+        pengajuan=pengajuan,
+        event=Notification.Event.BKO_DIBUKA,
+        level=Notification.Level.INFO,
+        title=f"Pemrosesan SK Tugas Belajar Dibuka Kembali - {pengajuan.kode}",
+        body=f'{oleh} membuka kembali pemrosesan SK Tugas Belajar {pengajuan.kode}. Catatan: "{catatan}".',
+        redirect_url="",
     )

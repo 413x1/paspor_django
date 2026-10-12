@@ -57,10 +57,14 @@ _UNOR_DASHBOARD_ORDER_FIELDS = {
 }
 
 
-def status_html(p):
+def status_html(p, dengan_bko=True):
     html = format_html(
         '<span class="tag paspor-status is-{}"><span class="dot"></span>{}</span>', p.status, p.get_status_display(),
     )
+    if dengan_bko and p.track_bko_terbuka and p.status not in (S.SELESAI, S.DIBATALKAN):
+        html = format_html(
+            '{}<br><span class="tag bko-status is-{}">BKO: {}</span>', html, p.status_bko, p.get_status_bko_display(),
+        )
     if p.pembatalan_terbuka:
         html = format_html('{}<br><span class="cell-muted">✕ Pembatalan diproses</span>', html)
     return html

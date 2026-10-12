@@ -25,7 +25,7 @@ from paspor.impor_libur import ImporError, baca_berkas, buat_template_xlsx, simp
 from paspor.kalender import AKHIR_PEKAN, hitung_hari_kalender
 from paspor.models import HariLibur, KategoriPerjalanan, Negara, SumberPembiayaan
 
-from . import alur, pembatalan, persyaratan, report, riwayat, tahap
+from . import alur, bko, pembatalan, persyaratan, report, riwayat, tahap
 from .decorators import role_required
 from .forms import (
     DokumenTemplateForm, HariLiburForm, ImporHariLiburForm, KategoriPerjalananForm,
@@ -1668,6 +1668,28 @@ def upload_dokumen(request, kode):
             hasil = _selesaikan(request, pengajuan)
             if hasil:
                 return hasil
+        elif "selesaikan_tanpa_sk_tubel" in request.POST:
+            hasil = _selesaikan(request, pengajuan, tanpa_sk_tubel=True)
+            if hasil:
+                return hasil
+        elif "buka_kembali_bko" in request.POST:
+            try:
+                p = bko.buka_kembali(pengajuan, request.user, request.POST.get("catatan", ""))
+            except bko.BkoError as exc:
+                messages.error(request, str(exc))
+            else:
+                catat_riwayat(request, p, RiwayatPengajuan.Aksi.DIBUKA_ULANG_BKO)
+                messages.success(request, f"Pemrosesan SK Tugas Belajar {p.kode} dibuka kembali untuk Admin BKO.")
+                return redirect("pakln:upload_dokumen", kode=kode)
+        elif "hentikan" in request.POST:
+            try:
+                pembatalan.hentikan_oleh_pakln(pengajuan, request.user, request.POST.get("alasan", ""))
+            except pembatalan.PembatalanError as exc:
+                messages.error(request, str(exc))
+            else:
+                catat_riwayat(request, pengajuan, RiwayatPengajuan.Aksi.DIBATALKAN)
+                messages.success(request, f"Pengajuan {pengajuan.kode} dihentikan (dibatalkan).")
+                return redirect("pakln:dashboard")
         elif "pendukung_upload" in request.POST and pendukung:
             file_obj = request.FILES.get("file")
             if not file_obj:
@@ -1714,15 +1736,35 @@ def upload_dokumen(request, kode):
         "dapat_diubah": dapat_diubah,
         "readonly": not dapat_diubah,
         "dibekukan": alur.alasan_dibekukan(pengajuan),
+        "sk_tubel": pengajuan.dokumen_bko.first() if pengajuan.pakai_bko else None,
+        "alasan_selesai_bko": bko.alasan_tidak_bisa_selesai(pengajuan),
         **riwayat.konteks(pengajuan, request.user),
     }
     return render(request, "pakln/upload.html", context)
 
 
-def _selesaikan(request, pengajuan):
+def _cek_bko_selesai(p, tanpa_sk_tubel):
+    """Pesan bila track Admin BKO (T2P) belum mengizinkan Selesai, atau ''."""
+    if tanpa_sk_tubel:
+        if not p.pakai_bko or p.status_bko != Pengajuan.StatusBko.DITUTUP:
+            return "Lanjutkan tanpa SK Tugas Belajar hanya tersedia bila pemrosesan BKO ditutup."
+        return ""
+    return bko.alasan_tidak_bisa_selesai(p)
+
+
+def _selesaikan(request, pengajuan, tanpa_sk_tubel=False):
     kurang = tahap.konteks_dokumen(pengajuan, "pakln")["dokumen_kurang"]
     if kurang:
         messages.error(request, "Lengkapi dokumen wajib sebelum menyelesaikan proses: " + ", ".join(kurang) + ".")
+        return None
+    pesan_bko = _cek_bko_selesai(pengajuan, tanpa_sk_tubel)
+    if pesan_bko:
+        messages.error(request, pesan_bko)
+        return None
+    # Catatan "Lanjutkan tanpa SK Tubel" wajib — hanya terlihat Admin PAKLN.
+    catatan = request.POST.get("catatan", "").strip() if tanpa_sk_tubel else ""
+    if tanpa_sk_tubel and not catatan:
+        messages.error(request, "Isi catatan untuk melanjutkan tanpa SK Tugas Belajar.")
         return None
     if not request.POST.get("agree"):
         messages.error(request, "Centang pernyataan kelengkapan dokumen terlebih dahulu.")
@@ -1737,6 +1779,11 @@ def _selesaikan(request, pengajuan):
             if pesan:
                 messages.error(request, pesan)
             return redirect("pakln:dashboard")
+        # Periksa ulang di dalam lock — Admin BKO bisa mengubah track bersamaan.
+        pesan_bko = _cek_bko_selesai(p, tanpa_sk_tubel)
+        if pesan_bko:
+            messages.error(request, pesan_bko)
+            return redirect("pakln:upload_dokumen", kode=p.kode)
         if not p.is_pdln:
             # Cuti hanya terpakai untuk perjalanan Non-Kedinasan; PDLN adalah
             # penugasan dinas. Hari kerja = snapshot saat pengajuan dikirim.
@@ -1749,8 +1796,9 @@ def _selesaikan(request, pengajuan):
         p.status = Pengajuan.Status.SELESAI
         p.tgl_selesai = timezone.now().date()
         p.save()
-        riwayat.catat(p, RiwayatPengajuan.Aksi.SELESAI, request.user, status_dari)
-        catat_riwayat(request, p, RiwayatPengajuan.Aksi.SELESAI)
+        aksi = RiwayatPengajuan.Aksi.SELESAI_TANPA_SK_TUBEL if tanpa_sk_tubel else RiwayatPengajuan.Aksi.SELESAI
+        riwayat.catat(p, aksi, request.user, status_dari, catatan=catatan)
+        catat_riwayat(request, p, aksi)
 
     notify_complete_pkln(p)
     if p.is_pdln:

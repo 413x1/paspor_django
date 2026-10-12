@@ -33,6 +33,12 @@ class Notification(models.Model):
         PEMBATALAN_DITOLAK = "NOTIF_06C_PEMBATALAN_DITOLAK", "Permohonan pembatalan ditolak"
         PEMBATALAN_DISETUJUI = "NOTIF_06D_PEMBATALAN_DISETUJUI", "Perjalanan dibatalkan"
         PEMBATALAN_DITARIK = "NOTIF_06E_PEMBATALAN_DITARIK", "Permohonan pembatalan ditarik"
+        # Track Admin BKO (PDLN Tipe 2 Pendidikan)
+        FORWARD_BKO = "NOTIF_07A_FORWARD_BKO", "Diteruskan ke Admin BKO"
+        SK_TUBEL_DIUNGGAH = "NOTIF_07B_SK_TUBEL_DIUNGGAH", "SK Tugas Belajar diunggah"
+        BKO_DITUTUP = "NOTIF_07C_BKO_DITUTUP", "Pemrosesan ditutup Admin BKO"
+        BKO_DIBUKA = "NOTIF_07D_BKO_DIBUKA", "Pemrosesan BKO dibuka kembali"
+        INFO_BKO = "NOTIF_07E_INFO_BKO", "Perbaikan diteruskan ulang (info BKO)"
 
     class Level(models.TextChoices):
         INFO = "info", "Info"

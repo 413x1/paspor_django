@@ -43,4 +43,6 @@ def role_redirect(request):
         return redirect("bpsdm:dashboard")
     if role == User.Role.ADMIN_PAKLN:
         return redirect("pakln:dashboard")
+    if role == User.Role.ADMIN_BKO:
+        return redirect("bko:dashboard")
     return redirect("login")

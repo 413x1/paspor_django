@@ -25,7 +25,7 @@ ORG_UNITS = [
 
 class Command(BaseCommand):
     help = (
-        "Membuat akun demo (Pegawai, Admin Unor, Admin BPSDM, Admin Biro PAKLN) beserta "
+        "Membuat akun demo (Pegawai, Admin Unor, Admin BPSDM, Admin BKO, Admin Biro PAKLN) beserta"
         "contoh data pengajuan, meniru data dummy pada mockup PASPOR "
         "Tahap 1 (alur Non-Kedinasan)."
     )
@@ -108,6 +108,19 @@ class Command(BaseCommand):
             admin_bpsdm.save()
             self.stdout.write(self.style.SUCCESS("User 'admin.bpsdm' dibuat."))
 
+        # --- Admin BKO (SK Tugas Belajar PDLN Tipe 2 Pendidikan) -----------
+        admin_bko, created = User.objects.get_or_create(
+            username="admin.bko",
+            defaults={
+                "first_name": "Admin", "last_name": "BKO", "role": User.Role.ADMIN_BKO,
+                "unit_kerja": "Biro Kepegawaian dan Organisasi",
+            },
+        )
+        if created:
+            admin_bko.set_password("paspor123")
+            admin_bko.save()
+            self.stdout.write(self.style.SUCCESS("User 'admin.bko' dibuat."))
+
         # --- Contoh riwayat pengajuan (status selesai) -------------------
         # `tujuan_negara` adalah ManyToManyField — tidak bisa masuk
         # `defaults` pada get_or_create(), jadi diisi lewat `.set()` setelah
@@ -179,5 +192,6 @@ class Command(BaseCommand):
             "  - andra.wibisono   -> role Pegawai\n"
             "  - admin.unor       -> role Admin Unor\n"
             "  - admin.bpsdm      -> role Admin BPSDM\n"
+            "  - admin.bko        -> role Admin BKO\n"
             "  - admin.pakln      -> role Admin Biro PAKLN\n"
         ))

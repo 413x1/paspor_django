@@ -18,6 +18,7 @@ ROOT = {
     User.Role.ADMIN_UNOR: "unor:dashboard",
     User.Role.ADMIN_BPSDM: "bpsdm:dashboard",
     User.Role.ADMIN_PAKLN: "pakln:dashboard",
+    User.Role.ADMIN_BKO: "bko:dashboard",
 }
 
 CRUMBS = {
@@ -53,6 +54,13 @@ CRUMBS = {
     "bpsdm:pembatalan": ("Pembatalan", "bpsdm:dashboard"),
     "bpsdm:rekap": ("Rekap", "bpsdm:dashboard"),
     "bpsdm:export": ("Export", "bpsdm:dashboard"),
+
+    # --- Admin BKO ---------------------------------------------------------
+    "bko:dashboard": ("Dasbor", None),
+    "bko:proses": ("SK Tugas Belajar {kode}", "bko:dashboard"),
+    "bko:pembatalan": ("Pembatalan", "bko:dashboard"),
+    "bko:rekap": ("Rekap", "bko:dashboard"),
+    "bko:export": ("Export", "bko:dashboard"),
 
     # --- Admin Biro PAKLN --------------------------------------------------
     "pakln:dashboard": ("Dasbor", None),

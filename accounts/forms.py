@@ -9,14 +9,15 @@ from .models import PegawaiProfile, User
 class TambahUserForm(forms.Form):
     """Form pembuatan user baru oleh Admin Biro PAKLN.
 
-    Mendukung tiga peran: Pegawai (butuh data kepegawaian pada
-    PegawaiProfile), Admin Unor, dan Admin BPSDM (cukup akun login).
+    Mendukung empat peran: Pegawai (butuh data kepegawaian pada
+    PegawaiProfile), Admin Unor, Admin BPSDM, dan Admin BKO (cukup akun login).
     """
 
     ROLE_CHOICES = [
         (User.Role.PEGAWAI, "Pegawai"),
         (User.Role.ADMIN_UNOR, "Admin Unor"),
         (User.Role.ADMIN_BPSDM, "Admin BPSDM"),
+        (User.Role.ADMIN_BKO, "Admin BKO"),
     ]
 
     # --- Akun ---
