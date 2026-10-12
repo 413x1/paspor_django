@@ -44,7 +44,7 @@
           {% csrf_token %}
           <input type="hidden" name="aksi" value="unggah_dokumen">
           <input type="hidden" name="jenis" value="{{ jenis }}">
-          <input type="file" name="file" required class="doc-file-input" style="font-size:12.5px;max-width:160px;">
+          <input type="file" name="file" required accept=".pdf,application/pdf" data-pdf-only class="doc-file-input" style="font-size:12.5px;max-width:160px;">
           <button type="submit" class="button is-small doc-upload-submit">⬆ Unggah</button>
         </form>
       </div>

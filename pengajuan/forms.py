@@ -8,6 +8,7 @@ from django.forms.models import ModelChoiceIterator
 from django.utils import timezone
 
 from paspor.kalender import AKHIR_PEKAN, hitung_hari_kerja
+from paspor.validators import PDF_ACCEPT, validate_pdf
 from paspor.models import HariLibur, KategoriPerjalanan, Negara, SumberPembiayaan, berlaku_untuk_tipe
 
 from .models import (
@@ -305,6 +306,17 @@ class PdlnForm(forms.ModelForm):
         return detail
 
 
+class PdfOnlyMixin:
+    """Berkas dokumen pengajuan hanya boleh PDF: validasi di server (ekstensi, MIME type,
+    dan isi berkas) plus atribut `accept` agar dialog pilih-berkas hanya menawarkan PDF.
+    Validator hanya berjalan untuk berkas yang BARU diunggah, bukan berkas lama."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["file"].validators.append(validate_pdf)
+        self.fields["file"].widget.attrs["accept"] = PDF_ACCEPT
+
+
 class TanggalSuratMixin:
     """Tanggal Surat tidak boleh melewati hari ini. Batas `max` pada widget
     diisi di __init__ (bukan di deklarasi class) supaya selalu hari ini,
@@ -321,7 +333,7 @@ class TanggalSuratMixin:
         return tanggal
 
 
-class DokumenPegawaiForm(TanggalSuratMixin, forms.ModelForm):
+class DokumenPegawaiForm(PdfOnlyMixin, TanggalSuratMixin, forms.ModelForm):
     class Meta:
         model = DokumenPegawai
         fields = ["file", "tanggal_surat"]
@@ -331,7 +343,7 @@ class DokumenPegawaiForm(TanggalSuratMixin, forms.ModelForm):
         }
 
 
-class DokumenUnorForm(TanggalSuratMixin, forms.ModelForm):
+class DokumenUnorForm(PdfOnlyMixin, TanggalSuratMixin, forms.ModelForm):
     class Meta:
         model = DokumenUnor
         fields = ["file", "tanggal_surat"]
@@ -341,7 +353,7 @@ class DokumenUnorForm(TanggalSuratMixin, forms.ModelForm):
         }
 
 
-class DokumenBpsdmForm(TanggalSuratMixin, forms.ModelForm):
+class DokumenBpsdmForm(PdfOnlyMixin, TanggalSuratMixin, forms.ModelForm):
     class Meta:
         model = DokumenBpsdm
         fields = ["file", "tanggal_surat"]
@@ -351,7 +363,7 @@ class DokumenBpsdmForm(TanggalSuratMixin, forms.ModelForm):
         }
 
 
-class DokumenBkoForm(TanggalSuratMixin, forms.ModelForm):
+class DokumenBkoForm(PdfOnlyMixin, TanggalSuratMixin, forms.ModelForm):
     class Meta:
         model = DokumenBko
         fields = ["file", "tanggal_surat"]
@@ -361,7 +373,7 @@ class DokumenBkoForm(TanggalSuratMixin, forms.ModelForm):
         }
 
 
-class DokumenPaklnForm(TanggalSuratMixin, forms.ModelForm):
+class DokumenPaklnForm(PdfOnlyMixin, TanggalSuratMixin, forms.ModelForm):
     class Meta:
         model = DokumenPakln
         fields = ["file", "tanggal_surat"]

@@ -315,10 +315,40 @@
       $form.trigger('submit');
     }
 
+    // Unggahan hanya PDF: periksa ekstensi dan tipe berkas SEBELUM apa pun diproses. Berkas
+    // yang salah dibatalkan (input dikosongkan) disertai pemberitahuan. Server tetap
+    // memvalidasi ulang (ekstensi, MIME type, dan isi berkas) — ini hanya kenyamanan.
+    function berkasPdfValid(input) {
+      var f = input.files && input.files[0];
+      if (!f) { return true; }
+      var ekstensiOk = /\.pdf$/i.test(f.name);
+      var tipeOk = !f.type || f.type === 'application/pdf';  // tipe kosong: biarkan server memeriksa
+      if (ekstensiOk && tipeOk) { return true; }
+      $(input).val('');
+      window.pasporAlert({
+        type: 'error', title: 'Berkas ditolak',
+        message: 'Hanya berkas PDF (.pdf) yang dapat diunggah. Berkas "' + f.name + '" bukan PDF.',
+      });
+      return false;
+    }
+
+    // Input unggah yang tidak memakai alur .doc-file-input (mis. laporan PDLN).
+    $(document).on('change', 'input[type="file"][data-pdf-only]:not(.doc-file-input)', function () {
+      berkasPdfValid(this);
+    });
+    $(document).on('submit', 'form', function (e) {
+      var valid = true;
+      $(this).find('input[type="file"][data-pdf-only]').each(function () {
+        if (!berkasPdfValid(this)) { valid = false; }
+      });
+      if (!valid) { e.preventDefault(); }
+    });
+
     $(document).on('change', '.doc-file-input', function () {
       var $input = $(this);
       var $form = $input.closest('form');
       if (!this.files || !this.files.length) { return; }
+      if (!berkasPdfValid(this)) { return; }
 
       var jenis = $form.find('input[name="jenis"]').val();
       // Registri persyaratan menandai baris yang butuh Tanggal Surat lewat

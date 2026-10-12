@@ -7,6 +7,7 @@ from django.utils.html import escape, format_html
 from django.views.decorators.http import require_POST
 
 from logs.models import ActivityLog
+from paspor.validators import periksa_pdf
 from logs.utils import catat_riwayat, record_activity
 from notifications.services import notify_approve_unor, notify_forward_bpsdm, notify_reject_unor
 
@@ -200,6 +201,8 @@ def upload_dokumen(request, kode):
             file_obj = request.FILES.get("file")
             if not file_obj:
                 messages.error(request, "Pilih berkas dokumen pendukung terlebih dahulu.")
+            elif (galat := periksa_pdf(request, file_obj)):
+                messages.error(request, galat)
             else:
                 pendukung.file = file_obj
                 pendukung.uploaded_at = timezone.now()
