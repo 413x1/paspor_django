@@ -13,7 +13,7 @@ from django.views.decorators.http import require_POST
 
 from accounts.models import DokumenKepegawaian, PasporPegawai
 from logs.models import ActivityLog
-from paspor.validators import periksa_pdf
+from paspor.validators import KODE_BUKAN_PDF, periksa_pdf, tandai_ditolak
 from logs.utils import catat_riwayat, record_activity
 from notifications import services as notif
 from notifications.services import notify_resubmit_unor, notify_submit_unor
@@ -22,7 +22,7 @@ from paspor.kalender import rincian_hari
 
 from . import alur, pembatalan, riwayat, tahap
 from .decorators import role_required
-from .forms import PdlnForm, PengajuanForm
+from .forms import LaporanPdlnForm, PdlnForm, PengajuanForm
 from .models import DokumenBko, DokumenPakln, LaporanPdln, Pengajuan, PermohonanPembatalan, RiwayatPengajuan
 
 S = Pengajuan.Status
@@ -124,6 +124,11 @@ def riwayat_data(request):
                 reverse("pegawai:formulir_pengajuan"),
             )
         laporan = p.laporan if p.is_pdln else None
+        if p.is_pdln and p.status == S.SELESAI and not p.tuntas:
+            aksi_html = format_html(
+                '{} <a href="{}" class="button is-small is-info btn-pelaporan-info">Pelaporan PDLN</a>',
+                aksi_html, reverse("pegawai:laporan_form", args=[p.kode]),
+            )
         if not p.is_pdln:
             laporan_html = "—"
         elif p.status != S.SELESAI:
@@ -477,51 +482,134 @@ def pelaporan(request):
     return render(request, "pegawai/pelaporan.html", {"daftar": daftar})
 
 
-@role_required("pegawai")
-@require_POST
-def unggah_laporan(request, kode):
-    pengajuan = get_object_or_404(Pengajuan, kode=kode, pegawai=request.user, jenis_perjalanan=JP.PDLN)
-    berkas = request.FILES.get("file")
-    catatan = request.POST.get("catatan", "").strip()
+def _laporan_dapat_diubah(laporan):
+    """Laporan masih bisa diisi/diubah pegawai: belum ada, masih draft, atau dikembalikan."""
+    return laporan is None or laporan.status in (LaporanPdln.Status.DRAFT, LaporanPdln.Status.DIKEMBALIKAN)
 
+
+def _tanggal_pelaksanaan(pengajuan):
+    """Tanggal kegiatan (bila ada pada detail PDLN), selain itu tanggal berangkat s.d. kembali."""
+    detail = pengajuan.detail
+    mulai = (detail.tgl_mulai_kegiatan if detail else None) or pengajuan.tgl_berangkat
+    selesai = (detail.tgl_selesai_kegiatan if detail else None) or pengajuan.tgl_kembali
+    if not mulai:
+        return "—"
+    return f"{mulai:%d/%m/%Y} s/d {(selesai or mulai):%d/%m/%Y}"
+
+
+@role_required("pegawai")
+def laporan_form(request, kode):
+    """Formulir Pelaporan PDLN (Bagian A: data pengajuan, B: uraian, C: biaya dan dokumen).
+
+    "Simpan" menyimpan draft (isian boleh belum lengkap); "Laporkan" mengirim laporan ke Biro
+    PAKLN untuk diverifikasi. Laporan yang sedang menunggu verifikasi atau sudah disetujui hanya
+    dapat dilihat."""
+    pengajuan = get_object_or_404(
+        Pengajuan.objects.select_related("detail_pdln", "laporan_pdln").prefetch_related("tujuan_negara"),
+        kode=kode, pegawai=request.user, jenis_perjalanan=JP.PDLN,
+    )
+    if pengajuan.status != S.SELESAI:
+        messages.error(request, "Laporan PDLN hanya dapat diisi setelah pengajuan selesai diproses Biro PAKLN.")
+        return redirect("pegawai:pelaporan")
+
+    laporan = pengajuan.laporan
+    dibekukan = alur.alasan_dibekukan(pengajuan)
+    dapat_diubah = _laporan_dapat_diubah(laporan) and not dibekukan
+    perlu_catatan = laporan is not None and laporan.status == LaporanPdln.Status.DIKEMBALIKAN
+
+    if request.method == "POST":
+        aksi = request.POST.get("action")
+        if not dapat_diubah:
+            messages.error(request, dibekukan or "Laporan ini sedang diverifikasi atau sudah disetujui, tidak dapat diubah.")
+            return redirect("pegawai:laporan_form", kode=kode)
+        if aksi not in ("draft", "submit"):
+            messages.error(request, "Aksi tidak valid.")
+            return redirect("pegawai:laporan_form", kode=kode)
+
+        kirim = aksi == "submit"
+        form = LaporanPdlnForm(
+            request.POST, request.FILES, instance=laporan or LaporanPdln(pengajuan=pengajuan),
+            kirim=kirim, perlu_catatan=perlu_catatan,
+        )
+        if form.is_valid():
+            hasil = _simpan_laporan(request, pengajuan, form, kirim)
+            if hasil:
+                return hasil
+        else:
+            if any(e.code == KODE_BUKAN_PDF for e in form.errors.as_data().get("dokumen_laporan", [])):
+                tandai_ditolak(request)  # response menjadi 400 (UnggahDitolakMiddleware)
+            messages.error(request, "Periksa kembali isian formulir.")
+    else:
+        form = LaporanPdlnForm(instance=laporan or LaporanPdln(pengajuan=pengajuan), perlu_catatan=perlu_catatan)
+
+    if not dapat_diubah:
+        for field in form.fields.values():
+            field.disabled = True
+
+    return render(request, "pegawai/laporan_form.html", {
+        "pengajuan": pengajuan,
+        "laporan": laporan,
+        "form": form,
+        "dapat_diubah": dapat_diubah,
+        "dibekukan": dibekukan,
+        "tanggal_pelaksanaan": _tanggal_pelaksanaan(pengajuan),
+        "negara_tujuan": " — ".join(
+            bagian for bagian in (pengajuan.tujuan_negara_display, getattr(pengajuan.detail, "kota_tujuan", "")) if bagian
+        ) or "—",
+        "nama_berkas": os.path.basename(laporan.file.name) if laporan and laporan.file else "",
+    })
+
+
+def _simpan_laporan(request, pengajuan, form, kirim):
+    """Simpan draft atau kirim laporan (atomik). Mengembalikan redirect, atau None bila ditolak
+    (pesan error sudah ditambahkan)."""
+    ulang = False
     with transaction.atomic():
         p = alur.kunci(pengajuan)
-        laporan = p.laporan
+        terkini = LaporanPdln.objects.select_for_update().filter(pengajuan=p).first()
         pesan = ""
         if p.status != S.SELESAI:
-            pesan = "Laporan PDLN hanya dapat diunggah setelah pengajuan selesai diproses Biro PAKLN."
+            pesan = "Laporan PDLN hanya dapat diisi setelah pengajuan selesai diproses Biro PAKLN."
         elif alur.alasan_dibekukan(p):
             pesan = alur.alasan_dibekukan(p)
-        elif laporan and laporan.status == LaporanPdln.Status.DISETUJUI:
-            pesan = "Laporan PDLN sudah disetujui dan tidak dapat diubah."
-        elif laporan and laporan.status == LaporanPdln.Status.MENUNGGU:
-            pesan = "Laporan sedang menunggu verifikasi Biro PAKLN."
-        elif not berkas:
-            pesan = "Pilih berkas laporan terlebih dahulu."
-        elif (galat := periksa_pdf(request, berkas)):
-            pesan = galat
-        elif laporan and laporan.status == LaporanPdln.Status.DIKEMBALIKAN and not catatan:
-            pesan = "Isi catatan perbaikan untuk Biro PAKLN sebelum mengunggah ulang."
+        elif not _laporan_dapat_diubah(terkini):
+            pesan = "Laporan ini sedang diverifikasi atau sudah disetujui, tidak dapat diubah."
+        elif terkini is not None and form.instance.pk != terkini.pk:
+            pesan = "Laporan sudah dibuat dari tab lain. Muat ulang halaman ini."
         if pesan:
             messages.error(request, pesan)
-            return redirect("pegawai:pelaporan")
+            return redirect("pegawai:laporan_form", kode=p.kode)
 
-        ulang = laporan is not None
-        if laporan is None:
-            laporan = LaporanPdln(pengajuan=p)
-        elif laporan.file:
-            laporan.file.delete(save=False)
-        laporan.file = berkas
-        laporan.status = LaporanPdln.Status.MENUNGGU
+        ulang = terkini is not None and terkini.status == LaporanPdln.Status.DIKEMBALIKAN
+        catatan = (form.cleaned_data.get("catatan_perbaikan") or "").strip() if ulang else ""
+
+        laporan = form.save(commit=False)
         laporan.diunggah_oleh = request.user
-        laporan.uploaded_at = timezone.now()
+        if kirim:
+            laporan.status = LaporanPdln.Status.MENUNGGU
+            laporan.uploaded_at = timezone.now()
+        elif not ulang:
+            laporan.status = LaporanPdln.Status.DRAFT
+        # Draft dari laporan yang dikembalikan tetap berstatus "dikembalikan" (catatan Biro PAKLN
+        # masih berlaku sampai pegawai melaporkan ulang).
         laporan.save()
-        riwayat.catat(p, RiwayatPengajuan.Aksi.LAPORAN_DIUNGGAH, request.user, p.status, catatan=catatan if ulang else "")
-        catat_riwayat(request, p, RiwayatPengajuan.Aksi.LAPORAN_DIUNGGAH)
+        form.bersihkan_berkas_lama(laporan)
 
-    notif.notify_laporan_diunggah(p, catatan if ulang else "")
-    messages.success(request, f"Laporan PDLN {p.kode} berhasil dikirim untuk diverifikasi Biro PAKLN.")
-    return redirect("pegawai:pelaporan")
+        if kirim:
+            riwayat.catat(p, RiwayatPengajuan.Aksi.LAPORAN_DIUNGGAH, request.user, p.status, catatan=catatan)
+            catat_riwayat(request, p, RiwayatPengajuan.Aksi.LAPORAN_DIUNGGAH)
+        else:
+            record_activity(
+                request, ActivityLog.Aktivitas.SIMPAN_LAPORAN, f"Menyimpan draft laporan PDLN — {p.kode}",
+                target_type="pengajuan", target_id=p.kode,
+            )
+
+    if kirim:
+        notif.notify_laporan_diunggah(p, catatan)
+        messages.success(request, f"Laporan PDLN {p.kode} berhasil dikirim untuk diverifikasi Biro PAKLN.")
+        return redirect("pegawai:pelaporan")
+    messages.success(request, "Draft laporan disimpan. Anda dapat melanjutkannya nanti, lalu tekan Laporkan.")
+    return redirect("pegawai:laporan_form", kode=p.kode)
 
 
 # ---------------------------------------------------------------------------

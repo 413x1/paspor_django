@@ -198,8 +198,9 @@ class ProfilDanLaporanTests(_AlurMixin, TestCase):
             status=Pengajuan.Status.SELESAI,
         )
         self.client.force_login(self.pegawai)
-        r = self.client.post(reverse("pegawai:unggah_laporan", args=[p.kode]), {"file": berkas("laporan.docx")}, follow=True)
-        self.assertContains(r, PESAN_BUKAN_PDF)
+        isi = {"action": "submit", "tujuan_kegiatan": "a", "materi_kegiatan": "b", "tindak_lanjut": "c", "dampak_rekomendasi": "d"}
+        r = self.client.post(reverse("pegawai:laporan_form", args=[p.kode]), {**isi, "dokumen_laporan": berkas("laporan.docx")})
+        self.assertContains(r, PESAN_BUKAN_PDF, status_code=400)   # halaman form dirender ulang: 400
         self.assertFalse(LaporanPdln.objects.filter(pengajuan=p).exists())
-        self.client.post(reverse("pegawai:unggah_laporan", args=[p.kode]), {"file": berkas("laporan.pdf")})
+        self.client.post(reverse("pegawai:laporan_form", args=[p.kode]), {**isi, "dokumen_laporan": berkas("laporan.pdf")})
         self.assertTrue(LaporanPdln.objects.filter(pengajuan=p).exists())

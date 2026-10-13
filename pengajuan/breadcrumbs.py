@@ -32,7 +32,7 @@ CRUMBS = {
     "pegawai:upload_dokumen": ("Unggah Dokumen {kode}", "pegawai:beranda"),
     "pegawai:monitor_progres": ("Monitor Progres {kode}", "pegawai:beranda"),
     "pegawai:pelaporan": ("Pelaporan PDLN", "pegawai:beranda"),
-    "pegawai:unggah_laporan": ("Laporan {kode}", "pegawai:pelaporan"),
+    "pegawai:laporan_form": ("Laporan {kode}", "pegawai:pelaporan"),
     "pegawai:pembatalan": ("Pembatalan", "pegawai:beranda"),
     "pegawai:ajukan_pembatalan": ("Ajukan Pembatalan {kode}", "pegawai:pembatalan"),
 

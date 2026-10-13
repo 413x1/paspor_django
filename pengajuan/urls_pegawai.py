@@ -15,6 +15,6 @@ urlpatterns = [
     path("<str:kode>/monitor/", views.monitor_progres, name="monitor_progres"),
     path("<str:kode>/monitor/unduh-iln/", views.download_iln, name="download_iln"),
     path("<str:kode>/monitor/unduh/<str:jenis>/", views.unduh_hasil, name="unduh_hasil"),
-    path("<str:kode>/laporan/", views.unggah_laporan, name="unggah_laporan"),
+    path("<str:kode>/laporan/", views.laporan_form, name="laporan_form"),
     path("<str:kode>/batalkan/", views.ajukan_pembatalan, name="ajukan_pembatalan"),
 ]

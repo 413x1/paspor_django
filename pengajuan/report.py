@@ -216,7 +216,7 @@ def status_pelaporan(p):
     if not p.is_pdln or p.status != S.SELESAI:
         return ""
     laporan = p.laporan
-    if laporan:
+    if laporan and laporan.status != LaporanPdln.Status.DRAFT:   # draft = belum dilaporkan
         return laporan.get_status_display()
     if p.tgl_kembali and (timezone.localdate() - p.tgl_kembali).days > BATAS_HARI_LAPORAN:
         return "Belum Melapor (Terlambat)"

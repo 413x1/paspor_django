@@ -24,6 +24,7 @@ class ActivityLog(models.Model):
         KEMBALIKAN_PENGAJUAN = "pengajuan.kembalikan", "Mengembalikan pengajuan"
         SELESAI_PENGAJUAN = "pengajuan.selesai", "Menyelesaikan pengajuan"
         PROSES_PENGAJUAN = "pengajuan.proses", "Memproses pengajuan"
+        SIMPAN_LAPORAN = "laporan.simpan", "Menyimpan draft laporan PDLN"
         UNGGAH_DOKUMEN = "dokumen.unggah", "Mengunggah dokumen"
         HAPUS_DOKUMEN = "dokumen.hapus", "Menghapus dokumen"
         GENERATE_ND = "dokumen.generate_nd", "Generate/unduh Nota Dinas"

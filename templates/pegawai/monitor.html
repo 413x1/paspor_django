@@ -1,5 +1,9 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Monitor Progres{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/pelaporan.css' %}?v=20261013a">
+{% endblock %}
 {% block wrap_extra_class %} medium{% endblock %}
 
 {% block content %}
@@ -57,15 +61,17 @@
 </div>
 
 {% if pengajuan.is_pdln and pengajuan.status == "selesai" %}
-<div class="box {% if not laporan or laporan.status == 'dikembalikan' %}is-warning-soft{% endif %}">
+<div class="box {% if not laporan or laporan.status == 'draft' or laporan.status == 'dikembalikan' %}is-warning-soft{% endif %}">
   <div class="section-title" style="font-size:14px;">Laporan PDLN</div>
   {% if not laporan %}
     <p>Laporan perjalanan dinas belum diunggah. Pengajuan baru dinyatakan <strong>tuntas</strong> setelah laporan disetujui Admin Biro PAKLN.</p>
+  {% elif laporan.status == "draft" %}
+    <p>Draft laporan sudah tersimpan tetapi <strong>belum dilaporkan</strong> ke Biro PAKLN.</p>
   {% else %}
     <p>Status: <strong>{{ laporan.get_status_display }}</strong> · diunggah {{ laporan.uploaded_at|date:"d M Y H:i" }}</p>
     {% if laporan.status == "dikembalikan" %}<p>Catatan Biro PAKLN: {{ laporan.catatan_pakln }}</p>{% endif %}
   {% endif %}
-  <a href="{% url 'pegawai:pelaporan' %}" class="button is-small is-primary" style="margin-top:8px;">Ke Pelaporan PDLN →</a>
+  <a href="{% url 'pegawai:laporan_form' kode=pengajuan.kode %}" class="button is-small is-info btn-pelaporan-info" style="margin-top:8px;">Pelaporan PDLN →</a>
 </div>
 {% endif %}
 

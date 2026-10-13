@@ -389,10 +389,16 @@ def _konteks_pelaporan(qs_pengajuan):
     hari_ini = timezone.localdate()
     for p in qs:
         laporan = p.laporan
+        if laporan is not None and laporan.status == LaporanPdln.Status.DRAFT:
+            laporan = None   # draft belum dilaporkan: dihitung "belum melapor"
         status = laporan.status if laporan else "belum"
         terlambat = laporan is None and p.tgl_kembali and (hari_ini - p.tgl_kembali).days > report.BATAS_HARI_LAPORAN
         hitung["selesai"] += 1
         hitung[status] = hitung.get(status, 0) + 1
         hitung["terlambat"] += 1 if terlambat else 0
-        baris.append({"p": p, "laporan": laporan, "status": status, "terlambat": terlambat})
+        uraian = [] if laporan is None else [
+            ("Tujuan Kegiatan", laporan.tujuan_kegiatan), ("Materi Kegiatan", laporan.materi_kegiatan),
+            ("Tindak Lanjut", laporan.tindak_lanjut), ("Dampak Rekomendasi", laporan.dampak_rekomendasi),
+        ]
+        baris.append({"p": p, "laporan": laporan, "status": status, "terlambat": terlambat, "uraian": uraian})
     return {"baris": baris, "hitung": hitung, "Status": LaporanPdln.Status}

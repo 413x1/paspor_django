@@ -1,5 +1,7 @@
 import itertools
+import re
 from datetime import timedelta
+from decimal import Decimal
 
 from django import forms
 from django.core.validators import FileExtensionValidator
@@ -13,7 +15,7 @@ from paspor.models import HariLibur, KategoriPerjalanan, Negara, SumberPembiayaa
 
 from .models import (
     DetailPdln, DokumenBko, DokumenBpsdm, DokumenPakln, DokumenPegawai, DokumenTemplate, DokumenUnor, Pengajuan,
-    PengaturanDokumen,
+    LaporanPdln, PengaturanDokumen,
 )
 
 TIPE_PDLN_CHOICES = Pengajuan.TipePdln.choices
@@ -611,3 +613,113 @@ class KategoriPerjalananForm(_TipePdlnMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._init_tipe_pdln()
+
+
+class LaporanPdlnForm(forms.ModelForm):
+    """Formulir Pelaporan PDLN oleh Pegawai (Bagian B: uraian, Bagian C: biaya dan dokumen).
+
+    Dua tombol di halaman: "Simpan" (draft, isian boleh kosong) dan "Laporkan" (kirim ke Biro
+    PAKLN, `kirim=True`). Pada "Laporkan" keempat uraian dan dokumen laporan wajib terisi; bila
+    laporan sebelumnya dikembalikan (`perlu_catatan=True`), catatan perbaikan juga wajib.
+
+    Estimasi/realisasi biaya diketik berformat Rupiah ("10.000.000"); karakter non-angka dibuang
+    di server (`clean_*`) sebelum disimpan sebagai angka bulat.
+    """
+
+    URAIAN = ("tujuan_kegiatan", "materi_kegiatan", "tindak_lanjut", "dampak_rekomendasi")
+    BIAYA_MAKS_DIGIT = 15
+
+    estimasi_biaya = forms.CharField(
+        required=False, label="Estimasi Biaya",
+        widget=forms.TextInput(attrs={
+            "class": "input input-rupiah", "inputmode": "numeric", "autocomplete": "off", "placeholder": "Biaya Estimasi",
+        }),
+    )
+    realisasi_biaya = forms.CharField(
+        required=False, label="Realisasi Biaya",
+        widget=forms.TextInput(attrs={
+            "class": "input input-rupiah", "inputmode": "numeric", "autocomplete": "off", "placeholder": "Biaya Realisasi",
+        }),
+    )
+    dokumen_laporan = forms.FileField(
+        required=False, label="Dokumen Laporan Kegiatan", validators=[validate_pdf],
+        widget=forms.ClearableFileInput(attrs={"accept": PDF_ACCEPT, "data-pdf-only": "", "class": "file-input"}),
+    )
+    catatan_perbaikan = forms.CharField(
+        required=False, label="Catatan perbaikan untuk Biro PAKLN",
+        widget=forms.Textarea(attrs={"class": "textarea", "rows": 3}),
+    )
+
+    class Meta:
+        model = LaporanPdln
+        fields = ["tujuan_kegiatan", "materi_kegiatan", "tindak_lanjut", "dampak_rekomendasi"]
+        widgets = {nama: forms.Textarea(attrs={"class": "textarea", "rows": 4}) for nama in (
+            "tujuan_kegiatan", "materi_kegiatan", "tindak_lanjut", "dampak_rekomendasi",
+        )}
+
+    def __init__(self, *args, kirim=False, perlu_catatan=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.kirim = kirim
+        self.perlu_catatan = perlu_catatan
+        self._berkas_lama = ""
+        if not perlu_catatan:
+            del self.fields["catatan_perbaikan"]
+        if self.instance.pk and not self.is_bound:
+            for nama in ("estimasi_biaya", "realisasi_biaya"):
+                nilai = getattr(self.instance, nama)
+                if nilai is not None:
+                    self.initial[nama] = format_rupiah(nilai)
+
+    # --- Biaya: "10.000.000" -> 10000000 ---------------------------------
+    @classmethod
+    def _angka(cls, mentah):
+        # Rupiah utuh: bagian setelah koma desimal (bila ada) diabaikan; sisanya hanya digit.
+        digit = re.sub(r"\D", "", (mentah or "").split(",")[0])
+        if not digit:
+            return None
+        if len(digit) > cls.BIAYA_MAKS_DIGIT:
+            raise forms.ValidationError("Nilai biaya terlalu besar.")
+        return Decimal(digit)
+
+    def clean_estimasi_biaya(self):
+        return self._angka(self.cleaned_data.get("estimasi_biaya"))
+
+    def clean_realisasi_biaya(self):
+        return self._angka(self.cleaned_data.get("realisasi_biaya"))
+
+    def clean(self):
+        cleaned = super().clean()
+        if self.kirim:
+            for nama in self.URAIAN:
+                if not (cleaned.get(nama) or "").strip() and nama not in self.errors:
+                    self.add_error(nama, "Wajib diisi untuk melaporkan.")
+            if not cleaned.get("dokumen_laporan") and not self.instance.file and "dokumen_laporan" not in self.errors:
+                self.add_error("dokumen_laporan", "Dokumen laporan wajib diunggah untuk melaporkan.")
+            if self.perlu_catatan and not (cleaned.get("catatan_perbaikan") or "").strip():
+                self.add_error("catatan_perbaikan", "Isi catatan perbaikan untuk Biro PAKLN sebelum melaporkan ulang.")
+        return cleaned
+
+    def save(self, commit=True):
+        """Terapkan isian ke instance. Berkas lama (bila diganti) dicatat di `_berkas_lama`
+        dan dihapus lewat `bersihkan_berkas_lama()` SETELAH instance tersimpan."""
+        laporan = super().save(commit=False)
+        laporan.estimasi_biaya = self.cleaned_data.get("estimasi_biaya")
+        laporan.realisasi_biaya = self.cleaned_data.get("realisasi_biaya")
+        baru = self.cleaned_data.get("dokumen_laporan")
+        if baru:
+            self._berkas_lama = laporan.file.name if laporan.file else ""
+            laporan.file = baru
+        if commit:
+            laporan.save()
+            self.bersihkan_berkas_lama(laporan)
+        return laporan
+
+    def bersihkan_berkas_lama(self, laporan):
+        if self._berkas_lama and self._berkas_lama != laporan.file.name:
+            laporan.file.storage.delete(self._berkas_lama)
+        self._berkas_lama = ""
+
+
+def format_rupiah(nilai):
+    """10000000 -> '10.000.000' (tanpa awalan Rp)."""
+    return f"{int(nilai):,}".replace(",", ".")
