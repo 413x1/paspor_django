@@ -119,14 +119,14 @@
       </div>
       <div class="column">
         <div class="field">
-          <label class="label" for="{{ form.estimasi_biaya.id_for_label }}">Estimasi Biaya (Rp)</label>
+          <label class="label" for="{{ form.estimasi_biaya.id_for_label }}">Estimasi Biaya (Rp) <span class="wajib">*</span></label>
           <div class="control">{{ form.estimasi_biaya }}</div>
           {% for e in form.estimasi_biaya.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
         </div>
       </div>
       <div class="column">
         <div class="field">
-          <label class="label" for="{{ form.realisasi_biaya.id_for_label }}">Realisasi Biaya (Rp)</label>
+          <label class="label" for="{{ form.realisasi_biaya.id_for_label }}">Realisasi Biaya (Rp) <span class="wajib">*</span></label>
           <div class="control">{{ form.realisasi_biaya }}</div>
           {% for e in form.realisasi_biaya.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
         </div>
@@ -175,7 +175,7 @@
     <strong>INFO</strong>
     <ul>
       <li>Tekan <strong>Simpan</strong> untuk menyimpan sebagai draft (isian boleh belum lengkap).</li>
-      <li>Tekan <strong>Laporkan</strong> untuk menyampaikan laporan ke Biro PAKLN. Seluruh uraian bertanda <span class="wajib">*</span> dan dokumen PDF wajib terisi.</li>
+      <li>Tekan <strong>Laporkan</strong> untuk menyampaikan laporan ke Biro PAKLN. Seluruh isian bertanda <span class="wajib">*</span> (uraian, biaya, dan dokumen PDF) wajib terisi.</li>
     </ul>
   </div>
   {% endif %}

@@ -619,8 +619,9 @@ class LaporanPdlnForm(forms.ModelForm):
     """Formulir Pelaporan PDLN oleh Pegawai (Bagian B: uraian, Bagian C: biaya dan dokumen).
 
     Dua tombol di halaman: "Simpan" (draft, isian boleh kosong) dan "Laporkan" (kirim ke Biro
-    PAKLN, `kirim=True`). Pada "Laporkan" keempat uraian dan dokumen laporan wajib terisi; bila
-    laporan sebelumnya dikembalikan (`perlu_catatan=True`), catatan perbaikan juga wajib.
+    PAKLN, `kirim=True`). Pada "Laporkan" SEMUA isian wajib terisi: keempat uraian, estimasi dan
+    realisasi biaya, serta dokumen laporan; bila laporan sebelumnya dikembalikan
+    (`perlu_catatan=True`), catatan perbaikan juga wajib.
 
     Estimasi/realisasi biaya diketik berformat Rupiah ("10.000.000"); karakter non-angka dibuang
     di server (`clean_*`) sebelum disimpan sebagai angka bulat.
@@ -692,6 +693,10 @@ class LaporanPdlnForm(forms.ModelForm):
         if self.kirim:
             for nama in self.URAIAN:
                 if not (cleaned.get(nama) or "").strip() and nama not in self.errors:
+                    self.add_error(nama, "Wajib diisi untuk melaporkan.")
+            for nama in ("estimasi_biaya", "realisasi_biaya"):
+                # Nilai 0 sah (mis. realisasi nol); yang ditolak hanya kolom yang dikosongkan.
+                if cleaned.get(nama) is None and nama not in self.errors:
                     self.add_error(nama, "Wajib diisi untuk melaporkan.")
             if not cleaned.get("dokumen_laporan") and not self.instance.file and "dokumen_laporan" not in self.errors:
                 self.add_error("dokumen_laporan", "Dokumen laporan wajib diunggah untuk melaporkan.")
