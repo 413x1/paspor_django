@@ -217,6 +217,8 @@ def alasan_belum_tuntas(pengajuan):
         laporan = pengajuan.laporan
         if laporan is None:
             return f"Laporan PDLN untuk {pengajuan.kode} belum diunggah."
+        if laporan.status == LaporanPdln.Status.DRAFT:
+            return f"Laporan PDLN {pengajuan.kode} masih berupa draft dan belum dilaporkan ke Biro PAKLN."
         if laporan.status == LaporanPdln.Status.DIKEMBALIKAN:
             return f"Laporan PDLN {pengajuan.kode} dikembalikan Biro PAKLN dan perlu diunggah ulang."
         return f"Laporan PDLN {pengajuan.kode} belum disetujui Admin Biro PAKLN."

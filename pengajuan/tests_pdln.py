@@ -121,8 +121,14 @@ class _Basis:
 
         self.login(self.pegawai)
         return self.client.post(
-            reverse("pegawai:unggah_laporan", kwargs={"kode": p.kode}),
-            {"file": SimpleUploadedFile("laporan.pdf", b"%PDF-1.4 uji", content_type="application/pdf"), "catatan": catatan},
+            reverse("pegawai:laporan_form", kwargs={"kode": p.kode}),
+            {
+                "action": "submit",
+                "tujuan_kegiatan": "Mengikuti pertemuan", "materi_kegiatan": "Materi inti", "tindak_lanjut": "Tindak lanjut",
+                "dampak_rekomendasi": "Dampak dan rekomendasi", "estimasi_biaya": "10.000.000", "realisasi_biaya": "9.500.000",
+                "dokumen_laporan": SimpleUploadedFile("laporan.pdf", b"%PDF-1.4 uji", content_type="application/pdf"),
+                "catatan_perbaikan": catatan,
+            },
         )
 
     def refresh(self, p):

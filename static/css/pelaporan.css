@@ -1,0 +1,49 @@
+/* Tombol halaman Pelaporan PDLN. Tema global (style.css) hanya menata .is-primary dan
+   .is-warning; tombol lain jatuh ke gaya "putih". Kelas btn-pelaporan-* di bawah memberi warna
+   biru (Pelaporan PDLN / Simpan) dan merah (Laporkan) tanpa mengubah tema global. `!important`
+   diperlukan karena aturan global memakai rantai :not() yang spesifisitasnya sangat tinggi. */
+.button.btn-pelaporan-info {
+  background: #1d6fd1 !important; border-color: #1d6fd1 !important; color: #fff !important;
+}
+.button.btn-pelaporan-info:hover { background: #1659a8 !important; border-color: #1659a8 !important; }
+.button.btn-pelaporan-danger {
+  background: #dc2626 !important; border-color: #dc2626 !important; color: #fff !important;
+}
+.button.btn-pelaporan-danger:hover { background: #b91c1c !important; border-color: #b91c1c !important; }
+.button.btn-pelaporan-info-light {
+  background: #e6f1fb !important; border-color: #cfe0f2 !important; color: #1d6fd1 !important;
+}
+.button.btn-pelaporan-info-light:hover { background: #d4e6f8 !important; }
+
+/* Tombol "Kembalikan" (merah muda) pada modal verifikasi Admin PAKLN. */
+.button.btn-pelaporan-danger-light {
+  background: #fdecea !important; border-color: #f3c6c2 !important; color: #c0392b !important;
+}
+.button.btn-pelaporan-danger-light:hover { background: #fadbd8 !important; }
+
+/* ---------- Modal Verifikasi Laporan (Admin PAKLN: Pelaporan PDLN) ---------- */
+.modal.paspor-modal.modal-verifikasi .modal-card { max-width: 640px; }
+.modal-verifikasi .modal-card-body { max-height: 92vh; overflow-y: auto; }
+.modal-verifikasi .verif-label {
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--slate-400); margin-bottom: 4px;
+}
+.modal-verifikasi .verif-isi {
+  max-height: 38vh; overflow-y: auto; padding: 2px 16px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--bg);
+}
+.modal-verifikasi .verif-item { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.modal-verifikasi .verif-item:last-child { border-bottom: 0; }
+.modal-verifikasi .verif-teks { font-size: 14px; line-height: 1.55; color: var(--slate-900); white-space: pre-line; }
+.modal-verifikasi .verif-biaya { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+.modal-verifikasi .verif-kotak { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--white); }
+.modal-verifikasi .verif-nilai { font-size: 16px; font-weight: 800; color: var(--navy-900); }
+.modal-verifikasi .verif-dokumen {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 18px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px;
+}
+.modal-verifikasi .verif-aksi { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+@media (max-width: 520px) {
+  .modal-verifikasi .verif-biaya { grid-template-columns: 1fr; }
+  .modal-verifikasi .verif-dokumen { flex-direction: column; align-items: flex-start; }
+}

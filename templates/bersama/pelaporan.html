@@ -1,5 +1,10 @@
 {% extends "base.html" %}
+{% load static pengajuan_extras %}
 {% block title %}Pelaporan PDLN{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/pelaporan.css' %}?v=20261013b">
+{% endblock %}
 
 {% block content %}
 <div class="page-head">
@@ -41,8 +46,10 @@
             </td>
             <td>{{ b.laporan.uploaded_at|date:"d M Y"|default:"—" }}</td>
             <td>
-              {% if b.laporan %}
+              {% if b.laporan and b.laporan.file %}
                 <button type="button" class="button is-small" data-doc-preview="{{ b.laporan.file.url }}" data-doc-title="Laporan {{ b.p.kode }}">👁 Lihat</button>
+              {% endif %}
+              {% if b.laporan %}
                 {% if dapat_verifikasi and b.status == "menunggu" %}
                   <button type="button" class="button is-small is-warning" data-modal-open="verif-{{ b.p.pk }}">Verifikasi</button>
                 {% endif %}
@@ -60,22 +67,41 @@
 {% if dapat_verifikasi %}
 {% for b in baris %}
   {% if b.status == "menunggu" %}
-  <div id="verif-{{ b.p.pk }}" class="modal paspor-modal">
+  <div id="verif-{{ b.p.pk }}" class="modal paspor-modal modal-verifikasi">
     <div class="modal-background"></div>
     <div class="modal-card">
       <div class="modal-card-body">
         <h3>Verifikasi Laporan — {{ b.p.kode }}</h3>
         <p class="modal-intro">{{ b.p.pegawai.profile.nama }} · {{ b.p.jenis_label }} · {{ b.p.tujuan_negara_display }}</p>
-        <p><button type="button" class="button is-small" data-doc-preview="{{ b.laporan.file.url }}" data-doc-title="Laporan {{ b.p.kode }}">👁 Lihat laporan</button></p>
+
+        <div class="verif-isi">
+          {% for judul, isi in b.uraian %}
+            <div class="verif-item">
+              <div class="verif-label">{{ judul }}</div>
+              <div class="verif-teks">{{ isi|default:"—" }}</div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="verif-biaya">
+          <div class="verif-kotak"><div class="verif-label">Estimasi Biaya</div><div class="verif-nilai">{{ b.laporan.estimasi_biaya|rupiah }}</div></div>
+          <div class="verif-kotak"><div class="verif-label">Realisasi Biaya</div><div class="verif-nilai">{{ b.laporan.realisasi_biaya|rupiah }}</div></div>
+        </div>
+
+        <div class="verif-dokumen">
+          <span class="verif-label" style="margin:0;">Dokumen Laporan</span>
+          <button type="button" class="button is-small" data-doc-preview="{{ b.laporan.file.url }}" data-doc-title="Laporan {{ b.p.kode }}">👁 Lihat dokumen laporan</button>
+        </div>
+
         <form method="post" action="{% url 'pakln:verifikasi_laporan' kode=b.p.kode %}">
           {% csrf_token %}
           <div class="field">
             <label class="label">Catatan <span class="cell-muted">(wajib bila mengembalikan)</span></label>
             <div class="control"><textarea class="textarea" name="catatan" rows="3"></textarea></div>
           </div>
-          <div style="display:flex; gap:8px; justify-content:flex-end;">
+          <div class="verif-aksi">
             <button type="button" class="button" data-modal-close>Batal</button>
-            <button type="submit" name="keputusan" value="kembalikan" class="button is-danger is-light">↩ Kembalikan</button>
+            <button type="submit" name="keputusan" value="kembalikan" class="button is-danger is-light btn-pelaporan-danger-light">↩ Kembalikan</button>
             <button type="submit" name="keputusan" value="setujui" class="button is-primary">✓ Setujui Laporan</button>
           </div>
         </form>

@@ -817,12 +817,21 @@ class LaporanPdln(models.Model):
     pengajuan PDLN dianggap tuntas (BISNIS_PROSES_PDLN.MD §4.4)."""
 
     class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"   # tersimpan lewat tombol "Simpan", belum dilaporkan
         MENUNGGU = "menunggu", "Menunggu Verifikasi"
         DIKEMBALIKAN = "dikembalikan", "Dikembalikan"
         DISETUJUI = "disetujui", "Disetujui"
 
     pengajuan = models.OneToOneField(Pengajuan, on_delete=models.CASCADE, related_name="laporan_pdln")
-    file = models.FileField("Berkas Laporan", upload_to=laporan_pdln_path)
+    # Isi laporan (formulir Pelaporan PDLN). Boleh kosong selama masih draft;
+    # saat "Laporkan" keempat uraian dan dokumen wajib terisi.
+    tujuan_kegiatan = models.TextField("Tujuan Kegiatan", blank=True)
+    materi_kegiatan = models.TextField("Materi Kegiatan", blank=True)
+    tindak_lanjut = models.TextField("Tindak Lanjut", blank=True)
+    dampak_rekomendasi = models.TextField("Dampak Rekomendasi", blank=True)
+    estimasi_biaya = models.DecimalField("Estimasi Biaya (Rp)", max_digits=15, decimal_places=0, null=True, blank=True)
+    realisasi_biaya = models.DecimalField("Realisasi Biaya (Rp)", max_digits=15, decimal_places=0, null=True, blank=True)
+    file = models.FileField("Dokumen Laporan Kegiatan", upload_to=laporan_pdln_path, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.MENUNGGU, db_index=True)
     # Catatan pengembalian terakhir — penanda unggah ulang wajib catatan balasan.
     catatan_pakln = models.TextField("Catatan Admin PAKLN", blank=True)

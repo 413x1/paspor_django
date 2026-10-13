@@ -43,3 +43,11 @@ def file_url(document):
         return document.file.url
     except ValueError:
         return None
+
+
+@register.filter
+def rupiah(value):
+    """100000000 -> 'Rp 100.000.000'; kosong -> '—'."""
+    if value is None or value == "":
+        return "—"
+    return "Rp " + f"{int(value):,}".replace(",", ".")
