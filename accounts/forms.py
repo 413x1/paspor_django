@@ -35,6 +35,11 @@ class TambahUserForm(forms.Form):
         label="Nama Lengkap",
         widget=forms.TextInput(attrs={"class": "input", "placeholder": "cth. Budi Santoso, S.T."}),
     )
+    email = forms.EmailField(
+        required=False, max_length=254,
+        widget=forms.EmailInput(attrs={"class": "input", "placeholder": "cth. budi.santoso@pu.go.id"}),
+        help_text="Opsional. Dipakai untuk email notifikasi; tanpa email, pengguna hanya menerima notifikasi di dalam aplikasi.",
+    )
     password = forms.CharField(
         widget=forms.PasswordInput(attrs={"class": "input", "placeholder": "Minimal 8 karakter"}),
     )
@@ -77,6 +82,9 @@ class TambahUserForm(forms.Form):
 
     PEGAWAI_FIELDS = ["nip", "jabatan", "pangkat_golongan"]
 
+    def clean_email(self):
+        return (self.cleaned_data.get("email") or "").strip().lower()
+
     def clean_username(self):
         username = self.cleaned_data["username"].strip()
         if User.objects.filter(username__iexact=username).exists():
@@ -116,6 +124,7 @@ class TambahUserForm(forms.Form):
         unit_kerja = data["unit_kerja"].strip()
         user = User(
             username=data["username"],
+            email=data.get("email", ""),
             role=data["role"],
             first_name=depan[:150],
             last_name=belakang[:150],
@@ -154,6 +163,11 @@ class EditUserForm(forms.Form):
         max_length=150,
         label="Nama Lengkap",
         widget=forms.TextInput(attrs={"class": "input"}),
+    )
+    email = forms.EmailField(
+        required=False, max_length=254,
+        widget=forms.EmailInput(attrs={"class": "input", "placeholder": "cth. budi.santoso@pu.go.id"}),
+        help_text="Opsional. Dipakai untuk email notifikasi; tanpa email, pengguna hanya menerima notifikasi di dalam aplikasi.",
     )
     is_active = forms.BooleanField(required=False, label="Akun aktif")
     unit_organisasi = forms.ModelChoiceField(
@@ -200,6 +214,9 @@ class EditUserForm(forms.Form):
         self.instance = instance
         super().__init__(*args, **kwargs)
 
+    def clean_email(self):
+        return (self.cleaned_data.get("email") or "").strip().lower()
+
     def clean_username(self):
         username = self.cleaned_data["username"].strip()
         if User.objects.filter(username__iexact=username).exclude(pk=self.instance.pk).exists():
@@ -240,6 +257,7 @@ class EditUserForm(forms.Form):
 
         user = self.instance
         user.username = data["username"]
+        user.email = data.get("email", "")
         user.first_name = depan[:150]
         user.last_name = belakang[:150]
         user.is_active = data["is_active"]

@@ -1,0 +1,16 @@
+{% autoescape off %}Yth. {{ nama }},
+
+{{ title }}
+
+{{ body }}
+{% if ringkasan %}
+Kode Pengajuan : {{ ringkasan.kode }}
+Pegawai        : {{ ringkasan.pegawai }}
+Perihal        : {{ ringkasan.perihal }}
+Status         : {{ ringkasan.status }}
+{% endif %}{% if url %}
+Buka di PASPOR: {{ url }}
+{% endif %}
+--
+Email ini dikirim otomatis oleh sistem {{ site_name }}. Mohon tidak membalas email ini.
+{% endautoescape %}
