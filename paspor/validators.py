@@ -3,14 +3,17 @@ Validasi unggahan "hanya PDF" — dipakai di SEMUA tempat pengguna mengunggah do
 (dokumen pengajuan, dokumen pendukung, laporan PDLN, dokumen kepegawaian, dan
 halaman demo `fileupload`).
 
-Tiga pemeriksaan di server (validasi di browser hanya kenyamanan, mudah dilewati):
+Empat pemeriksaan di server (validasi di browser hanya kenyamanan, mudah dilewati):
 1. ekstensi nama berkas harus `.pdf`;
 2. MIME type kiriman klien harus `application/pdf`;
 3. isi berkas harus diawali tanda tangan PDF (`%PDF-`), sehingga berkas lain yang
-   hanya diganti nama menjadi `.pdf` tetap ditolak.
+   hanya diganti nama menjadi `.pdf` tetap ditolak;
+4. ukuran berkas maksimal **2 MB** (`MAKS_UKURAN`), kecuali Laporan PDLN **10 MB**
+   (`MAKS_UKURAN_LAPORAN`, lewat `validate_pdf_laporan`).
 
 Template Dokumen (pdf/docx) dan impor kalender libur (xlsx/csv) sengaja TIDAK memakai
-validator ini: keduanya bukan dokumen pengajuan, dan formatnya memang bukan PDF.
+validator PDF: keduanya bukan dokumen pengajuan, dan formatnya memang bukan PDF. Batas
+ukuran 2 MB tetap berlaku lewat `validate_ukuran`.
 """
 
 from django.core.exceptions import ValidationError
@@ -22,10 +25,34 @@ _PDF_MAGIC = b"%PDF-"
 PESAN_BUKAN_PDF = "Hanya berkas PDF (.pdf) yang diperbolehkan."
 PESAN_ISI_BUKAN_PDF = "Isi berkas tidak dikenali sebagai PDF yang valid."
 KODE_BUKAN_PDF = "bukan_pdf"
+KODE_TERLALU_BESAR = "terlalu_besar"
+
+MB = 1024 * 1024
+MAKS_UKURAN = 2 * MB            # semua unggahan
+MAKS_UKURAN_LAPORAN = 10 * MB   # khusus Dokumen Laporan PDLN
 
 
-def error_pdf(berkas):
-    """Pesan error bila `berkas` bukan PDF yang sah; None bila sah (atau kosong)."""
+def _label_mb(maks):
+    return f"{maks // MB} MB"
+
+
+def error_ukuran(berkas, maks=MAKS_UKURAN):
+    """Pesan error bila `berkas` melebihi `maks` byte; None bila tidak (atau kosong)."""
+    if berkas and (getattr(berkas, "size", 0) or 0) > maks:
+        return f"Ukuran berkas maksimal {_label_mb(maks)}."
+    return None
+
+
+def validate_ukuran(berkas, maks=MAKS_UKURAN):
+    """Validator Django batas ukuran (default 2 MB) untuk berkas non-PDF."""
+    pesan = error_ukuran(berkas, maks)
+    if pesan:
+        raise ValidationError(pesan, code=KODE_TERLALU_BESAR)
+
+
+def error_pdf(berkas, maks=MAKS_UKURAN):
+    """Pesan error bila `berkas` bukan PDF yang sah atau melebihi `maks` byte; None
+    bila sah (atau kosong)."""
     if not berkas:
         return None
     nama = (getattr(berkas, "name", "") or "").lower()
@@ -41,14 +68,20 @@ def error_pdf(berkas):
         return PESAN_ISI_BUKAN_PDF
     if kepala != _PDF_MAGIC:
         return PESAN_ISI_BUKAN_PDF
-    return None
+    return error_ukuran(berkas, maks)
 
 
-def validate_pdf(berkas):
-    """Validator Django untuk field berkas (form/serializer)."""
-    pesan = error_pdf(berkas)
+def validate_pdf(berkas, maks=MAKS_UKURAN):
+    """Validator Django untuk field berkas PDF (form/serializer), maks. 2 MB."""
+    pesan = error_pdf(berkas, maks)
     if pesan:
-        raise ValidationError(pesan, code=KODE_BUKAN_PDF)
+        kode = KODE_TERLALU_BESAR if pesan == error_ukuran(berkas, maks) else KODE_BUKAN_PDF
+        raise ValidationError(pesan, code=kode)
+
+
+def validate_pdf_laporan(berkas):
+    """Validator Dokumen Laporan PDLN — PDF, maks. 10 MB."""
+    validate_pdf(berkas, MAKS_UKURAN_LAPORAN)
 
 
 def periksa_pdf(request, berkas):

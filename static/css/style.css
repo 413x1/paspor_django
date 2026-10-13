@@ -331,6 +331,40 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .button.is-info.is-light { background: var(--blue-bg); border-color: var(--blue-line); color: var(--teal); }
 .button.is-info.is-light:hover { background: #d4e6f8; color: var(--teal-dark); }
 
+/* ---------- Input berkas (komponen .file Bulma + ikon unggah) ----------
+   Dipakai semua input unggah: baris dokumen (partials/_dokumen_tahap.html)
+   dan field form (partials/_input_berkas.html). Tampilan mengikuti tombol
+   sekunder; ikon dari partials/_ikon_unggah.html. */
+.file-cta {
+  background: var(--white); color: var(--slate-600); border: 1px solid var(--line);
+  border-radius: 10px; font-weight: 700;
+  transition: background-color var(--duration-fast) var(--ease-apple), color var(--duration-fast) var(--ease-apple);
+}
+.file-label:hover .file-cta { background: var(--bg); color: var(--slate-900); }
+.file-label:active .file-cta { transform: scale(.96); }
+.file-input:focus-visible + .file-cta { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(36, 129, 155, .25); }
+.file.has-name .file-cta { border-radius: 10px 0 0 10px; }
+.file-name {
+  border: 1px solid var(--line); border-left: 0; border-radius: 0 10px 10px 0;
+  background: var(--white); color: var(--slate-600); font-size: 13px;
+}
+.file-icon { width: 1.1em; height: 1.1em; margin-right: .5em; }
+.ikon-unggah {
+  width: 16px; height: 16px; fill: none; stroke: currentColor;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+/* Bulma memberi .file:not(:last-child) margin-bottom 1.5rem (pola "block"); di
+   baris dokumen .file diikuti tombol submit tersembunyi sehingga tombol naik.
+   Jarak antar-field sudah diatur .field. */
+.file:not(:last-child) { margin-bottom: 0; }
+/* Ukuran identik dengan .button.is-small agar sejajar dengan tombol Pratinjau/Hapus. */
+.file.is-small .file-cta {
+  height: auto; line-height: 1.5;
+  padding: calc(.5em - 1px) calc(1em - 1px);
+}
+.file.is-small .file-icon { width: 1em; height: 1em; margin-right: .4em; }
+.file.is-small .ikon-unggah { width: 13px; height: 13px; }
+
 /* ---------- Judul bagian ---------- */
 .section-title { font-size: 18px; font-weight: 800; color: var(--navy-900); margin: 0 0 16px; }
 /* Sub-judul di dalam kartu (design guide §4.2: 14px). */

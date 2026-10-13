@@ -122,12 +122,12 @@
     </div>
 
     <div class="field">
-      <label class="label" for="{{ form.dokumen_laporan.id_for_label }}">Dokumen Laporan Kegiatan <span class="wajib">*</span> <span class="cell-muted">(PDF)</span></label>
+      <label class="label" for="{{ form.dokumen_laporan.id_for_label }}">Dokumen Laporan Kegiatan <span class="wajib">*</span> <span class="cell-muted">(PDF, maks. 10 MB)</span></label>
       <div class="file has-name is-fullwidth">
         <label class="file-label">
           {{ form.dokumen_laporan }}
-          <span class="file-cta"><span class="file-label">Pilih berkas…</span></span>
-          <span class="file-name" id="namaBerkas">{% if laporan.file %}{{ nama_berkas }} (tersimpan){% else %}Belum ada berkas dipilih{% endif %}</span>
+          <span class="file-cta"><span class="file-icon">{% include "partials/_ikon_unggah.html" %}</span><span class="file-label">Pilih berkas</span></span>
+          <span class="file-name" id="namaBerkas" data-file-name>{% if laporan.file %}{{ nama_berkas }} (tersimpan){% else %}Belum ada berkas dipilih{% endif %}</span>
         </label>
       </div>
       {% for e in form.dokumen_laporan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
@@ -190,11 +190,6 @@
       el.setSelectionRange(posisi, posisi);
     });
 
-    // Nama berkas yang dipilih tampil di komponen file Bulma.
-    $('#laporanForm input[type="file"]').on('change', function () {
-      var nama = this.files && this.files.length ? this.files[0].name : '';
-      if (nama) { $('#namaBerkas').text(nama); }
-    });
   });
 </script>
 {% endblock %}

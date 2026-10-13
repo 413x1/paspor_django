@@ -393,7 +393,8 @@ tombol per halaman (seperti `btn-pelaporan-*` yang sudah dihapus).
 | Pernyataan | `.agree-box` (checkbox + label) sebelum tombol kirim/teruskan |
 | Pilih banyak | `.multiselect` (chip + panel pencarian), mis. Tujuan Negara |
 | Tanggal | `input[type=date]` — ikon kalender di kanan otomatis |
-| Unggah berkas | `partials/_dokumen_tahap.html` (baris `.doc-row` + `doc-upload-form`); modal Tanggal Surat otomatis bila `data-tanggal-surat="1"` |
+| Unggah berkas (baris dokumen) | `partials/_dokumen_tahap.html`: komponen `.file.is-small` berikon unggah, label "Unggah"/"Ganti"; berkas langsung terunggah saat dipilih; modal Tanggal Surat otomatis bila `data-tanggal-surat="1"` |
+| Unggah berkas (field form) | `{% include "partials/_input_berkas.html" with field=form.file %}` — widget `forms.FileInput(attrs={"class": "file-input", ...})` (bukan `ClearableFileInput`, agar tidak muncul teks bawaan "Currently/Clear"); tombol "Pilih berkas" berikon + nama berkas terpilih |
 
 Aturan:
 
@@ -402,7 +403,14 @@ Aturan:
 - Validasi utama di **server**; tampilkan error di dekat field + pesan ringkas di atas.
 - Catatan pengembalian/penutupan: `textarea` 3 baris, `required`, label menyebut
   **siapa yang akan membaca** ("Catatan untuk Admin Unor").
-- Unggahan dokumen: **PDF saja** (lihat `wiki/UPLOAD_FILE.MD`).
+- Unggahan dokumen: **PDF saja**, ukuran **maks. 2 MB**; khusus **Dokumen Laporan
+  PDLN maks. 10 MB**. Template Dokumen (PDF/DOCX) dan impor kalender (XLSX/CSV)
+  juga maks. 2 MB. Validasi server di `paspor/validators.py` (`validate_pdf`,
+  `validate_pdf_laporan`, `validate_ukuran`, `periksa_pdf`); di browser lewat
+  atribut `data-max-mb` pada input (`berkasUkuranValid` di `base.html`). Sebutkan
+  batasnya di label field, mis. "Berkas PDF (maks. 2 MB)".
+- **Jangan menampilkan input berkas native** (tombol "Choose File" bawaan browser):
+  selalu pakai komponen `.file` dengan ikon `partials/_ikon_unggah.html`.
 
 ---
 
@@ -538,6 +546,7 @@ Saat ini ada dua sistem: **SVG garis** (sidebar, lonceng, dialog) dan
 | Konteks | Gunakan |
 |---|---|
 | Navigasi sidebar, header, dialog | SVG garis 18px, `stroke-width 1.8`, `stroke: currentColor` |
+| Tombol pilih/unggah berkas | SVG `partials/_ikon_unggah.html` (`.ikon-unggah`, 16px; 14px pada `.file.is-small`) |
 | Label tombol & banner | Simbol baku di bawah, **sebelum** teks, dipisah spasi |
 
 Simbol baku (jangan memakai varian lain untuk makna yang sama):

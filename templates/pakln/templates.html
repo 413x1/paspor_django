@@ -40,8 +40,8 @@
     </div>
 
     <div class="field">
-      <label class="label" for="{{ form.file.id_for_label }}">Berkas (PDF atau DOCX)</label>
-      <div class="control">{{ form.file }}</div>
+      <label class="label" for="{{ form.file.id_for_label }}">Berkas (PDF atau DOCX, maks. 2 MB)</label>
+      {% include "partials/_input_berkas.html" with field=form.file %}
       {% for e in form.file.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
     </div>
 

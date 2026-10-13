@@ -81,7 +81,7 @@
     {% csrf_token %}
     <div class="field">
       <label class="label" for="{{ impor_form.berkas.id_for_label }}">{{ impor_form.berkas.label }}</label>
-      <div class="control">{{ impor_form.berkas }}</div>
+      {% include "partials/_input_berkas.html" with field=impor_form.berkas %}
       <p class="helptext">{{ impor_form.fields.berkas.help_text }}</p>
     </div>
     <div class="field">
