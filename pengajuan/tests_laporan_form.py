@@ -329,15 +329,83 @@ class LaporanDiAdminDanDaftarTests(LaporanFormBase):
         self.kirim()
         self.client.force_login(self.admin_pakln)
         html = self.client.get(reverse("pakln:pelaporan")).content.decode()
-        self.assertIn(ISI["tujuan_kegiatan"], html)
-        self.assertIn(ISI["dampak_rekomendasi"], html)
-        self.assertIn("Rp 10.000.000", html)       # biaya berformat Rupiah dengan titik ribuan
-        self.assertIn("Rp 9.250.000", html)
+        ringkasan = html.split(f'id="ringkasan-{self.laporan().pk}"')[1].split('id="modal-verifikasi"')[0]
+        self.assertIn(ISI["tujuan_kegiatan"], ringkasan)
+        self.assertIn(ISI["dampak_rekomendasi"], ringkasan)
+        self.assertIn("Rp 10.000.000", ringkasan)   # biaya berformat Rupiah dengan titik ribuan
+        self.assertIn("Rp 9.250.000", ringkasan)
         self.assertNotIn("Rp 10000000", html)
-        modal = html.split('class="modal paspor-modal modal-verifikasi"')[1]
-        self.assertIn("Estimasi Biaya", modal)
-        self.assertIn("Realisasi Biaya", modal)
-        self.assertIn("verif-aksi", modal)                         # tombol aksi dibungkus (wrap), tidak meluber
+        self.assertIn("verif-aksi", html)           # tombol aksi dibungkus (wrap), tidak meluber
+
+    def test_tombol_aksi_dan_dua_modal_terpisah(self):
+        self.kirim()
+        laporan = self.laporan()
+        self.client.force_login(self.admin_pakln)
+        html = self.client.get(reverse("pakln:pelaporan")).content.decode()
+        url = reverse("pakln:verifikasi_laporan", args=[self.p.kode])
+        # tiga tombol per baris, dengan class Bulma dan data-id sesuai spesifikasi
+        self.assertIn("button is-small is-info", html)                                   # Lihat
+        verifikasi = html.split("btn-verifikasi")[1].split("</button>")[0]
+        self.assertIn("button is-small is-success", html.split("btn-verifikasi")[0].rsplit("<button", 1)[1])
+        self.assertIn(f'data-id="{laporan.pk}"', verifikasi)
+        self.assertIn(f'data-url="{url}"', verifikasi)
+        revisi_awal = html.split("btn-revisi")[0].rsplit("<button", 1)[1]
+        self.assertIn("button is-small is-warning", revisi_awal)
+        self.assertIn(f'data-id="{laporan.pk}"', html.split("btn-revisi")[1].split("</button>")[0])
+        # modal 1: verifikasi (tanggal upload ke SIMPEL)
+        m1 = html.split('id="modal-verifikasi"')[1].split('id="modal-revisi"')[0]
+        self.assertIn("Verifikasi Laporan PDLN", m1)
+        self.assertIn('type="date" id="verifikasiTanggal" name="uploaded_at"', m1)
+        self.assertIn("Tanggal Upload ke SIMPEL (Setneg)", m1)
+        self.assertIn('<form method="POST"', m1)
+        self.assertIn("csrfmiddlewaretoken", m1)
+        self.assertIn('<input type="hidden" name="laporan_id"', m1)
+        self.assertIn("is-success", m1)
+        self.assertIn("Verifikasi Laporan</button>", m1)
+        # modal 2: request perbaikan (alasan)
+        m2 = html.split('id="modal-revisi"')[1]
+        self.assertIn("Request Perbaikan Laporan", m2)
+        self.assertIn('name="catatan_pakln"', m2)
+        self.assertIn("Alasan Perbaikan", m2)
+        self.assertIn('<form method="POST"', m2)
+        self.assertIn("csrfmiddlewaretoken", m2)
+        self.assertIn('<input type="hidden" name="laporan_id"', m2)
+        self.assertIn("Kirim Request</button>", m2)
+        # skrip pembuka/penutup modal
+        for potongan in (".btn-verifikasi", ".btn-revisi", "addClass('is-active')", "removeClass('is-active')", ".delete, .modal-background"):
+            self.assertIn(potongan, html)
+
+    def test_tombol_verifikasi_dan_revisi_hanya_untuk_laporan_menunggu(self):
+        self.kirim("draft")                          # draft: belum dilaporkan
+        self.client.force_login(self.admin_pakln)
+        html = self.client.get(reverse("pakln:pelaporan")).content.decode()
+        self.assertNotIn('class="button is-small is-warning btn-revisi"', html)
+        self.assertNotIn("btn-verifikasi\"", html)
+
+    def test_admin_unor_hanya_melihat_tanpa_tombol_verifikasi_dan_modal(self):
+        self.kirim()
+        self.client.force_login(self.admin_unor)
+        html = self.client.get(reverse("unor:pelaporan")).content.decode()
+        self.assertIn("Lihat", html)
+        for tidak_ada in ('id="modal-verifikasi"', 'id="modal-revisi"', 'class="button is-small is-warning btn-revisi"'):
+            self.assertNotIn(tidak_ada, html)
+
+    def test_modal_verifikasi_mengembalikan_laporan_lewat_catatan_pakln(self):
+        """Form modal Request Perbaikan memakai name="catatan_pakln"; backend lama tetap berjalan."""
+        self.kirim()
+        self.client.force_login(self.admin_pakln)
+        url = reverse("pakln:verifikasi_laporan", args=[self.p.kode])
+        r = self.client.post(url, {"laporan_id": self.laporan().pk, "keputusan": "kembalikan", "catatan_pakln": "Lampirkan bukti."})
+        self.assertRedirects(r, reverse("pakln:pelaporan"))
+        laporan = self.laporan()
+        self.assertEqual((laporan.status, laporan.catatan_pakln), ("dikembalikan", "Lampirkan bukti."))
+
+    def test_modal_verifikasi_menyetujui_laporan(self):
+        self.kirim()
+        self.client.force_login(self.admin_pakln)
+        url = reverse("pakln:verifikasi_laporan", args=[self.p.kode])
+        self.client.post(url, {"laporan_id": self.laporan().pk, "keputusan": "setujui", "uploaded_at": "2026-10-09"})
+        self.assertEqual(self.laporan().status, "disetujui")
 
     def test_draft_dihitung_belum_melapor_oleh_admin_dan_laporan(self):
         from . import report

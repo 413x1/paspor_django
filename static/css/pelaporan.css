@@ -47,3 +47,13 @@
   .modal-verifikasi .verif-biaya { grid-template-columns: 1fr; }
   .modal-verifikasi .verif-dokumen { flex-direction: column; align-items: flex-start; }
 }
+
+/* ---------- Aksi Admin PAKLN: Lihat / Verifikasi / Request Perbaikan ---------- */
+.button.btn-pelaporan-success {
+  background: #16a34a !important; border-color: #16a34a !important; color: #fff !important;
+}
+.button.btn-pelaporan-success:hover { background: #15803d !important; border-color: #15803d !important; }
+.aksi-pelaporan { display: flex; flex-wrap: wrap; gap: 6px; }
+.modal-verifikasi .modal-card { position: relative; }
+.modal-verifikasi .delete { position: absolute; top: 16px; right: 16px; }
+.modal.paspor-modal.modal-revisi .modal-card { max-width: 520px; }
