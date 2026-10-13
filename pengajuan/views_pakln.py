@@ -1843,7 +1843,8 @@ def pelaporan(request):
 def verifikasi_laporan(request, kode):
     pengajuan = get_object_or_404(Pengajuan, kode=kode, jenis_perjalanan=Pengajuan.JenisPerjalanan.PDLN)
     keputusan = request.POST.get("keputusan")
-    catatan = request.POST.get("catatan", "").strip()
+    # `catatan_pakln` = nama kolom pada modal "Request Perbaikan"; `catatan` dipertahankan agar kompatibel.
+    catatan = (request.POST.get("catatan_pakln") or request.POST.get("catatan") or "").strip()
     if keputusan not in ("setujui", "kembalikan"):
         messages.error(request, "Keputusan tidak valid.")
         return redirect("pakln:pelaporan")
