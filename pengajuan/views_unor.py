@@ -122,7 +122,7 @@ def _catatan_kembali(pengajuan):
     if pengajuan.is_tipe2 and pengajuan.catatan_bpsdm:
         return "Admin BPSDM", pengajuan.catatan_bpsdm
     if not pengajuan.is_tipe2 and pengajuan.catatan_pakln:
-        return "Admin PKLN", pengajuan.catatan_pakln
+        return "Admin Biro PAKLN", pengajuan.catatan_pakln
     return "", ""
 
 

@@ -11,7 +11,7 @@
 </div>
 
 <div class="box">
-  <div class="section-title" style="font-size:14px;">Data Personal <span class="badge-auto">Sinkronisasi e-HRM</span></div>
+  <div class="section-title is-small">Data Personal <span class="badge-auto">Sinkronisasi e-HRM</span></div>
   <dl class="kv-list">
     {% if profile %}
       <dt>Nama</dt><dd>{{ profile.nama }}</dd>
@@ -31,7 +31,7 @@
 </div>
 
 <div class="box">
-  <div class="section-title" style="font-size:14px;">{% if user.role == "pegawai" %}Dokumen Kepegawaian{% else %}Dokumen Penugasan{% endif %}</div>
+  <div class="section-title is-small">{% if user.role == "pegawai" %}Dokumen Kepegawaian{% else %}Dokumen Penugasan{% endif %}</div>
   {% for jenis, label, dok in jenis_dokumen %}
     <div class="doc-row {% if dok %}uploaded{% endif %}">
       <div class="info">
@@ -54,7 +54,7 @@
 
 {% if user.role == "pegawai" %}
 <div class="box">
-  <div class="section-title" style="font-size:14px;">Data Paspor</div>
+  <div class="section-title is-small">Data Paspor</div>
   <div class="table-wrap">
     <table class="table data-table is-fullwidth">
       <thead><tr><th>Nomor Paspor</th><th>Jenis</th><th>Tgl Expired</th><th></th></tr></thead>

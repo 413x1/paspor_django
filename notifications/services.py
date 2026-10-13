@@ -239,7 +239,7 @@ def notify_approve_unor(pengajuan, catatan="", dari_bpsdm=False):
         title="Pengajuan Diteruskan ke Biro PAKLN" if dari_bpsdm else "Pengajuan Surat Disetujui Unor",
         body=(
             f'Surat Anda perihal "{perihal}" telah disetujui oleh '
-            f'{"Admin BPSDM" if dari_bpsdm else "Admin Unor"} dan diteruskan ke Admin PKLN.'
+            f'{"Admin BPSDM" if dari_bpsdm else "Admin Unor"} dan diteruskan ke Admin Biro PAKLN.'
         ),
         redirect_url=_url_monitor(pengajuan),
     )
@@ -249,7 +249,7 @@ def notify_approve_unor(pengajuan, catatan="", dari_bpsdm=False):
         event=Notification.Event.APPROVE_UNOR,
         level=Notification.Level.INFO,
         title=(f"Perbaikan Berkas dari {pengirim} Diterima" if catatan
-               else "Penugasan Verifikasi Surat PKLN Baru"),
+               else "Penugasan Verifikasi Biro PAKLN Baru"),
         body=(
             f'{pengirim} telah mengirimkan perbaikan berkas atas nama {nama} '
             f'perihal "{perihal}". Catatan: "{catatan}".'
@@ -262,7 +262,7 @@ def notify_approve_unor(pengajuan, catatan="", dari_bpsdm=False):
 
 
 def notify_reject_pakln_to_unor(pengajuan, catatan):
-    """Event 3B: Admin PKLN mengembalikan pengajuan ke tahap sebelumnya —
+    """Event 3B: Admin Biro PAKLN mengembalikan pengajuan ke tahap sebelumnya —
     Admin Unor, atau Admin BPSDM untuk PDLN Tipe 2."""
     nama = _nama_pegawai(pengajuan)
     perihal = _perihal(pengajuan)
@@ -275,10 +275,10 @@ def notify_reject_pakln_to_unor(pengajuan, catatan):
         pengajuan=pengajuan,
         event=Notification.Event.REJECT_PKLN_UNOR,
         level=Notification.Level.WARNING,
-        title="Berkas Surat Dikembalikan oleh Admin PKLN",
+        title="Berkas Surat Dikembalikan oleh Admin Biro PAKLN",
         body=(
-            f'Surat pengajuan {nama} dikembalikan oleh PKLN. '
-            f'Catatan PKLN: "{catatan}". Mohon diperbaiki.'
+            f'Surat pengajuan {nama} dikembalikan oleh Biro PAKLN. '
+            f'Catatan Biro PAKLN: "{catatan}". Mohon diperbaiki.'
         ),
         redirect_url=reverse("bpsdm:preview" if ke_bpsdm else "unor:preview", args=[pengajuan.kode]),
     )
@@ -294,7 +294,7 @@ def notify_reject_pakln_to_unor(pengajuan, catatan):
 
 
 def notify_complete_pkln(pengajuan):
-    """Event 3A: Admin PKLN menyelesaikan/menerbitkan surat."""
+    """Event 3A: Admin Biro PAKLN menyelesaikan/menerbitkan surat."""
     perihal = _perihal(pengajuan)
     nama = _nama_pegawai(pengajuan)
     lanjutan = (
@@ -308,7 +308,7 @@ def notify_complete_pkln(pengajuan):
         event=Notification.Event.COMPLETE_PKLN,
         level=Notification.Level.SUCCESS,
         title="Pengajuan Surat Selesai (Siap Unduh)",
-        body=f'Selamat, surat Anda perihal "{perihal}" telah selesai diproses oleh Admin PKLN.{lanjutan}',
+        body=f'Selamat, surat Anda perihal "{perihal}" telah selesai diproses oleh Admin Biro PAKLN.{lanjutan}',
         redirect_url=_url_monitor(pengajuan),
     )
     _create(
@@ -316,10 +316,10 @@ def notify_complete_pkln(pengajuan):
         pengajuan=pengajuan,
         event=Notification.Event.COMPLETE_PKLN,
         level=Notification.Level.SUCCESS,
-        title="Proses Surat PKLN Selesai",
+        title="Proses Biro PAKLN Selesai",
         body=(
             f'Pengajuan surat milik {nama} perihal "{perihal}" telah selesai '
-            f"diproses oleh Admin PKLN."
+            f"diproses oleh Admin Biro PAKLN."
         ),
         redirect_url=reverse("unor:preview", args=[pengajuan.kode]),
     )

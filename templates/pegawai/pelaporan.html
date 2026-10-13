@@ -4,7 +4,7 @@
 {% block wrap_extra_class %} medium{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/pelaporan.css' %}?v=20261013a">
+<link rel="stylesheet" href="{% static 'css/pelaporan.css' %}?v=20261013c">
 {% endblock %}
 
 {% block content %}
@@ -47,7 +47,7 @@
               {% endif %}
               {% if p.status == "selesai" and not p.pembatalan_terbuka %}
                 {% if not p.laporan or p.laporan.status == "draft" or p.laporan.status == "dikembalikan" %}
-                  <a href="{% url 'pegawai:laporan_form' kode=p.kode %}" class="button is-small is-info btn-pelaporan-info">Pelaporan PDLN</a>
+                  <a href="{% url 'pegawai:laporan_form' kode=p.kode %}" class="button is-small is-info">Pelaporan PDLN</a>
                 {% else %}
                   <a href="{% url 'pegawai:laporan_form' kode=p.kode %}" class="button is-small">Lihat Laporan</a>
                 {% endif %}

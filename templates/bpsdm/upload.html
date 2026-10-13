@@ -6,13 +6,13 @@
 {% include "partials/_status_bko.html" %}
 {% if catatan_pakln %}
   <div class="notification paspor-msg is-warning">
-    <strong>⚠ Dikembalikan oleh Admin PKLN untuk diperbaiki:</strong> {{ catatan_pakln }}
+    <strong>⚠ Dikembalikan oleh Admin Biro PAKLN untuk diperbaiki:</strong> {{ catatan_pakln }}
   </div>
 {% endif %}
 {% if dibekukan %}<div class="notification paspor-msg is-warning">{{ dibekukan }}</div>{% endif %}
 
 {% if templates %}
-<div class="box" style="background:var(--blue-bg); border-color:#cfe0f2;">
+<div class="box is-info-soft">
   <div class="section-title" style="font-size:14px;margin-bottom:10px;">📄 Template Dokumen Tersedia</div>
   {% for t in templates %}
     <div class="doc-row" style="padding:10px 14px;background:var(--white);">
@@ -25,7 +25,7 @@
 
 <div class="box">
   <div class="section-title">Unggah Dokumen Administrasi BPSDM — {{ pengajuan.kode }}</div>
-  <p class="sub" style="margin:-10px 0 12px;">{{ pengajuan.jenis_label }}</p>
+  <p class="sub is-title-sub">{{ pengajuan.jenis_label }}</p>
 
   {% include "partials/_dokumen_tahap.html" with hapus_url="bpsdm:hapus_dokumen" %}
 
@@ -51,8 +51,8 @@
 
 {% include "partials/_riwayat_pengajuan.html" %}
 
-<div style="display:flex; gap:10px;">
-  <a href="{% url 'bpsdm:preview' kode=pengajuan.kode %}" class="button" style="flex:1;">← Kembali ke Pratinjau</a>
-  <a href="{% url 'bpsdm:dashboard' %}" class="button" style="flex:1;">Kembali ke Dasbor</a>
+<div class="button-row">
+  <a href="{% url 'bpsdm:preview' kode=pengajuan.kode %}" class="button">← Kembali ke Pratinjau</a>
+  <a href="{% url 'bpsdm:dashboard' %}" class="button">Kembali ke Dasbor</a>
 </div>
 {% endblock %}

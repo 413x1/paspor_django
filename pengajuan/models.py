@@ -105,7 +105,7 @@ class Pengajuan(models.Model):
 
     # Catatan Admin Biro PAKLN saat mengembalikan pengajuan ke tahap
     # sebelumnya (Admin Unor, atau Admin BPSDM untuk Tipe 2).
-    catatan_pakln = models.TextField("Catatan Admin PKLN", blank=True)
+    catatan_pakln = models.TextField("Catatan Admin Biro PAKLN", blank=True)
 
     # --- Track paralel Admin BKO (T2P): dibuka saat BPSDM meneruskan ke
     # Biro PAKLN; bukan bagian `status` (lihat `pengajuan.bko`).

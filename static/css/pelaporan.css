@@ -1,25 +1,6 @@
-/* Tombol halaman Pelaporan PDLN. Tema global (style.css) hanya menata .is-primary dan
-   .is-warning; tombol lain jatuh ke gaya "putih". Kelas btn-pelaporan-* di bawah memberi warna
-   biru (Pelaporan PDLN / Simpan) dan merah (Laporkan) tanpa mengubah tema global. `!important`
-   diperlukan karena aturan global memakai rantai :not() yang spesifisitasnya sangat tinggi. */
-.button.btn-pelaporan-info {
-  background: #1d6fd1 !important; border-color: #1d6fd1 !important; color: #fff !important;
-}
-.button.btn-pelaporan-info:hover { background: #1659a8 !important; border-color: #1659a8 !important; }
-.button.btn-pelaporan-danger {
-  background: #dc2626 !important; border-color: #dc2626 !important; color: #fff !important;
-}
-.button.btn-pelaporan-danger:hover { background: #b91c1c !important; border-color: #b91c1c !important; }
-.button.btn-pelaporan-info-light {
-  background: #e6f1fb !important; border-color: #cfe0f2 !important; color: #1d6fd1 !important;
-}
-.button.btn-pelaporan-info-light:hover { background: #d4e6f8 !important; }
-
-/* Tombol "Kembalikan" (merah muda) pada modal verifikasi Admin PAKLN. */
-.button.btn-pelaporan-danger-light {
-  background: #fdecea !important; border-color: #f3c6c2 !important; color: #c0392b !important;
-}
-.button.btn-pelaporan-danger-light:hover { background: #fadbd8 !important; }
+/* Halaman Pelaporan PDLN. Warna tombol memakai varian global style.css
+   (.is-info, .is-success, .is-danger, .is-light) — lihat
+   wiki/instructions/PASPOR_DESIGN_GUIDE.MD §8. */
 
 /* ---------- Modal Verifikasi Laporan (Admin PAKLN: Pelaporan PDLN) ---------- */
 .modal.paspor-modal.modal-verifikasi .modal-card { max-width: 640px; }
@@ -49,11 +30,19 @@
 }
 
 /* ---------- Aksi Admin PAKLN: Lihat / Verifikasi / Request Perbaikan ---------- */
-.button.btn-pelaporan-success {
-  background: #16a34a !important; border-color: #16a34a !important; color: #fff !important;
-}
-.button.btn-pelaporan-success:hover { background: #15803d !important; border-color: #15803d !important; }
 .aksi-pelaporan { display: flex; flex-wrap: wrap; gap: 6px; }
 .modal-verifikasi .modal-card { position: relative; }
 .modal-verifikasi .delete { position: absolute; top: 16px; right: 16px; }
 .modal.paspor-modal.modal-revisi .modal-card { max-width: 520px; }
+
+/* ---------- Formulir Laporan PDLN (pegawai/laporan_form.html) ---------- */
+/* Isian bagian A hanya-baca: abu-abu, tidak bisa diubah. */
+.laporan-form .input[readonly] { background: var(--bg); color: var(--slate-600); cursor: default; }
+/* Kode pengajuan sebagai tautan biru di dalam kotak isian. */
+.laporan-form a.input.laporan-kode-link { background: var(--bg); color: var(--teal); font-weight: 700; text-decoration: none; }
+.laporan-form a.input.laporan-kode-link:hover { text-decoration: underline; }
+.laporan-form .field-label.is-normal { text-align: left; }
+@media screen and (min-width: 769px) { .laporan-form .field.is-horizontal > .field-label { flex: 0 0 200px; } }
+.laporan-form .wajib { color: var(--red); font-weight: 700; }
+.laporan-form .info-laporan { font-size: 13px; color: var(--slate-600); }
+.laporan-form .info-laporan ul { margin: 4px 0 0 18px; list-style: disc; }

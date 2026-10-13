@@ -4,19 +4,7 @@
 {% block wrap_extra_class %} medium{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/pelaporan.css' %}?v=20261013a">
-<style>
-  /* Isian bagian A hanya-baca: abu-abu, tidak bisa diubah. */
-  .laporan-form .input[readonly] { background: var(--bg); color: var(--slate-600); cursor: default; }
-  /* Kode pengajuan sebagai tautan biru di dalam kotak isian. */
-  .laporan-form a.input.laporan-kode-link { background: var(--bg); color: #1d6fd1; font-weight: 700; text-decoration: none; }
-  .laporan-form a.input.laporan-kode-link:hover { text-decoration: underline; }
-  .laporan-form .field-label.is-normal { text-align: left; }
-  @media screen and (min-width: 769px) { .laporan-form .field.is-horizontal > .field-label { flex: 0 0 200px; } }
-  .laporan-form .wajib { color: #c0392b; font-weight: 700; }
-  .laporan-form .info-laporan { font-size: 13px; color: var(--slate-600); }
-  .laporan-form .info-laporan ul { margin: 4px 0 0 18px; list-style: disc; }
-</style>
+<link rel="stylesheet" href="{% static 'css/pelaporan.css' %}?v=20261013c">
 {% endblock %}
 
 {% block content %}
@@ -48,7 +36,7 @@
 
   {# ===== Bagian A: data pengajuan (hanya baca) — layout horizontal Bulma ===== #}
   <div class="box">
-    <div class="section-title" style="font-size:14px;">A. Data Pengajuan</div>
+    <div class="section-title is-small">A. Data Pengajuan</div>
 
     <div class="field is-horizontal">
       <div class="field-label is-normal"><label class="label">No.Register Yang Dilaporkan</label></div>
@@ -58,7 +46,7 @@
             <a class="input laporan-kode-link" href="{% url 'pegawai:monitor_progres' kode=pengajuan.kode %}" target="_blank" rel="noopener" title="Buka detail pengajuan di tab baru">{{ pengajuan.kode }}</a>
           </div>
           <div class="control">
-            <a class="button is-info is-light btn-pelaporan-info-light" href="{% url 'pegawai:monitor_progres' kode=pengajuan.kode %}" target="_blank" rel="noopener">Lihat Detail</a>
+            <a class="button is-info is-light" href="{% url 'pegawai:monitor_progres' kode=pengajuan.kode %}" target="_blank" rel="noopener">Lihat Detail</a>
           </div>
         </div>
       </div>
@@ -89,7 +77,7 @@
 
   {# ===== Bagian B: uraian ===== #}
   <div class="box">
-    <div class="section-title" style="font-size:14px;">B. Uraian Laporan</div>
+    <div class="section-title is-small">B. Uraian Laporan</div>
     {% for field in form.visible_fields %}
       {% if field.name == "tujuan_kegiatan" or field.name == "materi_kegiatan" or field.name == "tindak_lanjut" or field.name == "dampak_rekomendasi" %}
       <div class="field is-horizontal">
@@ -107,7 +95,7 @@
 
   {# ===== Bagian C: biaya dan dokumen ===== #}
   <div class="box">
-    <div class="section-title" style="font-size:14px;">C. Biaya dan Dokumen</div>
+    <div class="section-title is-small">C. Biaya dan Dokumen</div>
 
     <div class="columns">
       <div class="column is-4">
@@ -162,8 +150,8 @@
 
     {% if dapat_diubah %}
     <div class="buttons is-right" style="margin-top:20px;">
-      <button type="submit" name="action" value="draft" class="button is-info btn-pelaporan-info">Simpan</button>
-      <button type="submit" name="action" value="submit" class="button is-danger btn-pelaporan-danger"
+      <button type="submit" name="action" value="draft" class="button is-info">Simpan</button>
+      <button type="submit" name="action" value="submit" class="button is-danger"
         data-confirm="Laporan akan disampaikan ke Biro PAKLN untuk diverifikasi dan tidak dapat diubah selama proses verifikasi. Lanjutkan?"
         data-confirm-type="warning" data-confirm-title="Laporkan" data-confirm-ok="Ya, Laporkan">Laporkan</button>
     </div>

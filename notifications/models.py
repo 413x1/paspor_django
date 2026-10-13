@@ -8,17 +8,17 @@ class Notification(models.Model):
     Pengajuan Surat, mengikuti wiki/instructions/SKENARIO_NOTIFIKASI_SURAT.md.
 
     Satu baris = satu notifikasi untuk satu penerima. Event dengan beberapa
-    penerima (mis. NOTIF_02A ke Pegawai sekaligus seluruh Admin PKLN)
+    penerima (mis. NOTIF_02A ke Pegawai sekaligus seluruh Admin Biro PAKLN)
     menghasilkan beberapa baris dengan `event` yang sama.
     """
 
     class Event(models.TextChoices):
         SUBMIT_UNOR = "NOTIF_01_SUBMIT_UNOR", "Pengajuan Surat Baru"
-        APPROVE_UNOR = "NOTIF_02A_APPROVE_UNOR", "Disetujui Unor / Diteruskan ke PKLN"
+        APPROVE_UNOR = "NOTIF_02A_APPROVE_UNOR", "Disetujui Unor / Diteruskan ke Biro PAKLN"
         REJECT_UNOR = "NOTIF_02B_REJECT_UNOR", "Dikembalikan oleh Admin Unor"
         RESUBMIT_UNOR = "NOTIF_02C_RESUBMIT_UNOR", "Pengajuan Ulang ke Admin Unor"
-        COMPLETE_PKLN = "NOTIF_03A_COMPLETE_PKLN", "Selesai & Terbit oleh Admin PKLN"
-        REJECT_PKLN_UNOR = "NOTIF_03B_REJECT_PKLN_TO_UNOR", "Dikembalikan Admin PKLN ke Admin Unor"
+        COMPLETE_PKLN = "NOTIF_03A_COMPLETE_PKLN", "Selesai & Terbit oleh Admin Biro PAKLN"
+        REJECT_PKLN_UNOR = "NOTIF_03B_REJECT_PKLN_TO_UNOR", "Dikembalikan Admin Biro PAKLN ke Admin Unor"
         # PDLN Tipe 2 — tahap BPSDM
         FORWARD_BPSDM = "NOTIF_04A_FORWARD_BPSDM", "Diteruskan Unor ke Admin BPSDM"
         RESUBMIT_BPSDM = "NOTIF_04B_RESUBMIT_BPSDM", "Perbaikan diteruskan ke Admin BPSDM"

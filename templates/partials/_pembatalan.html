@@ -32,7 +32,7 @@
         <form method="post" action="{{ pembatalan_url }}">
           {% csrf_token %}
           <div class="field">
-            <label class="label" for="alasanPembatalan">Alasan pembatalan <span style="color:#c0392b;">*</span></label>
+            <label class="label" for="alasanPembatalan">Alasan pembatalan <span class="text-danger">*</span></label>
             <div class="control">
               <textarea class="textarea" id="alasanPembatalan" name="alasan" rows="3" required
                 placeholder="cth. Agenda pertemuan diundur oleh penyelenggara."></textarea>

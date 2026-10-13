@@ -24,6 +24,18 @@
   --green-bg: #e5f6ec;
   --gold-bg: #fff4d6;
   --blue-bg: #e6f1fb;
+  --blue-line: #cfe0f2;
+  --teal-dark: #1c6a80;     /* hover tombol info */
+  --green-dark: #1e6b41;    /* teks di atas --green-bg */
+  --green-hover: #278553;   /* hover tombol sukses */
+  --red: #c0392b;           /* teks error, status dibatalkan */
+  --red-strong: #dc2626;    /* tombol/ikon destruktif */
+  --red-hover: #b91c1c;     /* hover tombol destruktif */
+  --red-bg: #fdecea;        /* latar error/destruktif */
+  --red-line: #f3c6c2;      /* border kotak destruktif */
+  --purple: #5e35b1;        /* status Dalam Proses BPSDM */
+  --purple-bg: #ede7f6;
+  --neutral-bg: #eceff3;    /* status Belum Diajukan, badge opsional */
   --shadow: 0 10px 30px rgba(29, 53, 87, 0.12);
   --radius: 14px;
 
@@ -218,7 +230,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .header-user-menu a:hover,
 .header-user-menu button:hover { background: var(--bg); color: var(--slate-900); }
 .header-user-menu form { margin: 0; }
-.header-user-menu .logout-menu-item:hover { background-color: #fef2f2; color: #dc2626; }
+.header-user-menu .logout-menu-item:hover { background-color: var(--red-bg); color: var(--red-strong); }
 
 .paspor-role {
   background: var(--topbar-role-bg); color: var(--white);
@@ -272,10 +284,10 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .notification.paspor-msg {
   padding: 12px 16px; border-radius: 10px; font-size: 14px; margin-bottom: 12px;
 }
-.notification.paspor-msg.is-success { background: var(--green-bg); color: #1e6b41; }
-.notification.paspor-msg.is-danger { background: #fdecea; color: #c0392b; }
-.notification.paspor-msg.is-warning,
-.notification.paspor-msg.is-info { background: var(--gold-bg); color: var(--gold-dark); }
+.notification.paspor-msg.is-success { background: var(--green-bg); color: var(--green-dark); }
+.notification.paspor-msg.is-danger { background: var(--red-bg); color: var(--red); }
+.notification.paspor-msg.is-warning { background: var(--gold-bg); color: var(--gold-dark); }
+.notification.paspor-msg.is-info { background: var(--blue-bg); color: var(--navy-900); }
 
 /* ---------- Box (pengganti .card lama) ---------- */
 .box {
@@ -299,16 +311,39 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .button.is-primary:hover { background: var(--navy-800); color: var(--white); }
 .button.is-warning { background: var(--gold); color: var(--navy-900); }
 .button.is-warning:hover { background: var(--gold-600); color: var(--navy-900); }
-.button:not(.is-primary):not(.is-warning):not(.is-logout):not(.is-text):not(.is-ghost) {
+/* Tombol sekunder (tanpa varian warna). :where() menjaga spesifisitas tetap
+   rendah (0,1,0) sehingga varian (.is-danger, .tab-bar .is-active, dst.)
+   selalu menang tanpa !important. */
+.button:where(:not(.is-primary, .is-warning, .is-danger, .is-success, .is-info, .is-logout, .is-text, .is-ghost)) {
   background: var(--white); color: var(--slate-600); border: 1px solid var(--line);
 }
-.button:not(.is-primary):not(.is-warning):not(.is-logout):not(.is-text):not(.is-ghost):hover {
+.button:where(:not(.is-primary, .is-warning, .is-danger, .is-success, .is-info, .is-logout, .is-text, .is-ghost)):hover {
   background: var(--bg); color: var(--slate-900);
 }
+.button.is-danger { background: var(--red-strong); border-color: var(--red-strong); color: var(--white); }
+.button.is-danger:hover { background: var(--red-hover); border-color: var(--red-hover); color: var(--white); }
+.button.is-danger.is-light { background: var(--red-bg); border-color: var(--red-line); color: var(--red); }
+.button.is-danger.is-light:hover { background: #fadbd8; color: var(--red); }
+.button.is-success { background: var(--green); border-color: var(--green); color: var(--white); }
+.button.is-success:hover { background: var(--green-hover); border-color: var(--green-hover); color: var(--white); }
+.button.is-info { background: var(--teal); border-color: var(--teal); color: var(--white); }
+.button.is-info:hover { background: var(--teal-dark); border-color: var(--teal-dark); color: var(--white); }
+.button.is-info.is-light { background: var(--blue-bg); border-color: var(--blue-line); color: var(--teal); }
+.button.is-info.is-light:hover { background: #d4e6f8; color: var(--teal-dark); }
 
 /* ---------- Judul bagian ---------- */
 .section-title { font-size: 18px; font-weight: 800; color: var(--navy-900); margin: 0 0 16px; }
+/* Sub-judul di dalam kartu (design guide §4.2: 14px). */
+.section-title.is-small { font-size: 14px; }
+.section-title.is-small.is-spaced { margin-bottom: 14px; }
 .section-sub { color: var(--slate-400); font-size: 13px; margin: -10px 0 20px; }
+/* Keterangan/status singkat tepat di bawah .section-title (dulu inline
+   `margin:-10px 0 12px`), dan di bawah .section-title.is-small (`-8px 0 14px`). */
+.sub.is-title-sub { margin: -10px 0 12px; }
+.cell-muted.is-title-sub { margin: -8px 0 14px; }
+/* Baris tombol yang membagi lebar sama rata (mis. "← Kembali" + "Dasbor"). */
+.button-row { display: flex; gap: 10px; }
+.button-row > .button { flex: 1; }
 
 /* ---------- Kepala halaman (judul + aksi) ---------- */
 .page-head {
@@ -343,7 +378,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .select:not(.is-multiple):not(.is-loading)::after { border-color: var(--teal); }
 .field:not(:last-child) { margin-bottom: 16px; }
 .column .field, .column .control { width: 100%; }
-.field .help.is-danger, .errorlist { color: #c0392b; font-size: 13px; margin: 4px 0 0; padding: 0; list-style: none; }
+.field .help.is-danger, .errorlist { color: var(--red); font-size: 13px; margin: 4px 0 0; padding: 0; list-style: none; }
 .readonly-field, .input[readonly], .input[disabled] { background: var(--bg); color: var(--slate-600); }
 .helptext { font-size: 12px; color: var(--slate-400); margin-top: 4px; }
 
@@ -363,7 +398,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .checkbox-row input { margin-top: 3px; }
 .agree-box {
   display: flex; align-items: flex-start; gap: 10px;
-  background: var(--blue-bg); border: 1px solid #cfe0f2;
+  background: var(--blue-bg); border: 1px solid var(--blue-line);
   border-radius: 11px; padding: 14px 16px; margin: 18px 0;
 }
 .agree-box input { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--navy-900); flex-shrink: 0; }
@@ -384,7 +419,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
   padding: 4px 12px; border-radius: 999px; height: auto;
 }
 .tag.paspor-status .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.tag.paspor-status.is-belum { background: #eceff3; color: var(--slate-600); }
+.tag.paspor-status.is-belum { background: var(--neutral-bg); color: var(--slate-600); }
 .tag.paspor-status.is-proses { background: var(--gold-bg); color: var(--gold-dark); }
 .tag.paspor-status.is-proses_pakln { background: var(--blue-bg); color: var(--teal); }
 .tag.paspor-status.is-selesai { background: var(--green-bg); color: var(--green); }
@@ -641,7 +676,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .jenis-option .name { font-weight: 700; font-size: 14px; }
 .jenis-option .desc { font-size: 12px; color: var(--slate-400); margin-top: 2px; }
 .soon-tag {
-  font-size: 9.5px; font-weight: 700; background: #eceff3; color: var(--slate-400);
+  font-size: 9.5px; font-weight: 700; background: var(--neutral-bg); color: var(--slate-400);
   padding: 2px 7px; border-radius: 6px; white-space: nowrap;
 }
 
@@ -664,7 +699,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
   width: 32px; height: 32px; fill: none; stroke: currentColor;
   stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round;
 }
-.paspor-dialog.is-danger .dialog-icon, .paspor-dialog.is-error .dialog-icon { --dialog-tone: #dc2626; --dialog-tone-bg: #fdecea; }
+.paspor-dialog.is-danger .dialog-icon, .paspor-dialog.is-error .dialog-icon { --dialog-tone: var(--red-strong); --dialog-tone-bg: var(--red-bg); }
 .paspor-dialog.is-success .dialog-icon { --dialog-tone: var(--green); --dialog-tone-bg: var(--green-bg); }
 .paspor-dialog.is-info .dialog-icon { --dialog-tone: var(--teal); --dialog-tone-bg: var(--blue-bg); }
 /* Centang sukses digambar (stroke animation) saat dialog muncul. */
@@ -674,7 +709,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .paspor-dialog .dialog-actions { display: flex; gap: 8px; justify-content: center; }
 .paspor-dialog .dialog-actions .button { min-width: 110px; font-weight: 700; }
 #pasporDialog .dialog-ok { background: var(--navy-900); border-color: var(--navy-900); color: var(--white); }
-#pasporDialog.is-danger .dialog-ok, #pasporDialog.is-error .dialog-ok { background: #dc2626; border-color: #dc2626; }
+#pasporDialog.is-danger .dialog-ok, #pasporDialog.is-error .dialog-ok { background: var(--red-strong); border-color: var(--red-strong); }
 #pasporDialog.is-success .dialog-ok { background: var(--green); border-color: var(--green); }
 #pasporDialog .dialog-ok:hover, #pasporDialog .dialog-ok:focus { color: var(--white); filter: brightness(1.08); }
 @media (prefers-reduced-motion: reduce) {
@@ -713,7 +748,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .login-card .field:not(:last-child) { margin-bottom: 16px; }
 .login-card .helptext { text-align: center; margin-top: 14px; }
 .login-error {
-  background: #fdecea; color: #c0392b; border-radius: 8px; padding: 10px 14px; font-size: 13px;
+  background: var(--red-bg); color: var(--red); border-radius: 8px; padding: 10px 14px; font-size: 13px;
   margin-bottom: 16px;
 }
 
@@ -727,7 +762,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .notif-bell:hover { background: var(--white); color: var(--slate-900); }
 .notif-badge {
   position: absolute; top: -2px; right: -2px; min-width: 18px; height: 18px; padding: 0 4px;
-  border-radius: 999px; background: #e0453c; color: var(--white);
+  border-radius: 999px; background: var(--red-strong); color: var(--white);
   font-size: 10px; font-weight: 800; line-height: 18px; text-align: center;
   border: 2px solid var(--white);
 }
@@ -740,7 +775,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .notif-avatar.is-info { background: var(--blue-bg); color: var(--teal); }
 .notif-avatar.is-success { background: var(--green-bg); color: var(--green); }
 .notif-avatar.is-warning { background: var(--gold-bg); color: var(--gold-dark); }
-.notif-avatar.is-danger { background: #fdecea; color: #c0392b; }
+.notif-avatar.is-danger { background: var(--red-bg); color: var(--red); }
 
 .notif-dropdown {
   display: block; position: absolute; top: calc(100% + 10px); right: 0; z-index: 40;
@@ -826,7 +861,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .notif-toast.is-visible { opacity: 1; transform: translateX(0); pointer-events: auto; }
 .notif-toast.is-info { border-left-color: var(--teal); }
 .notif-toast.is-warning { border-left-color: var(--gold); }
-.notif-toast.is-danger { border-left-color: #e0453c; }
+.notif-toast.is-danger { border-left-color: var(--red-strong); }
 .notif-toast.is-success { border-left-color: var(--green); }
 .notif-toast-main { min-width: 0; }
 .notif-toast-title { font-size: 13px; font-weight: 800; color: var(--slate-900); margin-bottom: 3px; }
@@ -888,16 +923,20 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .multiselect-option input[type="checkbox"] { flex-shrink: 0; }
 
 /* ---------- PDLN, pelaporan & pembatalan (BISNIS_PROSES_PDLN.MD) ---------- */
-.tag.paspor-status.is-proses_bpsdm { background: #ede7f6; color: #5e35b1; }
-.tag.paspor-status.is-dibatalkan { background: #fdecea; color: #c0392b; }
-.timeline .dot-wrap.cancelled { background: #c0392b; color: var(--white); }
-.riwayat-list li.is-danger .riwayat-ikon { background: #fdecea; color: #c0392b; }
-.badge-auto.is-optional { background: #eceff3; color: var(--slate-600); }
+.tag.paspor-status.is-proses_bpsdm { background: var(--purple-bg); color: var(--purple); }
+.tag.paspor-status.is-dibatalkan { background: var(--red-bg); color: var(--red); }
+.timeline .dot-wrap.cancelled { background: var(--red); color: var(--white); }
+.riwayat-list li.is-danger .riwayat-ikon { background: var(--red-bg); color: var(--red); }
+.badge-auto.is-optional { background: var(--neutral-bg); color: var(--slate-600); }
 .tab-bar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
 .tab-bar .button.is-active { background: var(--navy-900); border-color: var(--navy-900); color: var(--white); }
 .summary-grid.is-wide { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
-.box.is-danger-soft { background: #fdecea; border-color: #f3c6c2; }
+.box.is-danger-soft { background: var(--red-bg); border-color: var(--red-line); }
 .box.is-warning-soft { background: var(--gold-bg); border-color: var(--gold); }
+.box.is-info-soft { background: var(--blue-bg); border-color: var(--blue-line); }
+/* Teks merah untuk penanda wajib (*) & peringatan singkat (mis. "Terlambat"). */
+.text-danger { color: var(--red); }
+.text-danger.is-strong { font-weight: 700; }
 .kv-list { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; font-size: 13px; margin: 0; }
 .kv-list dt { color: var(--slate-400); font-weight: 600; }
 .kv-list dd { margin: 0; }

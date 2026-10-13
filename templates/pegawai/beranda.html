@@ -5,7 +5,7 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
-<link rel="stylesheet" href="{% static 'css/pelaporan.css' %}?v=20261013a">
+<link rel="stylesheet" href="{% static 'css/pelaporan.css' %}?v=20261013c">
 {% endblock %}
 
 {% block content %}
@@ -39,7 +39,7 @@
 {% endif %}
 
 {% if aktif %}
-<div class="section-title" style="font-size:14px;">Pengajuan Aktif</div>
+<div class="section-title is-small">Pengajuan Aktif</div>
 <div class="table-wrap" style="margin-bottom:20px;">
   <table class="table data-table is-fullwidth is-hoverable">
     <thead>
@@ -60,7 +60,7 @@
           {% elif aktif.status == "belum" %}
             <a href="{% url 'pegawai:upload_dokumen' kode=aktif.kode %}" class="button is-small">Lanjutkan Unggah</a>
           {% elif aktif.status == "selesai" and aktif.is_pdln %}
-            <a href="{% url 'pegawai:laporan_form' kode=aktif.kode %}" class="button is-small is-info btn-pelaporan-info">Pelaporan PDLN</a>
+            <a href="{% url 'pegawai:laporan_form' kode=aktif.kode %}" class="button is-small is-info">Pelaporan PDLN</a>
           {% else %}
             <a href="{% url 'pegawai:monitor_progres' kode=aktif.kode %}" class="button is-small">Lihat Progres</a>
           {% endif %}

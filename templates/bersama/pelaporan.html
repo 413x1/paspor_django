@@ -3,7 +3,7 @@
 {% block title %}Pelaporan PDLN{% endblock %}
 
 {% block extra_head %}
-<link rel="stylesheet" href="{% static 'css/pelaporan.css' %}?v=20261013b">
+<link rel="stylesheet" href="{% static 'css/pelaporan.css' %}?v=20261013c">
 {% endblock %}
 
 {% block content %}
@@ -42,17 +42,17 @@
             <td>{{ b.p.tgl_kembali|date:"d M Y" }}</td>
             <td>
               {% if b.laporan %}{{ b.laporan.get_status_display }}{% else %}Belum melapor{% endif %}
-              {% if b.terlambat %}<br><span style="color:#c0392b;font-weight:700;">Terlambat</span>{% endif %}
+              {% if b.terlambat %}<br><span class="text-danger is-strong">Terlambat</span>{% endif %}
             </td>
             <td>{{ b.laporan.uploaded_at|date:"d M Y"|default:"—" }}</td>
             <td>
               <div class="aksi-pelaporan">
                 {% if b.laporan and b.laporan.file %}
-                  <button type="button" class="button is-small is-info btn-pelaporan-info" data-id="{{ b.laporan.pk }}"
+                  <button type="button" class="button is-small is-info" data-id="{{ b.laporan.pk }}"
                     data-doc-preview="{{ b.laporan.file.url }}" data-doc-title="Laporan {{ b.p.kode }}">👁 Lihat</button>
                 {% endif %}
                 {% if dapat_verifikasi and b.status == "menunggu" %}
-                  <button type="button" class="button is-small is-success btn-pelaporan-success btn-verifikasi"
+                  <button type="button" class="button is-small is-success btn-verifikasi"
                     data-id="{{ b.laporan.pk }}" data-kode="{{ b.p.kode }}" data-pegawai="{{ b.p.pegawai.profile.nama }}"
                     data-url="{% url 'pakln:verifikasi_laporan' kode=b.p.kode %}">✓ Verifikasi</button>
                   <button type="button" class="button is-small is-warning btn-revisi"
@@ -114,7 +114,7 @@
         </div>
         <div class="verif-aksi">
           <button type="button" class="button" data-modal-close>Batal</button>
-          <button type="submit" class="button is-success btn-pelaporan-success">Verifikasi Laporan</button>
+          <button type="submit" class="button is-success">Verifikasi Laporan</button>
         </div>
       </form>
     </div>
