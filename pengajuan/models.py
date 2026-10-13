@@ -49,7 +49,7 @@ class Pengajuan(models.Model):
         DIUNGGAH = "diunggah", "SK Tubel Diunggah"
         DITUTUP = "ditutup", "Ditutup Admin BKO"
 
-    kode = models.CharField("Kode Pengajuan", max_length=20, unique=True, blank=True)
+    kode = models.CharField("Kode Pengajuan", max_length=25, unique=True, blank=True)
     pegawai = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="pengajuan_list"
     )
@@ -149,19 +149,33 @@ class Pengajuan(models.Model):
         unit = (profile.unit_organisasi if profile else None) or self.pegawai.unit_organisasi
         return unit.code if unit else "00"
 
+    # Kode tipe PDLN pada nomor pengajuan (wiki/instructions/PENGKODEAN_AJUAN.MD).
+    KODE_TIPE = {TipePdln.T1: "1", TipePdln.T2P: "2A", TipePdln.T2L: "2B", TipePdln.T3: "3"}
+
+    def _kepala_kode(self):
+        """Bagian kode sebelum tanggal: `PDLN[Kode Unor]-[Tipe]-` untuk PDLN,
+        `PLN[Kode Unor]-` untuk Non-Dinas."""
+        if self.jenis_perjalanan == self.JenisPerjalanan.PDLN and self.tipe_pdln in self.KODE_TIPE:
+            return f"PDLN{self._kode_unor()}-{self.KODE_TIPE[self.tipe_pdln]}-"
+        return f"PLN{self._kode_unor()}-"
+
     def _generate_kode(self):
-        """Format PLN[Kode Unor]-ddmmyy-NOURUT (mis. PLN01-071026-020).
-        NOURUT 3 digit dan mulai lagi dari 001 tiap hari per Kode Unor —
-        lihat wiki/instructions/PENGKODEAN_AJUAN.MD."""
-        prefix = f"PLN{self._kode_unor()}-{timezone.localdate():%d%m%y}-"
+        """Non-Dinas `PLN[Kode Unor]-ddmmyy-NOURUT` (mis. PLN01-071026-020),
+        PDLN `PDLN[Kode Unor]-[Tipe]-ddmmyy-NOURUT` (mis. PDLN01-2A-071026-021).
+        NOURUT minimal 3 digit, berlanjut sepanjang tahun dan kembali ke 001
+        tiap pergantian tahun, terpisah per jenis/tipe/Kode Unor — lihat
+        wiki/instructions/PENGKODEAN_AJUAN.MD."""
+        kepala = self._kepala_kode()
+        hari_ini = timezone.localdate()
+        pola = rf"^{kepala}[0-9]{{4}}{hari_ini:%y}-[0-9]+$"
         terakhir = max(
             (
                 int(kode.rsplit("-", 1)[1])
-                for kode in Pengajuan.objects.filter(kode__startswith=prefix).values_list("kode", flat=True)
+                for kode in Pengajuan.objects.filter(kode__regex=pola).values_list("kode", flat=True)
             ),
             default=0,
         )
-        return f"{prefix}{terakhir + 1:03d}"
+        return f"{kepala}{hari_ini:%d%m%y}-{terakhir + 1:03d}"
 
     @property
     def tujuan_negara_display(self):

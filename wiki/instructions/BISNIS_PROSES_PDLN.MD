@@ -67,11 +67,11 @@ Pelaporan PDLN). Prinsip integrasinya:
 
 | Jenis | Tipe | Kode tipe | Contoh kegiatan | Melibatkan BPSDM | Prefiks kode pengajuan |
 |---|---|---|---|---|---|
-| Non-Dinas | — | — | Ibadah, wisata, keperluan pribadi | Tidak | `PSP-<tahun>-NNNN` (tetap) |
-| PDLN | Tipe 1 | `T1` | Pertemuan bilateral/regional/multilateral, pameran/expo, advis teknis, pendampingan | Tidak | `PDLN-<tahun>-T1-NNNN` |
-| PDLN | Tipe 2 — Pendidikan | `T2P` | Tugas belajar Master/Doctoral | **Ya** | `PDLN-<tahun>-T2P-NNNN` |
-| PDLN | Tipe 2 — Pelatihan | `T2L` | Short course, seminar/lokakarya, workshop, simposium/konferensi | **Ya** | `PDLN-<tahun>-T2L-NNNN` |
-| PDLN | Tipe 3 — Penugasan Khusus | `T3` | Penugasan atas disposisi Menteri | Tidak | `PDLN-<tahun>-T3-NNNN` |
+| Non-Dinas | — | — | Ibadah, wisata, keperluan pribadi | Tidak | `PLN[Kode Unor]-ddmmyy-NNN` |
+| PDLN | Tipe 1 | `T1` | Pertemuan bilateral/regional/multilateral, pameran/expo, advis teknis, pendampingan | Tidak | `PDLN[Kode Unor]-1-ddmmyy-NNN` |
+| PDLN | Tipe 2 — Pendidikan | `T2P` | Tugas belajar Master/Doctoral | **Ya** | `PDLN[Kode Unor]-2A-ddmmyy-NNN` |
+| PDLN | Tipe 2 — Pelatihan | `T2L` | Short course, seminar/lokakarya, workshop, simposium/konferensi | **Ya** | `PDLN[Kode Unor]-2B-ddmmyy-NNN` |
+| PDLN | Tipe 3 — Penugasan Khusus | `T3` | Penugasan atas disposisi Menteri | Tidak | `PDLN[Kode Unor]-3-ddmmyy-NNN` |
 
 - Nomor urut `NNNN` dihitung **per prefiks per tahun** (perluasan
   `Pengajuan._generate_kode`).
@@ -490,7 +490,7 @@ ke semua tipe:
 | `preview_bpsdm_agree` *(baru)* | `BooleanField` | Pola sama dengan `preview_unor_agree`. |
 | `catatan_bpsdm` *(baru)* | `TextField`, blank | Penanda pengembalian BPSDM → Unor ([§7](#7-pengembalian--catatan-dua-arah)). |
 | `tgl_masuk_bpsdm` *(baru)* | `DateField`, null | Tanggal diteruskan ke BPSDM. |
-| `kode` | — | Generator mengikuti prefiks per tipe ([§2](#2-jenis-perjalanan--tipe-pdln)); panjang 20 cukup (`PDLN-2026-T2P-0001` = 18). |
+| `kode` | `max_length` 20 → 25 | Generator mengikuti prefiks per tipe ([§2](#2-jenis-perjalanan--tipe-pdln)); nomor urut berotasi tahunan — aturan lengkap di [PENGKODEAN_AJUAN.MD](PENGKODEAN_AJUAN.MD). |
 
 Index yang disarankan: `(jenis_perjalanan, tipe_pdln, status)`,
 `(unit_organisasi, status)`, `(status, tgl_pengajuan)`.
@@ -648,7 +648,7 @@ User (role) ─1:1─ PegawaiProfile ── UnitOrganisasi
 
 | Halaman | Perubahan |
 |---|---|
-| Beranda | Dua tab: **Riwayat PDLN** (tipe, tujuan, tgl, status, status laporan) dan **Riwayat Non-Dinas** (yang sekarang). Tombol "Tambah Usulan Baru" membuka modal dua langkah ([§2](#2-jenis-perjalanan--tipe-pdln)); **nonaktif** selama ada pengajuan belum tuntas, dengan keterangan alasannya, mis. "Laporan PDLN-2026-T1-0003 belum disetujui" ([§2.1](#21-aturan-satu-pengajuan-aktif)). |
+| Beranda | Dua tab: **Riwayat PDLN** (tipe, tujuan, tgl, status, status laporan) dan **Riwayat Non-Dinas** (yang sekarang). Tombol "Tambah Usulan Baru" membuka modal dua langkah ([§2](#2-jenis-perjalanan--tipe-pdln)); **nonaktif** selama ada pengajuan belum tuntas, dengan keterangan alasannya, mis. "Laporan PDLN01-1-071026-003 belum disetujui" ([§2.1](#21-aturan-satu-pengajuan-aktif)). |
 | Formulir | Field dinamis per tipe ([§5](#5-formulir-pengajuan-per-tipe)); satu view dengan form class per tipe. |
 | Unggah Dokumen | Daftar dari registri [§6](#6-persyaratan-dokumen-per-tahap); kolom catatan perbaikan saat dikembalikan. |
 | Monitor Progres | Timeline Proses dengan jumlah tahap sesuai tipe (5 untuk T2), header kartu menampilkan tipe/kategori/negara/kota. Saat `selesai`: tombol unduh dokumen hasil (Non-Dinas: ILN; PDLN: lihat [§14](#14-keputusan--pertanyaan-terbuka)). |
@@ -863,7 +863,7 @@ pembekuan aksi alur utama, maksimal satu permohonan terbuka).
 | 3 | Pengembalian selalu ke tahap tepat sebelumnya, catatan dua arah wajib | Konsisten dengan alur Non-Dinas yang sudah berjalan |
 | 4 | Snapshot `unit_organisasi` di `Pengajuan` | Report & scoping stabil saat pegawai mutasi |
 | 5 | Persyaratan dokumen di registri kode | Satu sumber kebenaran untuk view, template, validasi |
-| 6 | Kode Non-Dinas tetap `PSP-…`, PDLN memakai prefiks per tipe | Kompatibel dengan data & dokumen lama; mengikuti mockup |
+| 6 | ~~Kode Non-Dinas tetap `PSP-…`, PDLN memakai prefiks per tipe~~ → diganti format `PLN…`/`PDLN…` dengan Kode Unor & rotasi tahunan | Lihat [PENGKODEAN_AJUAN.MD](PENGKODEAN_AJUAN.MD); kode lama tetap valid |
 | 7 | **PDLN Tipe 3 diajukan oleh Pegawai**, alur sama dengan Tipe 1 *(dikonfirmasi pemilik proses)* | Menyelesaikan inkonsistensi mockup (sebagian teks menyebut "diajukan oleh Admin Unor") |
 | 8 | **Rekomendasi Visa wajib** bila negara tujuan memerlukan visa, **opsional** bila tidak; ditentukan master `Negara.perlu_visa` *(dikonfirmasi)* | [§6.4](#64-tahap-admin-biro-pakln) |
 | 9 | **Satu pengajuan aktif lintas jenis**; pengajuan baru hanya setelah tahap akhir — Non-Dinas: disetujui Admin PAKLN (`selesai`); PDLN: Laporan PDLN disetujui Admin PAKLN *(dikonfirmasi)* | [§2.1](#21-aturan-satu-pengajuan-aktif), [§4.4](#44-pelaporan-pdln) |
