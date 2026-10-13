@@ -824,7 +824,7 @@ class LaporanPdln(models.Model):
 
     pengajuan = models.OneToOneField(Pengajuan, on_delete=models.CASCADE, related_name="laporan_pdln")
     # Isi laporan (formulir Pelaporan PDLN). Boleh kosong selama masih draft;
-    # saat "Laporkan" keempat uraian dan dokumen wajib terisi.
+    # saat "Laporkan" seluruh isian (uraian, biaya, dokumen) wajib terisi.
     tujuan_kegiatan = models.TextField("Tujuan Kegiatan", blank=True)
     materi_kegiatan = models.TextField("Materi Kegiatan", blank=True)
     tindak_lanjut = models.TextField("Tindak Lanjut", blank=True)

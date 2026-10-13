@@ -201,7 +201,41 @@ class LaporanFormLaporkanTests(LaporanFormBase):
         for nama in ("materi_kegiatan", "tindak_lanjut", "dampak_rekomendasi"):
             self.assertIn("Wajib diisi untuk melaporkan.", form.errors[nama])
         self.assertIn("Dokumen laporan wajib diunggah untuk melaporkan.", form.errors["dokumen_laporan"])
+        for nama in ("estimasi_biaya", "realisasi_biaya"):          # biaya ikut wajib saat Laporkan
+            self.assertIn("Wajib diisi untuk melaporkan.", form.errors[nama])
         self.assertFalse(LaporanPdln.objects.filter(pengajuan=self.p).exists())
+
+    def test_laporkan_wajib_estimasi_realisasi_dan_dokumen_masing_masing(self):
+        """Setiap isian yang dikosongkan menggagalkan Laporkan, tepat pada kolom itu."""
+        for kosong in ("estimasi_biaya", "realisasi_biaya", "dokumen_laporan", *ISI):
+            data = {"action": "submit", **ISI, "estimasi_biaya": "1.000", "realisasi_biaya": "900", "dokumen_laporan": pdf()}
+            data.pop(kosong)
+            r = self.client.post(self.url, data)
+            self.assertEqual(r.status_code, 200, kosong)
+            self.assertEqual(list(r.context["form"].errors), [kosong], kosong)
+        self.assertFalse(LaporanPdln.objects.filter(pengajuan=self.p).exists())
+
+    def test_biaya_tanpa_angka_dianggap_kosong_dan_nol_dianggap_terisi(self):
+        r = self.kirim(estimasi_biaya="abc", realisasi_biaya="---")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(sorted(r.context["form"].errors), ["estimasi_biaya", "realisasi_biaya"])
+        r = self.kirim(estimasi_biaya="0", realisasi_biaya="0")      # nol adalah nilai yang sah
+        self.assertRedirects(r, reverse("pegawai:pelaporan"))
+        self.assertEqual((self.laporan().estimasi_biaya, self.laporan().realisasi_biaya), (0, 0))
+
+    def test_simpan_draft_tetap_boleh_tanpa_biaya_dan_dokumen(self):
+        r = self.client.post(self.url, {"action": "draft", **ISI})
+        self.assertRedirects(r, self.url)
+        laporan = self.laporan()
+        self.assertEqual((laporan.status, laporan.estimasi_biaya, laporan.realisasi_biaya), ("draft", None, None))
+        self.assertFalse(laporan.file)
+
+    def test_tanda_wajib_pada_semua_isian_di_halaman(self):
+        html = self.client.get(self.url).content.decode()
+        for label in ("Estimasi Biaya (Rp)", "Realisasi Biaya (Rp)", "Dokumen Laporan Kegiatan", "Tujuan Kegiatan"):
+            potongan = html.split(label)[1][:120]
+            self.assertIn('class="wajib"', potongan, label)
+        self.assertIn("uraian, biaya, dan dokumen PDF", html)
 
     def test_uraian_hanya_spasi_dianggap_kosong(self):
         r = self.kirim(tujuan_kegiatan="   ")
