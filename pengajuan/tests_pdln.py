@@ -133,7 +133,7 @@ class _Basis:
 class AlurTipe1Tests(_Basis, TestCase):
     def test_kode_dan_detail_pdln(self):
         p = self.isi_formulir("T1")
-        self.assertTrue(p.kode.startswith(f"PDLN-{date.today().year}-T1-"))
+        self.assertTrue(p.kode.startswith(f"PDLN{self.unor.code}-1-{date.today():%d%m%y}-"))
         self.assertEqual(p.jenis_perjalanan, "pdln")
         self.assertEqual(DetailPdln.objects.get(pengajuan=p).penyelenggara, "Penyelenggara Uji")
 
