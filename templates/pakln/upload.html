@@ -88,7 +88,7 @@
         <form method="post" enctype="multipart/form-data" class="actions doc-upload-form" style="margin:0;">
           {% csrf_token %}
           <input type="hidden" name="pendukung_upload" value="1">
-          <input type="file" name="file" required accept=".pdf,application/pdf" data-pdf-only class="doc-file-input" style="font-size:12.5px;max-width:160px;">
+          <div class="file is-small"><label class="file-label"><input type="file" name="file" required accept=".pdf,application/pdf" data-pdf-only data-max-mb="2" class="file-input doc-file-input"><span class="file-cta"><span class="file-icon">{% include "partials/_ikon_unggah.html" %}</span><span class="file-label">{% if pendukung.file %}Ganti{% else %}Unggah{% endif %}</span></span></label></div>
           <button type="submit" class="button is-small doc-upload-submit">⬆ {% if pendukung.file %}Ganti{% else %}Unggah{% endif %}</button>
         </form>
       {% endif %}
@@ -132,8 +132,8 @@
 
 {% if dapat_diubah and not dibekukan and pengajuan.pakai_bko and pengajuan.status_bko == "ditutup" %}
 <div class="box is-danger-soft">
-  <div class="section-title" style="font-size:14px;">Tindak Lanjut Penutupan Admin BKO</div>
-  <p class="cell-muted" style="margin:-8px 0 14px;">Pilih salah satu: buka kembali pemrosesan BKO, lanjutkan tanpa SK Tugas Belajar, atau hentikan pengajuan.</p>
+  <div class="section-title is-small">Tindak Lanjut Penutupan Admin BKO</div>
+  <p class="cell-muted is-title-sub">Pilih salah satu: buka kembali pemrosesan BKO, lanjutkan tanpa SK Tugas Belajar, atau hentikan pengajuan.</p>
 
   <form method="post" style="margin-bottom:18px;" data-confirm="Buka kembali pemrosesan SK Tugas Belajar untuk Admin BKO?" data-confirm-title="Buka Kembali" data-confirm-ok="Buka Kembali">
     {% csrf_token %}
@@ -171,8 +171,8 @@
 
 {% include "partials/_riwayat_pengajuan.html" %}
 
-<div style="display:flex; gap:10px;">
-  <a href="{% url 'pakln:preview' kode=pengajuan.kode %}" class="button" style="flex:1;">← Kembali ke Pratinjau</a>
-  <a href="{% url 'pakln:dashboard' %}" class="button" style="flex:1;">Kembali ke Dasbor</a>
+<div class="button-row">
+  <a href="{% url 'pakln:preview' kode=pengajuan.kode %}" class="button">← Kembali ke Pratinjau</a>
+  <a href="{% url 'pakln:dashboard' %}" class="button">Kembali ke Dasbor</a>
 </div>
 {% endblock %}

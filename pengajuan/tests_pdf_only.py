@@ -89,7 +89,7 @@ class FormDokumenTests(TestCase):
         izin = [v.allowed_extensions for v in DokumenTemplate._meta.get_field("file").validators
                 if hasattr(v, "allowed_extensions")]
         self.assertEqual(izin, [["pdf", "docx"]])   # Template Dokumen tetap boleh docx
-        self.assertNotIn("accept", DokumenTemplateForm().fields["file"].widget.attrs)
+        self.assertEqual(DokumenTemplateForm().fields["file"].widget.attrs["accept"], ".pdf,.docx")
         impor = ImporHariLiburForm.base_fields["berkas"]
         self.assertEqual(impor.widget.attrs["accept"], ".xlsx,.csv")
 

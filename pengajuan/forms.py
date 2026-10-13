@@ -10,7 +10,7 @@ from django.forms.models import ModelChoiceIterator
 from django.utils import timezone
 
 from paspor.kalender import AKHIR_PEKAN, hitung_hari_kerja
-from paspor.validators import PDF_ACCEPT, validate_pdf
+from paspor.validators import MAKS_UKURAN, PDF_ACCEPT, validate_pdf, validate_pdf_laporan, validate_ukuran
 from paspor.models import HariLibur, KategoriPerjalanan, Negara, SumberPembiayaan, berlaku_untuk_tipe
 
 from .models import (
@@ -315,8 +315,9 @@ class PdfOnlyMixin:
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["file"].validators.append(validate_pdf)
+        self.fields["file"].validators.append(validate_pdf)  # PDF, maks. 2 MB
         self.fields["file"].widget.attrs["accept"] = PDF_ACCEPT
+        self.fields["file"].widget.attrs["data-max-mb"] = "2"
 
 
 class TanggalSuratMixin:
@@ -401,6 +402,7 @@ class DokumenTemplateForm(forms.ModelForm):
             "nama": forms.TextInput(attrs={"class": "input", "placeholder": "cth. Contoh Formulir Izin Luar Negeri"}),
             "keterangan": forms.TextInput(attrs={"class": "input", "placeholder": "Opsional"}),
             "unit_organisasi": forms.CheckboxSelectMultiple(),
+            "file": forms.FileInput(attrs={"class": "file-input", "accept": ".pdf,.docx", "data-max-mb": "2"}),
         }
         labels = {
             "untuk_pegawai": "Tampilkan untuk Pegawai",
@@ -424,6 +426,13 @@ class DokumenTemplateForm(forms.ModelForm):
                 models.Q(is_active=True) | models.Q(pk=self.instance.kategori_id)
             )
         self.fields["kategori"].queryset = kategori_queryset
+
+    def clean_file(self):
+        berkas = self.cleaned_data.get("file")
+        # Hanya berkas yang baru diunggah (punya `content_type`), bukan berkas lama.
+        if berkas and hasattr(berkas, "content_type"):
+            validate_ukuran(berkas)  # maks. 2 MB
+        return berkas
 
     def clean(self):
         cleaned = super().clean()
@@ -506,12 +515,12 @@ class TambahHariLiburForm(forms.Form):
 class ImporHariLiburForm(forms.Form):
     """Form impor Setting Kalender dari Excel/CSV (lihat `paspor.impor_libur`)."""
 
-    MAKS_UKURAN = 2 * 1024 * 1024
+    MAKS_UKURAN = MAKS_UKURAN  # 2 MB, sama dengan unggahan lain (paspor.validators)
 
     berkas = forms.FileField(
         label="Berkas Excel",
         validators=[FileExtensionValidator(allowed_extensions=["xlsx", "csv"])],
-        widget=forms.ClearableFileInput(attrs={"accept": ".xlsx,.csv"}),
+        widget=forms.FileInput(attrs={"accept": ".xlsx,.csv", "class": "file-input", "data-max-mb": "2"}),
         help_text="Format .xlsx (atau .csv), maks. 2 MB, kolom: tanggal, keterangan, jenis.",
     )
     timpa = forms.BooleanField(
@@ -643,8 +652,10 @@ class LaporanPdlnForm(forms.ModelForm):
         }),
     )
     dokumen_laporan = forms.FileField(
-        required=False, label="Dokumen Laporan Kegiatan", validators=[validate_pdf],
-        widget=forms.ClearableFileInput(attrs={"accept": PDF_ACCEPT, "data-pdf-only": "", "class": "file-input"}),
+        required=False, label="Dokumen Laporan Kegiatan", validators=[validate_pdf_laporan],  # PDF, maks. 10 MB
+        widget=forms.ClearableFileInput(attrs={
+            "accept": PDF_ACCEPT, "data-pdf-only": "", "data-max-mb": "10", "class": "file-input",
+        }),
     )
     catatan_perbaikan = forms.CharField(
         required=False, label="Catatan perbaikan untuk Biro PAKLN",

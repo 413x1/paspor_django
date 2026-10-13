@@ -118,8 +118,8 @@ class LaporanFormTampilTests(LaporanFormBase):
         self.assertIn('name="estimasi_biaya"', html)
         self.assertIn('name="realisasi_biaya"', html)
         self.assertIn('accept=".pdf,application/pdf"', html)
-        self.assertIn('name="action" value="draft" class="button is-info btn-pelaporan-info">Simpan', html)
-        self.assertIn('name="action" value="submit" class="button is-danger btn-pelaporan-danger"', html)
+        self.assertIn('name="action" value="draft" class="button is-info">Simpan', html)
+        self.assertIn('name="action" value="submit" class="button is-danger"', html)
         self.assertIn("input-rupiah", html)                       # target skrip format Rupiah
 
     def test_nama_peserta_otomatis_dari_akun_dan_tidak_dapat_diubah(self):
@@ -309,7 +309,7 @@ class LaporanFormPdfOnlyTests(LaporanFormBase):
 class LaporanDiAdminDanDaftarTests(LaporanFormBase):
     def test_daftar_pelaporan_memakai_tautan_bukan_modal(self):
         html = self.client.get(reverse("pegawai:pelaporan")).content.decode()
-        self.assertIn(f'<a href="{self.url}" class="button is-small is-info btn-pelaporan-info">Pelaporan PDLN</a>', html)
+        self.assertIn(f'<a href="{self.url}" class="button is-small is-info">Pelaporan PDLN</a>', html)
         self.assertNotIn("laporanModal-", html)
         self.assertNotIn("Unggah Laporan", html)
         self.kirim()

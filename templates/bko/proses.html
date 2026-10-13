@@ -14,7 +14,7 @@
 <div class="preview-split">
 <div class="box">
   <div class="section-title">Data Pegawai &amp; Pengajuan — {{ pengajuan.kode }}</div>
-  <p class="sub" style="margin:-10px 0 12px;">
+  <p class="sub is-title-sub">
     <span class="tag paspor-status is-{{ pengajuan.status }}"><span class="dot"></span>{{ pengajuan.get_status_display }}</span>
     {% include "partials/_status_bko.html" with badge=True %}
   </p>
@@ -29,15 +29,15 @@
 
 <div class="box">
   <div class="section-title">SK Tugas Belajar — Admin BKO</div>
-  <p class="sub" style="margin:-10px 0 12px;">Unggahan SK Tugas Belajar menyelesaikan tugas Admin BKO; Biro PAKLN baru dapat menyelesaikan pengajuan setelah SK Tubel tersedia.</p>
+  <p class="sub is-title-sub">Unggahan SK Tugas Belajar menyelesaikan tugas Admin BKO; Biro PAKLN baru dapat menyelesaikan pengajuan setelah SK Tubel tersedia.</p>
   {% include "partials/_dokumen_tahap.html" with hapus_url="bko:hapus_dokumen" %}
 </div>
 
 {% if not alasan_kunci %}
   {% if pengajuan.status_bko == "menunggu" %}
   <div class="box is-danger-soft">
-    <div class="section-title" style="font-size:14px;">■ Tutup Pemrosesan</div>
-    <p class="cell-muted" style="margin:-8px 0 14px;">Gunakan bila SK Tugas Belajar <strong>tidak dapat diterbitkan</strong>. Alasan akan terlihat oleh Pegawai, Admin Unor, Admin BPSDM, dan Biro PAKLN. Pengajuan tidak dikembalikan.</p>
+    <div class="section-title is-small">■ Tutup Pemrosesan</div>
+    <p class="cell-muted is-title-sub">Gunakan bila SK Tugas Belajar <strong>tidak dapat diterbitkan</strong>. Alasan akan terlihat oleh Pegawai, Admin Unor, Admin BPSDM, dan Biro PAKLN. Pengajuan tidak dikembalikan.</p>
     <form method="post" data-confirm="Tutup pemrosesan SK Tugas Belajar untuk pengajuan ini?" data-confirm-title="Tutup Pemrosesan" data-confirm-ok="Tutup">
       {% csrf_token %}
       <div class="field">
@@ -49,8 +49,8 @@
   </div>
   {% elif pengajuan.status_bko == "ditutup" %}
   <div class="box">
-    <div class="section-title" style="font-size:14px;">↻ Buka Kembali Pemrosesan</div>
-    <p class="cell-muted" style="margin:-8px 0 14px;">Buka kembali bila penyebab penutupan sudah teratasi, lalu unggah SK Tugas Belajar.</p>
+    <div class="section-title is-small">↻ Buka Kembali Pemrosesan</div>
+    <p class="cell-muted is-title-sub">Buka kembali bila penyebab penutupan sudah teratasi, lalu unggah SK Tugas Belajar.</p>
     <form method="post" data-confirm="Buka kembali pemrosesan SK Tugas Belajar?" data-confirm-title="Buka Kembali" data-confirm-ok="Buka Kembali">
       {% csrf_token %}
       <div class="field">
