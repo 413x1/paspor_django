@@ -1,4 +1,4 @@
-"""Kolom "Keterangan Sumber Pembiayaan" (teks, WAJIB) pada form ajuan perjalanan PDLN."""
+"""Kolom "Keterangan Sumber Pembiayaan" (textarea, WAJIB) pada form ajuan perjalanan PDLN."""
 
 import csv
 import io
@@ -40,14 +40,16 @@ class KeteranganSumberPembiayaanTests(_Basis, TestCase):
         self.login(self.pegawai)
         html = self.client.get(reverse(self.URL) + "?jenis=pdln&tipe=T1").content.decode()
         self.assertIn("Keterangan Sumber Pembiayaan", html)
-        tag = re.search(r'<input[^>]*name="keterangan_sumber_pembiayaan"[^>]*>', html).group(0)
-        self.assertIn('type="text"', tag)          # input teks standar
-        self.assertIn('maxlength="255"', tag)
-        self.assertIn('class="input"', tag)        # gaya Bulma
+        self.assertIsNone(re.search(r'<input[^>]*name="keterangan_sumber_pembiayaan"', html))   # bukan input lagi
+        tag = re.search(r'<textarea[^>]*name="keterangan_sumber_pembiayaan"[^>]*>', html).group(0)
+        self.assertIn('class="textarea"', tag)     # gaya Bulma
+        self.assertIn('rows="3"', tag)
+        self.assertIn('maxlength="2000"', tag)
         self.assertIn("required", tag)             # wajib diisi
         # urutan: Sumber Pembiayaan (dropdown) -> Keterangan -> pernyataan kebenaran
         self.assertLess(html.index('name="sumber_pembiayaan"'), html.index('name="keterangan_sumber_pembiayaan"'))
         self.assertLess(html.index('name="keterangan_sumber_pembiayaan"'), html.index('name="pernyataan_benar"'))
+        self.assertIn('<div class="control"><textarea', html.split("Keterangan Sumber Pembiayaan")[1])
 
     def test_wajib_diisi_kosong_dan_hanya_spasi_ditolak(self):
         for kosong in ("", "    "):
@@ -70,10 +72,17 @@ class KeteranganSumberPembiayaanTests(_Basis, TestCase):
         self.assertEqual(r.status_code, 302)
         self.assertEqual(DetailPdln.objects.get(pengajuan=self._pengajuan()).keterangan_sumber_pembiayaan, "Beasiswa LPDP")
         html = self.client.get(reverse(self.URL)).content.decode()   # draft yang sama dibuka ulang
-        self.assertIn('value="Beasiswa LPDP"', html)
+        self.assertRegex(html, r'<textarea[^>]*name="keterangan_sumber_pembiayaan"[^>]*>\s*Beasiswa LPDP</textarea>')
 
-    def test_lebih_dari_255_karakter_ditolak(self):
-        r = self._kirim(keterangan_sumber_pembiayaan="x" * 256)
+    def test_teks_panjang_dan_multi_baris_diterima_sampai_batas(self):
+        panjang = "Baris pertama\nBaris kedua " + "x" * 600          # jauh melewati batas 255 lama
+        self.assertEqual(self._kirim(keterangan_sumber_pembiayaan=panjang).status_code, 302)
+        tersimpan = DetailPdln.objects.get(pengajuan=self._pengajuan()).keterangan_sumber_pembiayaan
+        self.assertEqual(tersimpan, panjang)
+        self.assertIn("\n", tersimpan)                                  # pemisah baris dipertahankan
+
+    def test_lebih_dari_2000_karakter_ditolak(self):
+        r = self._kirim(keterangan_sumber_pembiayaan="x" * 2001)
         self.assertEqual(r.status_code, 200)
         self.assertIn("keterangan_sumber_pembiayaan", r.context["form"].errors)
         self.assertFalse(Pengajuan.objects.filter(pegawai=self.pegawai).exists())
@@ -90,6 +99,7 @@ class KeteranganSumberPembiayaanTests(_Basis, TestCase):
         html = render_to_string("partials/_ringkasan_pengajuan.html", {"pengajuan": p})
         self.assertIn("Keterangan Sumber Pembiayaan", html)
         self.assertIn("Biaya instansi pengundang", html)
+        self.assertRegex(html, r'<textarea class="textarea" rows="2" readonly>Biaya instansi pengundang</textarea>')
         DetailPdln.objects.filter(pengajuan=p).update(keterangan_sumber_pembiayaan="")   # data lama sebelum kolom wajib
         p = Pengajuan.objects.get(pk=p.pk)
         self.assertNotIn("Keterangan Sumber Pembiayaan", render_to_string("partials/_ringkasan_pengajuan.html", {"pengajuan": p}))
@@ -104,6 +114,15 @@ class KeteranganSumberPembiayaanTests(_Basis, TestCase):
         DetailPdln.objects.filter(pengajuan=p).update(keterangan_sumber_pembiayaan="")
         html = self.client.get(reverse("pegawai:monitor_progres", args=[p.kode])).content.decode()
         self.assertNotIn("Sumber biaya:", html)
+
+    def test_monitor_memotong_keterangan_yang_sangat_panjang(self):
+        self._kirim(keterangan_sumber_pembiayaan="y" * 500)
+        p = self._pengajuan()
+        self.kirim(p)
+        self.login(self.pegawai)
+        html = self.client.get(reverse("pegawai:monitor_progres", args=[p.kode])).content.decode()
+        self.assertIn("Sumber biaya: " + "y" * 119 + "…", html)
+        self.assertNotIn("y" * 200, html)
 
     # --- export -----------------------------------------------------------------
     def test_export_memuat_kolom_baru_di_ujung_kanan_tanpa_menggeser_kolom_lama(self):
@@ -121,6 +140,16 @@ class KeteranganSumberPembiayaanTests(_Basis, TestCase):
         data = next(b for b in baris[1:] if b[0] == p.kode)
         self.assertEqual(len(data), len(kolom))
         self.assertEqual(data[-1], "Beasiswa LPDP")
+
+    def test_export_csv_memuat_keterangan_multi_baris_dalam_satu_sel(self):
+        self._kirim(keterangan_sumber_pembiayaan="Baris 1\nBaris 2")
+        p = self._pengajuan()
+        self.kirim(p)
+        csv_teks = self.get(self.admin_pakln, "pakln:export", query="?format=csv&jenis=pdln").content.decode("utf-8-sig")
+        baris = list(csv.reader(io.StringIO(csv_teks)))
+        data = next(b for b in baris[1:] if b[0] == p.kode)
+        self.assertEqual(len(data), len(baris[0]))                     # tidak memecah baris/kolom
+        self.assertEqual(data[-1], "Baris 1\nBaris 2")
 
     def test_export_pengajuan_non_dinas_kolom_baru_kosong(self):
         nondinas = Pengajuan.objects.create(pegawai=self.pegawai, form_saved=True)   # jenis bawaan: Non-Dinas
