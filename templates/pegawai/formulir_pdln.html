@@ -62,9 +62,14 @@
       </div>
       <div class="column">
         <div class="field">
-          <label class="label" for="{{ form.kegiatan.id_for_label }}">Kegiatan</label>
-          <div class="control" style="margin-bottom:6px;"><input type="search" id="kegiatanCari" class="input" placeholder="Cari nama kegiatan, penyelenggara, kota…" autocomplete="off" aria-label="Cari kegiatan"></div>
-          <div class="control"><div class="select is-fullwidth">{{ form.kegiatan }}</div></div>
+          <label class="label" for="kegiatanCari">Kegiatan</label>
+          <div class="control autocomplete" id="kegiatanAuto">
+            <input type="text" id="kegiatanCari" class="input" placeholder="Ketik min. 3 huruf: nama kegiatan, penyelenggara, kota…"
+              autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="kegiatanHasil">
+            <button type="button" class="autocomplete-clear" id="kegiatanHapus" aria-label="Hapus pilihan kegiatan" hidden>×</button>
+            <ul class="autocomplete-panel" id="kegiatanHasil" role="listbox"></ul>
+            <div class="multiselect-native">{{ form.kegiatan }}</div>
+          </div>
           <p class="helptext">Hanya kegiatan yang disetujui Admin Biro PAKLN, masih aktif, dan sesuai kategori.
             Kegiatan belum ada? <a href="{% url 'pegawai:usulkan_kegiatan' %}?tipe={{ tipe }}">Usulkan kegiatan baru</a>.</p>
           {% for error in form.kegiatan.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
@@ -175,18 +180,96 @@
 
     function saringKegiatan() {
       var kat = parseInt($kategori.val(), 10);
-      var q = ($('#kegiatanCari').val() || '').toLowerCase();
       var terpilih = $kegiatan.val();
       $kegiatan.empty();
       $opsiKegiatan.each(function () {
-        var v = this.value, data = OPSI[v];
-        var cocokKategori = data && (!kat || data.kategori.indexOf(kat) !== -1);
-        var cocokCari = !q || this.text.toLowerCase().indexOf(q) !== -1 || v === terpilih;
-        if (!v || (cocokKategori && cocokCari)) { $kegiatan.append($(this).clone()); }
+        var data = OPSI[this.value];
+        if (!this.value || (data && (!kat || data.kategori.indexOf(kat) !== -1))) { $kegiatan.append($(this).clone()); }
       });
       pilihUlang($kegiatan, terpilih);
+      tampilkanPilihan();
       isiKegiatan();
     }
+
+    // Autocomplete kegiatan: pencarian aktif setelah MIN_CARI huruf diketik,
+    // mencocokkan nama, penyelenggara, kota, dan negara kegiatan.
+    var MIN_CARI = 3;
+    var $cari = $('#kegiatanCari');
+    var $hasil = $('#kegiatanHasil');
+    var $hapus = $('#kegiatanHapus');
+    var aktif = -1;
+
+    function teksTerpilih() {
+      return $kegiatan.val() ? $kegiatan.find('option:selected').text() : '';
+    }
+
+    function tampilkanPilihan() {
+      $cari.val(teksTerpilih());
+      $hapus.prop('hidden', !$kegiatan.val());
+    }
+
+    function tutupHasil() {
+      $hasil.removeClass('is-active').empty();
+      $cari.attr('aria-expanded', 'false');
+      aktif = -1;
+    }
+
+    function pesanHasil(teks) {
+      $hasil.empty().append($('<li class="autocomplete-empty">').text(teks)).addClass('is-active');
+    }
+
+    function cariKegiatan() {
+      var q = ($cari.val() || "").trim().toLowerCase();
+      aktif = -1;
+      if (q.length < MIN_CARI) { pesanHasil('Ketik minimal ' + MIN_CARI + ' huruf untuk mencari kegiatan.'); return; }
+      $hasil.empty();
+      $kegiatan.find('option').each(function () {
+        var data = OPSI[this.value];
+        if (!data) { return; }
+        var meta = [data.penyelenggara, data.kota, data.negara_nama].filter(Boolean).join(' · ');
+        if ((this.text + ' ' + meta).toLowerCase().indexOf(q) === -1) { return; }
+        $('<li class="autocomplete-option" role="option">').attr('data-value', this.value)
+          .append($('<span class="autocomplete-nama">').text(this.text))
+          .append($('<span class="autocomplete-meta">').text(meta + (meta ? ' · ' : '') + data.periode))
+          .appendTo($hasil);
+      });
+      if (!$hasil.children().length) { pesanHasil('Kegiatan tidak ditemukan untuk kategori ini.'); return; }
+      $hasil.addClass('is-active');
+      $cari.attr('aria-expanded', 'true');
+    }
+
+    function pilihKegiatan(nilai) {
+      $kegiatan.val(nilai).trigger('change');
+      tampilkanPilihan();
+      tutupHasil();
+    }
+
+    function sorot(i) {
+      var $opsi = $hasil.find('.autocomplete-option');
+      if (!$opsi.length) { return; }
+      aktif = (i + $opsi.length) % $opsi.length;
+      $opsi.removeClass('is-active').eq(aktif).addClass('is-active')[0].scrollIntoView({ block: 'nearest' });
+    }
+
+    $cari.on('input', cariKegiatan);
+    $cari.on('focus', function () { if ($cari.val() !== teksTerpilih() || !$kegiatan.val()) { cariKegiatan(); } });
+    $cari.on('keydown', function (e) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); if (!$hasil.hasClass('is-active')) { cariKegiatan(); } sorot(aktif + 1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); sorot(aktif - 1); }
+      else if (e.key === 'Enter') {
+        if ($hasil.hasClass('is-active')) { e.preventDefault(); }
+        var $a = $hasil.find('.autocomplete-option').eq(aktif);
+        if (aktif >= 0 && $a.length) { pilihKegiatan($a.data('value')); }
+      } else if (e.key === 'Escape') { tutupHasil(); tampilkanPilihan(); }
+    });
+    // mousedown (bukan click) agar terpilih sebelum input kehilangan fokus.
+    $hasil.on('mousedown', '.autocomplete-option', function (e) { e.preventDefault(); pilihKegiatan($(this).data('value')); });
+    $cari.on('blur', function () {
+      if (!($cari.val() || "").trim() && $kegiatan.val()) { pilihKegiatan(''); return; }
+      tutupHasil();
+      tampilkanPilihan();
+    });
+    $hapus.on('click', function () { pilihKegiatan(''); $cari.trigger('focus'); });
 
     function tandaiNegara(ids) {
       var berubah = false;
@@ -218,7 +301,6 @@
     }
 
     $kategori.on('change', saringKegiatan);
-    $('#kegiatanCari').on('input', saringKegiatan);
     $kegiatan.on('change', isiKegiatan);
     saringKegiatan();
   });
