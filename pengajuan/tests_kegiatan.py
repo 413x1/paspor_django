@@ -204,6 +204,7 @@ class PemilihanKegiatanTests(_KegiatanBasis, TestCase):
             "kategori": self.kategori(tipe).pk, "kegiatan": kegiatan.pk if kegiatan else "",
             "tujuan_negara": [self.singapura.pk], "sumber_pembiayaan": self.sumber(tipe).pk,
             "tgl_berangkat": self.berangkat.isoformat(), "tgl_kembali": (self.berangkat + timedelta(days=6)).isoformat(),
+            "keterangan_sumber_pembiayaan": "Biaya Uji",   # kolom wajib sejak form PDLN menambahkannya
             "pernyataan_benar": "on",
         }
         data.update(lain)
