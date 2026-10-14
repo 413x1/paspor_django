@@ -303,13 +303,14 @@ Data pegawai (Nama, NIP, Jabatan, Pangkat, Unit Kerja, Unit Organisasi)
 |---|---|---|---|---|---|
 | Kategori perjalanan | Ibadah, Keperluan Pribadi, Wisata, Lainnya | Pertemuan Bilateral/Regional/Multilateral, Pameran/Expo, Pemberian Advis Teknis, Pendampingan | Master, Doctoral | Short Course-Training, Seminar/Lokakarya, Workshop, Simposium/Konferensi Internasional | `Pengajuan.kategori` (FK master) |
 | Maksud perjalanan | ✅ | — | — | — | `Pengajuan.maksud` |
-| Nama beasiswa (Aplikasi PINTAR) | — | — | ✅ droplist | ✅ droplist | `DetailPdln.beasiswa_*` |
-| Penyelenggara | — | ✅ | — | ✅ | `DetailPdln.penyelenggara` |
-| Perguruan tinggi | — | — | ✅ | — | `DetailPdln.perguruan_tinggi` |
+| **Kegiatan** ([EVENT_IMPLEMENTATION_PLAN.MD](EVENT_IMPLEMENTATION_PLAN.MD)) | — | ✅ | ✅ | ✅ | `Pengajuan.kegiatan` (FK `paspor.Kegiatan`) + snapshot `DetailPdln.kegiatan_nama/kegiatan_tahun` |
+| Penyelenggara | — | otomatis dari kegiatan | — | otomatis dari kegiatan | `DetailPdln.penyelenggara` (snapshot) |
+| Perguruan tinggi | — | — | otomatis dari kegiatan (universitas) | — | `DetailPdln.perguruan_tinggi` (snapshot) |
+| Nama beasiswa (Aplikasi PINTAR) | — | — | diganti Kegiatan (data lama saja) | diganti Kegiatan (data lama saja) | `DetailPdln.beasiswa_*` |
 | Negara tujuan | ✅ (M2M) | ✅ | ✅ | ✅ | `Pengajuan.tujuan_negara` |
-| Kota tujuan | — | ✅ | ✅ | ✅ | `DetailPdln.kota_tujuan` |
+| Kota tujuan | — | otomatis dari kegiatan | otomatis | otomatis | `DetailPdln.kota_tujuan` (snapshot) |
 | Tgl keberangkatan / kepulangan | ✅ | ✅ | ✅ | ✅ | `Pengajuan.tgl_berangkat/tgl_kembali` |
-| Tgl mulai / selesai kegiatan | — | Agenda (sesuai undangan) | Perkuliahan | Pelatihan | `DetailPdln.tgl_mulai_kegiatan/tgl_selesai_kegiatan` |
+| Tgl mulai / selesai kegiatan | — | Agenda — otomatis dari kegiatan | Perkuliahan — otomatis | Pelatihan — otomatis | `DetailPdln.tgl_mulai_kegiatan/tgl_selesai_kegiatan` (snapshot) |
 | Sumber pembiayaan | Pribadi, Sponsor/Pihak Ketiga, Lainnya | DIPA Kementerian PU, DIPA K/L Lain, Donor Penyelenggara | DIPA Kementerian PU, DIPA K/L Lain, Beasiswa LPDP, Beasiswa/Donor LN, Beasiswa Lainnya | DIPA Kementerian PU, DIPA K/L Lain, Beasiswa/Donor LN, Beasiswa Lainnya | `Pengajuan.sumber_pembiayaan` (FK master) |
 | Jumlah hari kerja / kalender | ✅ otomatis | otomatis (informasi, untuk report) | otomatis | otomatis | `Pengajuan.jumlah_hari_kerja` |
 | Cek sisa cuti | ✅ (tolak bila melebihi) | — (dinas, bukan cuti) | — | — | — |
@@ -321,7 +322,10 @@ Validasi tambahan (server-side):
 - Periode kegiatan **berada di dalam** periode perjalanan
   (`tgl_berangkat ≤ tgl_mulai_kegiatan` dan `tgl_selesai_kegiatan ≤ tgl_kembali`).
 - Pilihan kategori & sumber pembiayaan difilter sesuai tipe ([§8.4](#84-master-data)).
-- Beasiswa wajib untuk T2P **dan** T2L (mockup hanya memvalidasi T2L — lihat [§14](#14-keputusan--pertanyaan-terbuka)).
+- Kegiatan wajib dipilih sebelum pengajuan dikirim ke Admin Unor (draft boleh tanpa kegiatan); kategori,
+  sumber pembiayaan, dan negara tujuan divalidasi terhadap kegiatan — aturan lengkap di
+  [EVENT_IMPLEMENTATION_PLAN.MD §4](EVENT_IMPLEMENTATION_PLAN.MD#4-aturan-bisnis). Droplist beasiswa Aplikasi PINTAR
+  diganti Kegiatan.
 
 ---
 
@@ -603,6 +607,7 @@ luar cakupan dokumen ini.
 |---|---|
 | `KategoriPerjalanan` | Sudah punya `jenis_perjalanan` (PDLN/Non-Dinas). Tambah `tipe_pdln` — `JSONField(list)` berisi kode tipe yang berlaku (`["T1","T3"]`, `["T2P"]`, `["T2L"]`); kosong = semua tipe PDLN. |
 | `SumberPembiayaan` | Sudah punya `tipe_perjalanan`. Tambah `tipe_pdln` (`JSONField(list)`), aturan sama — mis. *DIPA Kementerian PU* berlaku untuk semua, *Beasiswa LPDP* hanya `["T2P"]`. |
+| `Kegiatan` + `DasarKegiatan` (baru) | Kegiatan PDLN dikelola Admin Biro PAKLN, diusulkan Pegawai/Admin BPSDM — [EVENT_IMPLEMENTATION_PLAN.MD §7](EVENT_IMPLEMENTATION_PLAN.MD#7-perancangan-data). Seed contoh: `python manage.py seed_kegiatan` (dipanggil `seed_demo_data`). |
 | `Negara` | Tambah `perlu_visa` (bool, default `False`) — penentu wajib/opsionalnya Rekomendasi Visa ([§6.4](#64-tahap-admin-biro-pakln)); dapat diubah di Manajemen Negara. |
 | Seed | Data migration untuk kategori & sumber pembiayaan PDLN sesuai [§5](#5-formulir-pengajuan-per-tipe). |
 

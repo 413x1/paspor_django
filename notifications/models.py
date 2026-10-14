@@ -39,6 +39,10 @@ class Notification(models.Model):
         BKO_DITUTUP = "NOTIF_07C_BKO_DITUTUP", "Pemrosesan ditutup Admin BKO"
         BKO_DIBUKA = "NOTIF_07D_BKO_DIBUKA", "Pemrosesan BKO dibuka kembali"
         INFO_BKO = "NOTIF_07E_INFO_BKO", "Perbaikan diteruskan ulang (info BKO)"
+        # Kegiatan PDLN (EVENT_IMPLEMENTATION_PLAN.MD §9)
+        KEGIATAN_DIUSULKAN = "NOTIF_08A_KEGIATAN_DIUSULKAN", "Kegiatan diusulkan"
+        KEGIATAN_DISETUJUI = "NOTIF_08B_KEGIATAN_DISETUJUI", "Usulan kegiatan disetujui"
+        KEGIATAN_DITOLAK = "NOTIF_08C_KEGIATAN_DITOLAK", "Usulan kegiatan ditolak"
 
     class Level(models.TextChoices):
         INFO = "info", "Info"

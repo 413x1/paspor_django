@@ -44,19 +44,16 @@
     {% csrf_token %}
     {% if form.non_field_errors %}<div class="notification paspor-msg is-danger">{{ form.non_field_errors|join:" " }}</div>{% endif %}
 
-    {% if form.beasiswa %}
-      <div class="field">
-        <label class="label" for="{{ form.beasiswa.id_for_label }}">{{ form.beasiswa.label }} <span class="badge-auto">Aplikasi PINTAR</span></label>
-        <div class="control"><div class="select is-fullwidth">{{ form.beasiswa }}</div></div>
-        <p class="helptext">Hanya menampilkan pencalonan beasiswa atas nama Anda yang berstatus <strong>Selesai</strong>
-          (mendapat rekomendasi Admin BPSDM dan Admin Biro PAKLN).</p>
-        {% if pintar_stub %}<p class="help is-warning">Integrasi Aplikasi PINTAR belum aktif — daftar ini data contoh (stub).</p>{% endif %}
-        {% for error in form.beasiswa.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+    {% if usulan_menunggu %}
+      <div class="notification paspor-msg is-info">
+        <strong>Usulan kegiatan Anda menunggu persetujuan Admin Biro PAKLN:</strong>
+        {% for u in usulan_menunggu %}{{ u.nama }}{% if not forloop.last %}; {% endif %}{% endfor %}.
+        Formulir dapat disimpan tanpa kegiatan; pilih kegiatannya setelah disetujui.
       </div>
     {% endif %}
 
     <div class="columns">
-      <div class="column">
+      <div class="column is-4">
         <div class="field">
           <label class="label" for="{{ form.kategori.id_for_label }}">Kategori {% if tipe == "T2P" %}Pendidikan{% elif tipe == "T2L" %}Pelatihan{% else %}Perjalanan{% endif %}</label>
           <div class="control"><div class="select is-fullwidth">{{ form.kategori }}</div></div>
@@ -64,38 +61,33 @@
         </div>
       </div>
       <div class="column">
-        {% if form.penyelenggara %}
-          <div class="field">
-            <label class="label" for="{{ form.penyelenggara.id_for_label }}">Penyelenggara</label>
-            <div class="control">{{ form.penyelenggara }}</div>
-            {% for error in form.penyelenggara.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
-          </div>
-        {% endif %}
-        {% if form.perguruan_tinggi %}
-          <div class="field">
-            <label class="label" for="{{ form.perguruan_tinggi.id_for_label }}">Perguruan Tinggi</label>
-            <div class="control">{{ form.perguruan_tinggi }}</div>
-            {% for error in form.perguruan_tinggi.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
-          </div>
-        {% endif %}
+        <div class="field">
+          <label class="label" for="{{ form.kegiatan.id_for_label }}">Kegiatan</label>
+          <div class="control" style="margin-bottom:6px;"><input type="search" id="kegiatanCari" class="input" placeholder="Cari nama kegiatan, penyelenggara, kota…" autocomplete="off" aria-label="Cari kegiatan"></div>
+          <div class="control"><div class="select is-fullwidth">{{ form.kegiatan }}</div></div>
+          <p class="helptext">Hanya kegiatan yang disetujui Admin Biro PAKLN, masih aktif, dan sesuai kategori.
+            Kegiatan belum ada? <a href="{% url 'pegawai:usulkan_kegiatan' %}?tipe={{ tipe }}">Usulkan kegiatan baru</a>.</p>
+          {% for error in form.kegiatan.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+        </div>
       </div>
     </div>
 
-    <div class="columns">
-      <div class="column">
-        <div class="field">
-          <label class="label" for="{{ form.tujuan_negara.id_for_label }}">Negara Tujuan</label>
-          <div class="control">{{ form.tujuan_negara }}</div>
-          {% for error in form.tujuan_negara.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
-        </div>
-      </div>
-      <div class="column">
-        <div class="field">
-          <label class="label" for="{{ form.kota_tujuan.id_for_label }}">Kota Tujuan</label>
-          <div class="control">{{ form.kota_tujuan }}</div>
-          {% for error in form.kota_tujuan.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
-        </div>
-      </div>
+    <div class="field-readonly-grid kegiatan-info" id="kegiatanInfo" hidden>
+      <div class="field"><label class="label">{{ form.label_penyelenggara }} <span class="badge-auto">Dari kegiatan</span></label>
+        <div class="control"><input class="input" data-kegiatan-isi="penyelenggara" readonly></div></div>
+      <div class="field"><label class="label">Negara Kegiatan <span class="badge-auto">Dari kegiatan</span></label>
+        <div class="control"><input class="input" data-kegiatan-isi="negara_nama" readonly></div></div>
+      <div class="field"><label class="label">Kota <span class="badge-auto">Dari kegiatan</span></label>
+        <div class="control"><input class="input" data-kegiatan-isi="kota" readonly></div></div>
+      <div class="field"><label class="label">Periode {% if tipe == "T2P" %}Perkuliahan{% elif tipe == "T2L" %}Pelatihan{% else %}Agenda{% endif %} <span class="badge-auto">Dari kegiatan</span></label>
+        <div class="control"><input class="input" data-kegiatan-isi="periode" readonly></div></div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="{{ form.tujuan_negara.id_for_label }}">Negara Tujuan</label>
+      <div class="control">{{ form.tujuan_negara }}</div>
+      <p class="helptext">Negara kegiatan otomatis menjadi negara tujuan; Anda boleh menambah negara lain.</p>
+      {% for error in form.tujuan_negara.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
     </div>
 
     <div class="columns">
@@ -114,29 +106,14 @@
         </div>
       </div>
     </div>
-
-    <div class="columns">
-      <div class="column">
-        <div class="field">
-          <label class="label" for="{{ form.tgl_mulai_kegiatan.id_for_label }}">{{ form.tgl_mulai_kegiatan.label }}</label>
-          <div class="control">{{ form.tgl_mulai_kegiatan }}</div>
-          {% for error in form.tgl_mulai_kegiatan.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
-        </div>
-      </div>
-      <div class="column">
-        <div class="field">
-          <label class="label" for="{{ form.tgl_selesai_kegiatan.id_for_label }}">{{ form.tgl_selesai_kegiatan.label }}</label>
-          <div class="control">{{ form.tgl_selesai_kegiatan }}</div>
-          {% for error in form.tgl_selesai_kegiatan.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
-        </div>
-      </div>
-    </div>
+    <p class="helptext" style="margin-top:-8px;margin-bottom:12px;">Periode perjalanan wajib mencakup periode kegiatan.</p>
 
     <div class="columns">
       <div class="column">
         <div class="field">
           <label class="label" for="{{ form.sumber_pembiayaan.id_for_label }}">Sumber Pembiayaan</label>
           <div class="control"><div class="select is-fullwidth">{{ form.sumber_pembiayaan }}</div></div>
+          <p class="helptext">Pilihan mengikuti skema pendanaan kegiatan.</p>
           {% for error in form.sumber_pembiayaan.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
         </div>
       </div>
@@ -161,6 +138,7 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ opsi_kegiatan|json_script:"opsi-kegiatan" }}
 <script>
   $(function () {
     var $b = $('#{{ form.tgl_berangkat.id_for_label }}');
@@ -172,6 +150,71 @@
         .fail(function () { $('#hari_info').val(''); });
     }
     $b.add($k).on('change', hitung);
+
+    // Kegiatan: saring per kategori + pencarian, isian otomatis, saring
+    // sumber pembiayaan ke skema kegiatan, dan negara kegiatan otomatis
+    // menjadi negara tujuan (EVENT_IMPLEMENTATION_PLAN.MD B5–B7). Server tetap
+    // memvalidasi ulang semuanya.
+    var OPSI = JSON.parse(document.getElementById('opsi-kegiatan').textContent);
+    var $kategori = $('#{{ form.kategori.id_for_label }}');
+    var $kegiatan = $('#{{ form.kegiatan.id_for_label }}');
+    var $sumber = $('#{{ form.sumber_pembiayaan.id_for_label }}');
+    var $negara = $('#{{ form.tujuan_negara.id_for_label }}');
+    var $opsiKegiatan = $kegiatan.find('option').clone();
+    var $opsiSumber = $sumber.find('option').clone();
+
+    function pilihUlang($select, nilai) {
+      $select.val($select.find('option[value="' + nilai + '"]').length ? nilai : '');
+    }
+
+    function saringKegiatan() {
+      var kat = parseInt($kategori.val(), 10);
+      var q = ($('#kegiatanCari').val() || '').toLowerCase();
+      var terpilih = $kegiatan.val();
+      $kegiatan.empty();
+      $opsiKegiatan.each(function () {
+        var v = this.value, data = OPSI[v];
+        var cocokKategori = data && (!kat || data.kategori.indexOf(kat) !== -1);
+        var cocokCari = !q || this.text.toLowerCase().indexOf(q) !== -1 || v === terpilih;
+        if (!v || (cocokKategori && cocokCari)) { $kegiatan.append($(this).clone()); }
+      });
+      pilihUlang($kegiatan, terpilih);
+      isiKegiatan();
+    }
+
+    function tandaiNegara(ids) {
+      var berubah = false;
+      $.each(ids, function (_, id) {
+        var $opt = $negara.find('option[value="' + id + '"]');
+        if ($opt.length && !$opt.prop('selected')) { $opt.prop('selected', true); berubah = true; }
+      });
+      if (!berubah) { return; }
+      // Sinkronkan tampilan chip/checklist komponen .multiselect (base.html).
+      var $wrap = $negara.closest('.multiselect');
+      $wrap.find('.multiselect-option input[type=checkbox]').each(function () {
+        var $opt = $(this).data('option');
+        if ($opt && $opt.prop('selected') && !this.checked) { $(this).prop('checked', true).trigger('change'); }
+      });
+    }
+
+    function isiKegiatan() {
+      var data = OPSI[$kegiatan.val()];
+      $('#kegiatanInfo').prop('hidden', !data);
+      var terpilih = $sumber.val();
+      $sumber.empty();
+      $opsiSumber.each(function () {
+        if (!this.value || !data || data.skema.indexOf(parseInt(this.value, 10)) !== -1) { $sumber.append($(this).clone()); }
+      });
+      pilihUlang($sumber, terpilih);
+      if (!data) { return; }
+      $('[data-kegiatan-isi]').each(function () { $(this).val(data[$(this).data('kegiatan-isi')]); });
+      tandaiNegara(data.negara);
+    }
+
+    $kategori.on('change', saringKegiatan);
+    $('#kegiatanCari').on('input', saringKegiatan);
+    $kegiatan.on('change', isiKegiatan);
+    saringKegiatan();
   });
 </script>
 {% endblock %}

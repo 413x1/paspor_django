@@ -394,7 +394,7 @@ tombol per halaman (seperti `btn-pelaporan-*` yang sudah dihapus).
 | Pilih banyak | `.multiselect` (chip + panel pencarian), mis. Tujuan Negara |
 | Tanggal | `input[type=date]` — ikon kalender di kanan otomatis |
 | Unggah berkas (baris dokumen) | `partials/_dokumen_tahap.html`: komponen `.file.is-small` berikon unggah, label "Unggah"/"Ganti"; berkas langsung terunggah saat dipilih; modal Tanggal Surat otomatis bila `data-tanggal-surat="1"` |
-| Unggah berkas (field form) | `{% include "partials/_input_berkas.html" with field=form.file %}` — widget `forms.FileInput(attrs={"class": "file-input", ...})` (bukan `ClearableFileInput`, agar tidak muncul teks bawaan "Currently/Clear"); tombol "Pilih berkas" berikon + nama berkas terpilih |
+| Unggah berkas (field form) | `{% include "partials/_input_berkas.html" with field=form.file %}` — widget `forms.FileInput(attrs={"class": "file-input", ...})` (bukan `ClearableFileInput`, agar tidak muncul teks bawaan "Currently/Clear"); tombol "Pilih berkas" berikon + nama berkas terpilih; tinggi, huruf (14px), dan radius (8px) sama dengan `.input` |
 
 Aturan:
 
@@ -420,6 +420,7 @@ Aturan:
 |---|---|---|---|
 | Status pengajuan | `.tag.paspor-status.is-<status>` + `<span class="dot">` | Pill 12px tebal + titik | Di tabel & kepala pratinjau — [§3.4](#34-warna-status-pengajuan) |
 | Status BKO | `.tag.bko-status.is-<status_bko>` (`partials/_status_bko.html` `badge=True`) | Pill 11.5px | Di samping status pengajuan T2P |
+| Status kegiatan | `.tag.kegiatan-status.is-menunggu/disetujui/ditolak/nonaktif` | Pill 11.5px | Daftar & detail Kegiatan, usulan kegiatan |
 | Wajib / opsional | `.badge-auto` / `.badge-auto.is-optional` | Pill 10px | Di judul dokumen/field |
 | Badge menu | `.sidebar-badge` | Kotak gold | Jumlah tindakan di sidebar |
 | Peran | `.paspor-role` | Kotak kecil | Label peran user |
@@ -509,6 +510,7 @@ Aturan:
 | Opsi pilihan | `.jenis-option` (`.active`, `.disabled`) | Modal pilih jenis perjalanan |
 | Tab | `.tab-bar` + `.button.is-small.is-active` | Filter tab |
 | Dropdown aksi | `.table-head-actions` + `.table-head-menu` | Aksi batch di kepala tabel |
+| Baris dasar kegiatan | `.dasar-row` (formset, `templates/kegiatan/_dasar_row.html`) / `.dasar-list` (read-only) | Dasar kegiatan: surat, tautan, PINTAR, lainnya + berkas opsional |
 
 Sebelum membuat komponen baru, cek tabel ini dan `templates/partials/`.
 

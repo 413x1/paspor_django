@@ -71,6 +71,25 @@
 </div>
 {% endif %}
 
+{% if usulan_kegiatan %}
+<div class="section-title is-small">Usulan Kegiatan Saya</div>
+<div class="table-wrap" style="margin-bottom:20px;">
+  <table class="table data-table is-fullwidth is-hoverable">
+    <thead><tr><th>Kegiatan</th><th>Tgl Usul</th><th>Status</th><th>Catatan Admin Biro PAKLN</th></tr></thead>
+    <tbody>
+      {% for u in usulan_kegiatan %}
+        <tr>
+          <td><strong>{{ u.nama }}</strong><br><span class="cell-muted">{{ u.penyelenggara }} · {{ u.tahun_pelaksanaan }}</span></td>
+          <td>{{ u.created_at|date:"d M Y" }}</td>
+          <td><span class="tag kegiatan-status is-{{ u.status }}">{{ u.get_status_display }}</span></td>
+          <td>{{ u.catatan_keputusan|default:"—" }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
 <div class="tab-bar" role="tablist">
   <button type="button" class="button is-small {% if tab != 'nondinas' %}is-active{% endif %}" data-riwayat-tab="pdln">Riwayat PDLN</button>
   <button type="button" class="button is-small {% if tab == 'nondinas' %}is-active{% endif %}" data-riwayat-tab="nondinas">Riwayat Non-Dinas</button>

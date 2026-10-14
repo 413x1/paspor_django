@@ -1,6 +1,7 @@
 """Badge jumlah item "perlu tindakan" pada sidebar (BISNIS_PROSES_PDLN.MD §9)."""
 
 from accounts.models import User
+from paspor.models import Kegiatan
 
 from .models import LaporanPdln, PermohonanPembatalan
 
@@ -19,6 +20,7 @@ def badge_sidebar(request):
             status=PermohonanPembatalan.Status.MENUNGGU_PAKLN
         ).count()
         badge["pelaporan"] = LaporanPdln.objects.filter(status=LaporanPdln.Status.MENUNGGU).count()
+        badge["kegiatan"] = Kegiatan.objects.filter(status=Kegiatan.Status.MENUNGGU).count()
     elif user.role == User.Role.PEGAWAI:
         badge["pelaporan"] = LaporanPdln.objects.filter(
             pengajuan__pegawai=user, status=LaporanPdln.Status.DIKEMBALIKAN

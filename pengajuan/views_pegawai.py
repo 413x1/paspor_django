@@ -17,10 +17,10 @@ from paspor.validators import KODE_BUKAN_PDF, periksa_pdf, tandai_ditolak
 from logs.utils import catat_riwayat, record_activity
 from notifications import services as notif
 from notifications.services import notify_resubmit_unor, notify_submit_unor
-from paspor.integrasi import pintar
 from paspor.kalender import rincian_hari
 
-from . import alur, pembatalan, riwayat, tahap
+from . import alur, kegiatan, pembatalan, riwayat, tahap
+from . import views_kegiatan
 from .decorators import role_required
 from .forms import LaporanPdlnForm, PdlnForm, PengajuanForm
 from .models import DokumenBko, DokumenPakln, LaporanPdln, Pengajuan, PermohonanPembatalan, RiwayatPengajuan
@@ -61,6 +61,7 @@ def beranda(request):
         "profile": getattr(request.user, "profile", None),
         "tab": request.GET.get("tab", "pdln"),
         "tipe_choices": Pengajuan.TipePdln.choices,
+        "usulan_kegiatan": views_kegiatan.usulan_pegawai(request.user)[:10],
     }
     return render(request, "pegawai/beranda.html", context)
 
@@ -214,15 +215,9 @@ def formulir_pengajuan(request):
 
 
 def _formulir_pdln(request, aktif, tipe, profile):
-    pencalonan = []
-    if tipe in (Pengajuan.TipePdln.T2P, Pengajuan.TipePdln.T2L):
-        nip = profile.nip if profile else ""
-        jenis_beasiswa = pintar.JENIS_PENDIDIKAN if tipe == Pengajuan.TipePdln.T2P else pintar.JENIS_PELATIHAN
-        pencalonan = pintar.daftar_pencalonan_selesai(nip, jenis_beasiswa)
-
     instance = aktif or Pengajuan(pegawai=request.user, jenis_perjalanan=JP.PDLN, tipe_pdln=tipe)
     if request.method == "POST":
-        form = PdlnForm(request.POST, instance=instance, tipe=tipe, pencalonan=pencalonan)
+        form = PdlnForm(request.POST, instance=instance, tipe=tipe)
         if form.is_valid():
             with transaction.atomic():
                 if alur.pengajuan_belum_tuntas(request.user) not in (None, aktif):
@@ -241,14 +236,20 @@ def _formulir_pdln(request, aktif, tipe, profile):
                 request, ActivityLog.Aktivitas.SIMPAN_FORMULIR, f"Menyimpan formulir pengajuan {pengajuan.kode}",
                 target_type="pengajuan", target_id=pengajuan.kode,
             )
-            messages.success(request, "Formulir pengajuan berhasil disimpan.")
+            if pengajuan.kegiatan_id:
+                messages.success(request, "Formulir pengajuan berhasil disimpan.")
+            else:
+                messages.warning(request, (
+                    "Formulir disimpan tanpa kegiatan. Pilih kegiatan (setelah usulan Anda disetujui Admin "
+                    "Biro PAKLN) sebelum mengirim pengajuan ke Admin Unor."
+                ))
             return redirect("pegawai:upload_dokumen", kode=pengajuan.kode)
         record_activity(
             request, ActivityLog.Aktivitas.SIMPAN_FORMULIR, "Menyimpan formulir pengajuan",
             status=ActivityLog.Status.GAGAL, detail="Validasi gagal: " + ", ".join(form.errors),  # nama field saja
         )
     else:
-        form = PdlnForm(instance=instance, tipe=tipe, pencalonan=pencalonan)
+        form = PdlnForm(instance=instance, tipe=tipe)
 
     return render(request, "pegawai/formulir_pdln.html", {
         "form": form,
@@ -256,7 +257,8 @@ def _formulir_pdln(request, aktif, tipe, profile):
         "pengajuan": instance,
         "tipe": tipe,
         "tipe_label": dict(Pengajuan.TipePdln.choices).get(tipe, ""),
-        "pintar_stub": pintar.memakai_stub() and "beasiswa" in form.fields,
+        "opsi_kegiatan": form.opsi_kegiatan(),
+        "usulan_menunggu": views_kegiatan.usulan_pegawai(request.user).filter(status="menunggu"),
     })
 
 
@@ -328,6 +330,9 @@ def _kirim(request, pengajuan):
     is_resubmit = bool(pengajuan.catatan_unor)
     catatan = request.POST.get("catatan", "").strip() if is_resubmit else ""
     kurang = tahap.konteks_dokumen(pengajuan, "pegawai")["dokumen_kurang"]
+    if pengajuan.is_pdln and not pengajuan.kegiatan_id:  # B1
+        messages.error(request, "Pilih kegiatan pada formulir pengajuan sebelum mengirim ke Admin Unor.")
+        return None
     if kurang:
         messages.error(request, "Lengkapi dokumen wajib sebelum mengirim: " + ", ".join(kurang) + ".")
         return None
@@ -353,6 +358,8 @@ def _kirim(request, pengajuan):
         if profile and profile.unit_organisasi_id:
             p.unit_organisasi_id = profile.unit_organisasi_id
         p.save()
+        if p.is_pdln:
+            kegiatan.snapshot(p)  # B13: data kegiatan dibekukan sejak dikirim
         riwayat.catat(
             p,
             RiwayatPengajuan.Aksi.DIKIRIM_ULANG if is_resubmit else RiwayatPengajuan.Aksi.DIKIRIM,

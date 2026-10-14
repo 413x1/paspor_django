@@ -78,6 +78,12 @@ class Pengajuan(models.Model):
         "paspor.SumberPembiayaan", on_delete=models.PROTECT, null=True, blank=True,
         related_name="pengajuan_list", verbose_name="Sumber Pembiayaan",
     )
+    # Kegiatan yang menjadi tujuan PDLN (wajib saat Kirim, aturan B1) —
+    # data kegiatannya di-snapshot ke DetailPdln (B13).
+    kegiatan = models.ForeignKey(
+        "paspor.Kegiatan", on_delete=models.PROTECT, null=True, blank=True,
+        related_name="pengajuan_list", verbose_name="Kegiatan",
+    )
     tgl_berangkat = models.DateField(null=True, blank=True)
     tgl_kembali = models.DateField(null=True, blank=True)
     # Snapshot hasil hitung sistem (paspor.kalender), bukan input pegawai —
@@ -798,6 +804,10 @@ class DetailPdln(models.Model):
     # nama agar tetap terbaca bila data PINTAR berubah/tidak tersedia.
     beasiswa_pintar_id = models.CharField("ID Pencalonan PINTAR", max_length=50, blank=True)
     beasiswa_nama = models.CharField("Nama Beasiswa", max_length=255, blank=True)
+    # Snapshot Kegiatan (EVENT_IMPLEMENTATION_PLAN.MD §7.4) — bersama
+    # penyelenggara/perguruan_tinggi, kota_tujuan, dan tanggal kegiatan.
+    kegiatan_nama = models.CharField("Nama Kegiatan", max_length=255, blank=True)
+    kegiatan_tahun = models.PositiveSmallIntegerField("Tahun Kegiatan", null=True, blank=True)
     pernyataan_benar = models.BooleanField("Pernyataan kebenaran data", default=False)
 
     class Meta:

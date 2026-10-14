@@ -29,6 +29,7 @@ class ActivityLog(models.Model):
         HAPUS_DOKUMEN = "dokumen.hapus", "Menghapus dokumen"
         GENERATE_ND = "dokumen.generate_nd", "Generate/unduh Nota Dinas"
         UBAH_MASTER = "master.ubah", "Mengubah data master"
+        UBAH_KEGIATAN = "kegiatan.ubah", "Mengelola/mengusulkan kegiatan"
         RESET_LOG = "log.reset", "Reset Log"
 
     class Status(models.TextChoices):
