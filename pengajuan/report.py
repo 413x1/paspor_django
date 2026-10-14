@@ -79,6 +79,8 @@ def baca_filter(params):
         "kategori": params.get("kategori", ""),
         "sumber": params.get("sumber", ""),
         "kanal": params.get("kanal", "") if params.get("kanal", "") in Pengajuan.Kanal.values else "",
+        "kegiatan": params.get("kegiatan", ""),
+        "tahun_kegiatan": params.get("tahun_kegiatan", ""),
     }
 
 
@@ -103,6 +105,10 @@ def terapkan_filter(qs, f):
         qs = qs.filter(sumber_pembiayaan_id=int(f["sumber"]))
     if f["kanal"]:
         qs = qs.filter(kanal=f["kanal"])
+    if f["kegiatan"].isdigit():
+        qs = qs.filter(kegiatan_id=int(f["kegiatan"]))
+    if f["tahun_kegiatan"].isdigit():
+        qs = qs.filter(kegiatan__tahun_pelaksanaan=int(f["tahun_kegiatan"]))
     return qs
 
 
@@ -224,7 +230,8 @@ def status_pelaporan(p):
 
 
 KOLOM_EXPORT = [
-    "Kode", "Jenis", "Tipe", "Nama", "NIP", "Jabatan", "Unit Organisasi", "Kategori", "Negara",
+    "Kode", "Jenis", "Tipe", "Nama", "NIP", "Jabatan", "Unit Organisasi", "Kategori", "Kegiatan",
+    "Tahun Kegiatan", "Negara",
     "Kota", "Penyelenggara/Perguruan Tinggi", "Beasiswa", "Sumber Pembiayaan", "Tgl Berangkat",
     "Tgl Kembali", "Mulai Kegiatan", "Selesai Kegiatan", "Jumlah Hari Kerja", "Maksud Perjalanan",
     "Kanal", "Status", "Tgl Pengajuan", "Tgl Masuk BPSDM", "Tgl Masuk PAKLN", "Tgl Masuk BKO",
@@ -239,6 +246,7 @@ _AKSI_KEMBALI = [Aksi.DIKEMBALIKAN_UNOR, Aksi.DIKEMBALIKAN_BPSDM, Aksi.DIKEMBALI
 def baris_export(qs):
     qs = qs.select_related(
         "pegawai__profile", "unit_organisasi", "kategori", "sumber_pembiayaan", "detail_pdln", "laporan_pdln",
+        "kegiatan",
     ).prefetch_related("tujuan_negara", "dokumen_bko").order_by("-tgl_pengajuan", "-created_at")
     ids = list(qs.values_list("id", flat=True))
     kembali = dict(
@@ -261,7 +269,10 @@ def baris_export(qs):
             p.kode, p.get_jenis_perjalanan_display(), p.get_tipe_pdln_display() if p.tipe_pdln else "",
             prof.nama if prof else p.pegawai.get_full_name(), prof.nip if prof else "", prof.jabatan if prof else "",
             (p.unit_organisasi.name if p.unit_organisasi else (prof.unit_organisasi.name if prof and prof.unit_organisasi else "")),
-            p.kategori.nama_kategori if p.kategori else "", ", ".join(n.nama_negara for n in negara),
+            p.kategori.nama_kategori if p.kategori else "",
+            (d.kegiatan_nama if d and d.kegiatan_nama else (p.kegiatan.nama if p.kegiatan else "")),
+            (d.kegiatan_tahun if d and d.kegiatan_tahun else (p.kegiatan.tahun_pelaksanaan if p.kegiatan else None)),
+            ", ".join(n.nama_negara for n in negara),
             d.kota_tujuan if d else "", (d.penyelenggara or d.perguruan_tinggi) if d else "",
             d.beasiswa_nama if d else "", p.sumber_pembiayaan.nama if p.sumber_pembiayaan else "",
             p.tgl_berangkat, p.tgl_kembali, d.tgl_mulai_kegiatan if d else None, d.tgl_selesai_kegiatan if d else None,
@@ -403,6 +414,21 @@ def rekap(qs):
         "kunci": "kategori", "judul": "Rekap per Kategori & Sumber Pembiayaan",
         "kolom": ["Kategori", "Sumber Pembiayaan", "Jumlah"],
         "baris": [[k, s, n] for (k, s), n in sorted(data.items())],
+    })
+
+    # Per kegiatan (EVENT_IMPLEMENTATION_PLAN.MD §10)
+    data = defaultdict(Counter)
+    for nama, tahun, status in qs.filter(kegiatan__isnull=False).values_list(
+        "kegiatan__nama", "kegiatan__tahun_pelaksanaan", "status"
+    ):
+        data[f"{nama} ({tahun})"][status] += 1
+    blok.append({
+        "kunci": "kegiatan", "judul": "Rekap per Kegiatan",
+        "kolom": ["Kegiatan"] + [label_status[s] if s != S.BELUM else "Dikembalikan" for s in _KOLOM_STATUS] + ["Total"],
+        "baris": sorted(
+            ([k] + [c[s] for s in _KOLOM_STATUS] + [sum(c.values())] for k, c in data.items()),
+            key=lambda r: -r[-1],
+        ),
     })
 
     blok.append(_rekap_waktu_proses(qs))

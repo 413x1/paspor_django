@@ -8,7 +8,7 @@ from django.urls import reverse
 
 from accounts.models import PegawaiProfile, User
 from notifications.models import Notification
-from paspor.models import KategoriPerjalanan, Negara, SumberPembiayaan, UnitOrganisasi
+from paspor.models import DasarKegiatan, KategoriPerjalanan, Kegiatan, Negara, SumberPembiayaan, UnitOrganisasi
 
 from . import alur, persyaratan, riwayat
 from .models import (
@@ -59,20 +59,29 @@ class _Basis:
             if not s.tipe_pdln or tipe in s.tipe_pdln
         )
 
+    def buat_kegiatan(self, tipe, negara=None, penyelenggara="Penyelenggara Uji"):
+        """Kegiatan disetujui untuk `tipe` dengan periode di dalam periode perjalanan uji."""
+        kegiatan = Kegiatan.objects.create(
+            nama=f"Kegiatan Uji {tipe}", kota="Kota Uji", penyelenggara=penyelenggara,
+            tgl_mulai=self.berangkat + timedelta(days=1), tgl_selesai=self.berangkat + timedelta(days=5),
+            tahun_pelaksanaan=self.berangkat.year,
+        )
+        kegiatan.negara.set([negara or self.singapura])
+        kegiatan.kategori.set([self.kategori(tipe)])
+        kegiatan.skema_pendanaan.set([self.sumber(tipe)])
+        DasarKegiatan.objects.create(kegiatan=kegiatan, jenis="surat", nomor_surat="UND/001")
+        return kegiatan
+
     def isi_formulir(self, tipe, negara=None):
         negara = negara or self.singapura
+        kegiatan = self.buat_kegiatan(tipe, negara)
         data = {
             "kategori": self.kategori(tipe).pk,
+            "kegiatan": kegiatan.pk,
             "tujuan_negara": [negara.pk],
             "sumber_pembiayaan": self.sumber(tipe).pk,
             "tgl_berangkat": self.berangkat.isoformat(),
             "tgl_kembali": (self.berangkat + timedelta(days=6)).isoformat(),
-            "kota_tujuan": "Kota Uji",
-            "tgl_mulai_kegiatan": (self.berangkat + timedelta(days=1)).isoformat(),
-            "tgl_selesai_kegiatan": (self.berangkat + timedelta(days=5)).isoformat(),
-            "penyelenggara": "Penyelenggara Uji",
-            "perguruan_tinggi": "Universitas Uji",
-            "beasiswa": "STUB-P-001" if tipe == "T2P" else "STUB-L-001",
             "pernyataan_benar": "on",
         }
         self.login(self.pegawai)
@@ -196,7 +205,9 @@ class AlurTipe1Tests(_Basis, TestCase):
 class AlurTipe2Tests(_Basis, TestCase):
     def test_alur_t2p_melalui_bpsdm_dan_pengembalian_ke_tahap_sebelumnya(self):
         p = self.isi_formulir("T2P")
-        self.assertEqual(p.detail.beasiswa_pintar_id, "STUB-P-001")
+        # Penyelenggara kegiatan pendidikan = universitas (perguruan_tinggi pada snapshot).
+        self.assertEqual(p.detail.perguruan_tinggi, "Penyelenggara Uji")
+        self.assertEqual(p.detail.kegiatan_nama, "Kegiatan Uji T2P")
         self.kirim(p)
         self.unor_teruskan(p)
         self.assertEqual(self.refresh(p).status, S.PROSES_BPSDM)
@@ -239,17 +250,17 @@ class AlurTipe2Tests(_Basis, TestCase):
         pesan_bpsdm = {e["aksi"]: e["catatan"] for e in riwayat.riwayat_untuk(p, self.admin_bpsdm)}
         self.assertEqual(pesan_bpsdm[Aksi.DIKEMBALIKAN_PAKLN], "ND belum sesuai")
 
-    def test_t2_wajib_beasiswa(self):
+    def test_kegiatan_tipe_lain_tidak_dapat_dipilih(self):
+        # Droplist beasiswa PINTAR diganti Kegiatan: kegiatan pendidikan tidak berlaku untuk T2L.
+        kegiatan = self.buat_kegiatan("T2P")
         self.login(self.pegawai)
         resp = self.client.post(reverse("pegawai:formulir_pengajuan") + "?jenis=pdln&tipe=T2L", {
-            "kategori": self.kategori("T2L").pk, "tujuan_negara": [self.singapura.pk],
+            "kategori": self.kategori("T2L").pk, "kegiatan": kegiatan.pk, "tujuan_negara": [self.singapura.pk],
             "sumber_pembiayaan": self.sumber("T2L").pk, "tgl_berangkat": self.berangkat.isoformat(),
-            "tgl_kembali": (self.berangkat + timedelta(days=3)).isoformat(), "kota_tujuan": "X",
-            "tgl_mulai_kegiatan": self.berangkat.isoformat(), "tgl_selesai_kegiatan": self.berangkat.isoformat(),
-            "penyelenggara": "JICA", "pernyataan_benar": "on",
+            "tgl_kembali": (self.berangkat + timedelta(days=6)).isoformat(), "pernyataan_benar": "on",
         })
         self.assertEqual(resp.status_code, 200)
-        self.assertIn("beasiswa", resp.context["form"].errors)
+        self.assertIn("kegiatan", resp.context["form"].errors)
 
     def test_cakupan_bpsdm_hanya_tipe2(self):
         p1 = self.isi_formulir("T1")

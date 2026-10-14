@@ -29,6 +29,7 @@ CRUMBS = {
     # --- Pegawai -----------------------------------------------------------
     "pegawai:beranda": ("Beranda", None),
     "pegawai:formulir_pengajuan": ("Formulir Pengajuan", "pegawai:beranda"),
+    "pegawai:usulkan_kegiatan": ("Usulkan Kegiatan", "pegawai:formulir_pengajuan"),
     "pegawai:upload_dokumen": ("Unggah Dokumen {kode}", "pegawai:beranda"),
     "pegawai:monitor_progres": ("Monitor Progres {kode}", "pegawai:beranda"),
     "pegawai:pelaporan": ("Pelaporan PDLN", "pegawai:beranda"),
@@ -52,6 +53,9 @@ CRUMBS = {
     "bpsdm:preview": ("Pratinjau {kode}", "bpsdm:dashboard"),
     "bpsdm:upload_dokumen": ("Administrasi BPSDM", "bpsdm:preview"),
     "bpsdm:pembatalan": ("Pembatalan", "bpsdm:dashboard"),
+    "bpsdm:kegiatan": ("Kegiatan", "bpsdm:dashboard"),
+    "bpsdm:tambah_kegiatan": ("Tambah Kegiatan", "bpsdm:kegiatan"),
+    "bpsdm:edit_kegiatan": ("Detail Kegiatan", "bpsdm:kegiatan"),
     "bpsdm:rekap": ("Rekap", "bpsdm:dashboard"),
     "bpsdm:export": ("Export", "bpsdm:dashboard"),
 
@@ -71,6 +75,9 @@ CRUMBS = {
     "pakln:pelaporan": ("Pelaporan PDLN", "pakln:dashboard"),
     "pakln:verifikasi_laporan": ("Verifikasi Laporan {kode}", "pakln:pelaporan"),
     "pakln:pembatalan": ("Pembatalan", "pakln:dashboard"),
+    "pakln:kelola_kegiatan": ("Kegiatan", "pakln:dashboard"),
+    "pakln:tambah_kegiatan": ("Tambah Kegiatan", "pakln:kelola_kegiatan"),
+    "pakln:edit_kegiatan": ("Detail Kegiatan", "pakln:kelola_kegiatan"),
     "pakln:putuskan_pembatalan": ("Putuskan Pembatalan", "pakln:pembatalan"),
     "pakln:rekap": ("Rekap", "pakln:dashboard"),
     "pakln:export": ("Export", "pakln:dashboard"),

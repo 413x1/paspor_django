@@ -1,0 +1,7 @@
+{# Satu field form Kegiatan. Context: field (BoundField), label (opsional), wajib (opsional), select (opsional: bungkus .select) #}
+<div class="field">
+  <label class="label" for="{{ field.id_for_label }}">{{ label|default:field.label }}{% if wajib %} <span class="text-danger">*</span>{% endif %}</label>
+  <div class="control">{% if select %}<div class="select is-fullwidth">{{ field }}</div>{% else %}{{ field }}{% endif %}</div>
+  {% if field.help_text %}<p class="helptext">{{ field.help_text }}</p>{% endif %}
+  {% for e in field.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+</div>

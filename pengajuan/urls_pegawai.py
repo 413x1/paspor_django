@@ -1,5 +1,6 @@
 from django.urls import path
 
+from . import views_kegiatan
 from . import views_pegawai as views
 
 urlpatterns = [
@@ -7,6 +8,7 @@ urlpatterns = [
     path("riwayat/data/", views.riwayat_data, name="riwayat_data"),
     path("formulir/", views.formulir_pengajuan, name="formulir_pengajuan"),
     path("hitung-hari/", views.hitung_hari, name="hitung_hari"),
+    path("kegiatan/usulkan/", views_kegiatan.pegawai_usulkan, name="usulkan_kegiatan"),
     path("pelaporan/", views.pelaporan, name="pelaporan"),
     path("pembatalan/", views.daftar_pembatalan, name="pembatalan"),
     path("pembatalan/<int:pk>/tarik/", views.tarik_pembatalan, name="tarik_pembatalan"),

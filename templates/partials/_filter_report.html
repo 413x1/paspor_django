@@ -35,6 +35,18 @@
       <option value="">Semua</option>
       {% for n in opsi_negara %}<option value="{{ n.pk }}" {% if f.negara == n.pk|stringformat:"s" %}selected{% endif %}>{{ n.nama_negara }}</option>{% endfor %}
     </select></div></div>
+  {% if opsi_kegiatan %}
+  <div class="field"><label class="label">Kegiatan</label>
+    <div class="select is-small"><select name="kegiatan">
+      <option value="">Semua</option>
+      {% for k in opsi_kegiatan %}<option value="{{ k.pk }}" {% if f.kegiatan == k.pk|stringformat:"s" %}selected{% endif %}>{{ k.nama|truncatechars:40 }} ({{ k.tahun_pelaksanaan }})</option>{% endfor %}
+    </select></div></div>
+  <div class="field"><label class="label">Tahun Kegiatan</label>
+    <div class="select is-small"><select name="tahun_kegiatan">
+      <option value="">Semua</option>
+      {% for t in opsi_tahun_kegiatan %}<option value="{{ t }}" {% if f.tahun_kegiatan == t|stringformat:"s" %}selected{% endif %}>{{ t }}</option>{% endfor %}
+    </select></div></div>
+  {% endif %}
   <div class="field"><label class="label">Kanal</label>
     <div class="select is-small"><select name="kanal">
       <option value="">Semua</option>

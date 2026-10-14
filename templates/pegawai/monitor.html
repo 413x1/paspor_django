@@ -32,6 +32,7 @@
       </div>
       <div class="meta">
         {{ pengajuan.jenis_label }} · {{ pengajuan.kategori|default:"—" }}
+        {% if pengajuan.detail.kegiatan_nama %}· {{ pengajuan.detail.kegiatan_nama }}{% endif %}
         {% if pengajuan.detail.penyelenggara %}· {{ pengajuan.detail.penyelenggara }}{% endif %}
         {% if pengajuan.detail.perguruan_tinggi %}· {{ pengajuan.detail.perguruan_tinggi }}{% endif %}
         · Diajukan {{ pengajuan.tgl_pengajuan|date:"d M Y"|default:"—" }} via {{ pengajuan.get_kanal_display }}

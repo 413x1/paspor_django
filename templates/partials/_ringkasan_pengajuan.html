@@ -9,6 +9,20 @@
   <div class="field"><label class="label">Unit Organisasi</label><div class="control"><input class="input" value="{{ pengajuan.unit_organisasi.name|default:profil.unit_organisasi.name }}" readonly></div></div>
   <div class="field"><label class="label">Jenis Perjalanan</label><div class="control"><input class="input" value="{{ pengajuan.jenis_label }}" readonly></div></div>
   <div class="field"><label class="label">Kategori</label><div class="control"><input class="input" value="{{ pengajuan.kategori|default:'—' }}" readonly></div></div>
+  {% if pengajuan.kegiatan_id %}
+    <div class="field" style="grid-column:1/-1;"><label class="label">Kegiatan</label><div class="control"><input class="input" value="{{ detail.kegiatan_nama|default:pengajuan.kegiatan.nama }}{% if detail.kegiatan_tahun %} ({{ detail.kegiatan_tahun }}){% endif %}" readonly></div></div>
+    {% with dasar=pengajuan.kegiatan.dasar_list.all %}{% if dasar %}
+    <div class="field" style="grid-column:1/-1;"><label class="label">Dasar Kegiatan</label>
+      <ul class="dasar-list">
+        {% for d in dasar %}
+          <li><span><strong>{{ d.get_jenis_display }}</strong> —
+            {% if d.jenis == "tautan" %}<a href="{{ d.tautan }}" target="_blank" rel="noopener">{{ d.tautan }}</a>{% else %}{{ d.ringkas }}{% endif %}</span>
+            {% if d.berkas %}<button type="button" class="button is-small" data-doc-preview="{{ d.berkas.url }}" data-doc-title="Dasar Kegiatan">👁 Lihat</button>{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}{% endwith %}
+  {% endif %}
   {% if detail.beasiswa_nama %}
     <div class="field" style="grid-column:1/-1;"><label class="label">Beasiswa (Aplikasi PINTAR)</label><div class="control"><input class="input" value="{{ detail.beasiswa_nama }}" readonly></div></div>
   {% endif %}

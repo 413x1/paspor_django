@@ -2,8 +2,8 @@ from django.urls import path
 
 from logs import views as log_views
 
+from . import views_kegiatan, views_report
 from . import views_pakln as views
-from . import views_report
 
 urlpatterns = [
     path("", views.dashboard, name="dashboard"),
@@ -48,6 +48,13 @@ urlpatterns = [
     path("kategori/<int:kategori_id>/edit/", views.edit_kategori, name="edit_kategori"),
     path("kategori/<int:kategori_id>/toggle/", views.toggle_kategori, name="toggle_kategori"),
     path("kategori/<int:kategori_id>/hapus/", views.hapus_kategori, name="hapus_kategori"),
+    path("kegiatan/", views_kegiatan.pakln_daftar, name="kelola_kegiatan"),
+    path("kegiatan/data/", views_kegiatan.pakln_data, name="kegiatan_data"),
+    path("kegiatan/tambah/", views_kegiatan.pakln_tambah, name="tambah_kegiatan"),
+    path("kegiatan/<int:pk>/", views_kegiatan.pakln_edit, name="edit_kegiatan"),
+    path("kegiatan/<int:pk>/putuskan/", views_kegiatan.pakln_putuskan, name="putuskan_kegiatan"),
+    path("kegiatan/<int:pk>/toggle/", views_kegiatan.pakln_toggle, name="toggle_kegiatan"),
+    path("kegiatan/<int:pk>/hapus/", views_kegiatan.pakln_hapus, name="hapus_kegiatan"),
     path("pelaporan/", views.pelaporan, name="pelaporan"),
     path("pembatalan/", views.daftar_pembatalan, name="pembatalan"),
     path("pembatalan/<int:pk>/putuskan/", views.putuskan_pembatalan, name="putuskan_pembatalan"),

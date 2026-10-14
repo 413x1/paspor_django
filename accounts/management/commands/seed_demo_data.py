@@ -1,5 +1,6 @@
 import datetime
 
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
@@ -186,6 +187,9 @@ class Command(BaseCommand):
             },
         )
         pengajuan_keluarga.tujuan_negara.set([singapura])
+
+        # --- Kegiatan PDLN: 5 per tipe + usulan menunggu (seed_kegiatan) ---
+        call_command("seed_kegiatan", stdout=self.stdout)
 
         self.stdout.write(self.style.SUCCESS(
             "\nSelesai. Akun demo (password sama untuk semua: 'paspor123'):\n"

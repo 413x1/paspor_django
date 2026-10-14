@@ -13,6 +13,7 @@ wiki/instructions/BISNIS_PROSES_PDLN.MD §11.
     Event 5x (NOTIF_05*)                  — Laporan PDLN
     Event 6x (NOTIF_06*)                  — Pembatalan (mekanisme interim)
     Event 7x (NOTIF_07*)                  — Track Admin BKO (PDLN Tipe 2 Pendidikan)
+    Event 8x (NOTIF_08*)                  — Usulan Kegiatan PDLN
 """
 
 from django.urls import reverse
@@ -52,8 +53,8 @@ def _unit_organisasi(pengajuan):
 def _perihal(pengajuan):
     if getattr(pengajuan, "is_pdln", False):
         detail = pengajuan.detail
-        if detail and (detail.penyelenggara or detail.perguruan_tinggi):
-            return detail.penyelenggara or detail.perguruan_tinggi
+        if detail and (detail.kegiatan_nama or detail.penyelenggara or detail.perguruan_tinggi):
+            return detail.kegiatan_nama or detail.penyelenggara or detail.perguruan_tinggi
     return pengajuan.maksud or (pengajuan.kategori.nama_kategori if pengajuan.kategori_id else None) or "-"
 
 
@@ -589,4 +590,67 @@ def notify_bko_dibuka(pengajuan, catatan, aktor_role):
         title=f"Pemrosesan SK Tugas Belajar Dibuka Kembali - {pengajuan.kode}",
         body=f'{oleh} membuka kembali pemrosesan SK Tugas Belajar {pengajuan.kode}. Catatan: "{catatan}".',
         redirect_url="",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Kegiatan PDLN (EVENT_IMPLEMENTATION_PLAN.MD §9) — tanpa pengajuan terkait
+# ---------------------------------------------------------------------------
+
+def _nama_user(user):
+    profile = getattr(user, "profile", None)
+    return (profile.nama if profile else None) or user.get_full_name() or user.username
+
+
+def _url_usulan_pengusul(kegiatan):
+    from accounts.models import User
+
+    pengusul = kegiatan.diusulkan_oleh
+    if pengusul and pengusul.role == User.Role.ADMIN_BPSDM:
+        return reverse("bpsdm:kegiatan") + "?tab=usulan"
+    return reverse("pegawai:beranda")
+
+
+def notify_kegiatan_diusulkan(kegiatan):
+    """Event 8A: Pegawai / Admin BPSDM mengusulkan kegiatan baru."""
+    pengusul = kegiatan.diusulkan_oleh
+    oleh = f"{pengusul.get_role_display()} {_nama_user(pengusul)}" if pengusul else "Pengguna"
+    _create(
+        _admin_pakln_recipients(),
+        pengajuan=None,
+        event=Notification.Event.KEGIATAN_DIUSULKAN,
+        level=Notification.Level.INFO,
+        title="Usulan Kegiatan Baru",
+        body=f'{oleh} mengusulkan kegiatan "{kegiatan.nama}" ({kegiatan.tahun_pelaksanaan}). Mohon ditinjau.',
+        redirect_url=reverse("pakln:edit_kegiatan", args=[kegiatan.pk]),
+    )
+
+
+def notify_kegiatan_disetujui(kegiatan):
+    """Event 8B: usulan disetujui — kegiatan sudah dapat dipilih."""
+    if not kegiatan.diusulkan_oleh:
+        return
+    _create(
+        [kegiatan.diusulkan_oleh],
+        pengajuan=None,
+        event=Notification.Event.KEGIATAN_DISETUJUI,
+        level=Notification.Level.SUCCESS,
+        title="Usulan Kegiatan Disetujui",
+        body=f'Kegiatan "{kegiatan.nama}" disetujui Admin Biro PAKLN dan sudah dapat dipilih pada formulir PDLN.',
+        redirect_url=_url_usulan_pengusul(kegiatan),
+    )
+
+
+def notify_kegiatan_ditolak(kegiatan):
+    """Event 8C: usulan ditolak beserta catatan."""
+    if not kegiatan.diusulkan_oleh:
+        return
+    _create(
+        [kegiatan.diusulkan_oleh],
+        pengajuan=None,
+        event=Notification.Event.KEGIATAN_DITOLAK,
+        level=Notification.Level.DANGER,
+        title="Usulan Kegiatan Ditolak",
+        body=f'Usulan kegiatan "{kegiatan.nama}" ditolak Admin Biro PAKLN. Catatan: "{kegiatan.catatan_keputusan}".',
+        redirect_url=_url_usulan_pengusul(kegiatan),
     )

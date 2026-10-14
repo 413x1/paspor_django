@@ -1,6 +1,22 @@
 from django.contrib import admin
 
-from .models import HariLibur, KategoriPerjalanan, Negara, SumberPembiayaan, UnitOrganisasi
+from .models import (
+    DasarKegiatan, HariLibur, KategoriPerjalanan, Kegiatan, Negara, SumberPembiayaan, UnitOrganisasi,
+)
+
+
+class DasarKegiatanInline(admin.TabularInline):
+    model = DasarKegiatan
+    extra = 0
+
+
+@admin.register(Kegiatan)
+class KegiatanAdmin(admin.ModelAdmin):
+    list_display = ("nama", "penyelenggara", "tahun_pelaksanaan", "status", "is_active", "sumber_data")
+    list_filter = ("status", "is_active", "sumber_data", "tahun_pelaksanaan")
+    search_fields = ("nama", "penyelenggara", "kota", "kode_pintar")
+    filter_horizontal = ("negara", "kategori", "skema_pendanaan")
+    inlines = [DasarKegiatanInline]
 
 
 @admin.register(UnitOrganisasi)
