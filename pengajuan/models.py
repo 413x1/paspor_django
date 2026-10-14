@@ -798,7 +798,7 @@ class DetailPdln(models.Model):
     penyelenggara = models.CharField("Penyelenggara", max_length=200, blank=True)
     perguruan_tinggi = models.CharField("Perguruan Tinggi", max_length=200, blank=True)
     kota_tujuan = models.CharField("Kota Tujuan", max_length=150, blank=True)
-    keterangan_sumber_pembiayaan = models.CharField("Keterangan Sumber Pembiayaan", max_length=255, blank=True)
+    keterangan_sumber_pembiayaan = models.TextField("Keterangan Sumber Pembiayaan", blank=True)
     tgl_mulai_kegiatan = models.DateField("Tanggal Mulai Kegiatan", null=True, blank=True)
     tgl_selesai_kegiatan = models.DateField("Tanggal Selesai Kegiatan", null=True, blank=True)
     # Pencalonan beasiswa dari Aplikasi PINTAR (T2P/T2L) — id + snapshot

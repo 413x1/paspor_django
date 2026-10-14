@@ -183,8 +183,11 @@ class PdlnForm(forms.ModelForm):
         queryset=Kegiatan.objects.none(), required=False, empty_label="— Pilih Kegiatan —",
     )
     keterangan_sumber_pembiayaan = forms.CharField(
-        max_length=255, label="Keterangan Sumber Pembiayaan",   # wajib diisi (keputusan mentor)
-        widget=forms.TextInput(attrs={"class": "input", "placeholder": "cth. Beasiswa LPDP, biaya mandiri, atau instansi pengundang"}),
+        max_length=2000, label="Keterangan Sumber Pembiayaan",   # wajib diisi (keputusan mentor); textarea (revisi)
+        widget=forms.Textarea(attrs={
+            "class": "textarea", "rows": 3,
+            "placeholder": "cth. Beasiswa LPDP, biaya mandiri, atau instansi pengundang",
+        }),
     )
     pernyataan_benar = forms.BooleanField(
         label="Saya menyatakan data dan formulir yang diisi telah benar.",
