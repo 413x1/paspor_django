@@ -237,7 +237,7 @@ KOLOM_EXPORT = [
     "Kanal", "Status", "Tgl Pengajuan", "Tgl Masuk BPSDM", "Tgl Masuk PAKLN", "Tgl Masuk BKO",
     "Status BKO", "Tgl SK Tubel", "Tgl Selesai",
     "Perlu Visa", "Jumlah Dikembalikan", "Status Pelaporan", "Tgl Dibatalkan", "Pembatalan Diajukan Oleh",
-    "Alasan Pembatalan",
+    "Alasan Pembatalan", "Keterangan Sumber Pembiayaan",   # kolom terbaru selalu di ujung kanan
 ]
 
 _AKSI_KEMBALI = [Aksi.DIKEMBALIKAN_UNOR, Aksi.DIKEMBALIKAN_BPSDM, Aksi.DIKEMBALIKAN_PAKLN]
@@ -283,6 +283,7 @@ def baris_export(qs):
             ("Ya" if any(n.perlu_visa for n in negara) else "Tidak") if p.is_pdln else "",
             kembali.get(p.id, 0), status_pelaporan(p), p.tgl_dibatalkan,
             peran.get(m.diajukan_role, "") if m else "", m.alasan if m else "",
+            d.keterangan_sumber_pembiayaan if d else "",
         ]
 
 

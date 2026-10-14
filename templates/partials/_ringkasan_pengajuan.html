@@ -47,5 +47,8 @@
   {% endif %}
   <div class="field"><label class="label">Jumlah Hari Kerja</label><div class="control"><input class="input" value="{{ pengajuan.jumlah_hari_kerja|default_if_none:'—' }}" readonly></div></div>
   <div class="field"><label class="label">Sumber Pembiayaan</label><div class="control"><input class="input" value="{{ pengajuan.sumber_pembiayaan|default:'—' }}" readonly></div></div>
+  {% if detail.keterangan_sumber_pembiayaan %}
+    <div class="field" style="grid-column:1/-1;"><label class="label">Keterangan Sumber Pembiayaan</label><div class="control"><input class="input" value="{{ detail.keterangan_sumber_pembiayaan }}" readonly></div></div>
+  {% endif %}
 </div>
 {% endwith %}

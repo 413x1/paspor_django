@@ -82,6 +82,7 @@ class _Basis:
             "sumber_pembiayaan": self.sumber(tipe).pk,
             "tgl_berangkat": self.berangkat.isoformat(),
             "tgl_kembali": (self.berangkat + timedelta(days=6)).isoformat(),
+            "keterangan_sumber_pembiayaan": "Biaya Uji",
             "pernyataan_benar": "on",
         }
         self.login(self.pegawai)

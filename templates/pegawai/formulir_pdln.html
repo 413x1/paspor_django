@@ -126,6 +126,12 @@
       </div>
     </div>
 
+    <div class="field">
+      <label class="label" for="{{ form.keterangan_sumber_pembiayaan.id_for_label }}">{{ form.keterangan_sumber_pembiayaan.label }}</label>
+      <div class="control">{{ form.keterangan_sumber_pembiayaan }}</div>
+      {% for error in form.keterangan_sumber_pembiayaan.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+    </div>
+
     <div class="agree-box">
       {{ form.pernyataan_benar }}
       <label for="{{ form.pernyataan_benar.id_for_label }}">Saya menyatakan <strong>data dan formulir yang diisi telah benar</strong>.</label>

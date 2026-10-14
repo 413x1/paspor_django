@@ -182,6 +182,10 @@ class PdlnForm(forms.ModelForm):
     kegiatan = forms.ModelChoiceField(
         queryset=Kegiatan.objects.none(), required=False, empty_label="— Pilih Kegiatan —",
     )
+    keterangan_sumber_pembiayaan = forms.CharField(
+        max_length=255, label="Keterangan Sumber Pembiayaan",   # wajib diisi (keputusan mentor)
+        widget=forms.TextInput(attrs={"class": "input", "placeholder": "cth. Beasiswa LPDP, biaya mandiri, atau instansi pengundang"}),
+    )
     pernyataan_benar = forms.BooleanField(
         label="Saya menyatakan data dan formulir yang diisi telah benar.",
         error_messages={"required": "Centang pernyataan kebenaran pengisian formulir."},
@@ -250,6 +254,7 @@ class PdlnForm(forms.ModelForm):
 
         if detail and not self.is_bound:
             self.initial["pernyataan_benar"] = detail.pernyataan_benar
+            self.initial["keterangan_sumber_pembiayaan"] = detail.keterangan_sumber_pembiayaan
 
     @property
     def label_mulai_selesai(self):
@@ -312,7 +317,8 @@ class PdlnForm(forms.ModelForm):
 
         detail, _ = DetailPdln.objects.get_or_create(pengajuan=pengajuan)
         detail.pernyataan_benar = self.cleaned_data["pernyataan_benar"]
-        detail.save(update_fields=["pernyataan_benar"])
+        detail.keterangan_sumber_pembiayaan = (self.cleaned_data.get("keterangan_sumber_pembiayaan") or "").strip()
+        detail.save(update_fields=["pernyataan_benar", "keterangan_sumber_pembiayaan"])
         snapshot(pengajuan)
         return detail
 
