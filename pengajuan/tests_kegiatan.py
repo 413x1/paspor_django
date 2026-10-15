@@ -249,10 +249,49 @@ class PemilihanKegiatanTests(_KegiatanBasis, TestCase):
         p = Pengajuan.objects.get(pegawai=self.pegawai)
         self.assertEqual(set(p.tujuan_negara.all()), {self.singapura, self.jepang, korea})
 
-    def test_periode_kegiatan_di_luar_perjalanan(self):  # #12 (B8)
+    def test_pesan_kolom_wajib_menyebut_nama_field(self):
         k = self.buat_kegiatan("T1")
-        resp = self.kirim_formulir("T1", k, tgl_berangkat=(self.berangkat + timedelta(days=2)).isoformat())
-        self.assertTrue(resp.context["form"].non_field_errors())
+        resp = self.kirim_formulir("T1", k, kategori="", tgl_berangkat="", tgl_kembali="", sumber_pembiayaan="",
+                                   keterangan_sumber_pembiayaan="")
+        err = resp.context["form"].errors
+        self.assertEqual(err["kategori"], ["Kategori Perjalanan Tidak Boleh Kosong"])
+        self.assertEqual(err["tgl_berangkat"], ["Tanggal Keberangkatan Tidak Boleh Kosong"])
+        self.assertEqual(err["tgl_kembali"], ["Tanggal Kepulangan Tidak Boleh Kosong"])
+        self.assertEqual(err["sumber_pembiayaan"], ["Sumber Biaya Tidak Boleh Kosong"])
+        self.assertEqual(err["keterangan_sumber_pembiayaan"], ["Keterangan Sumber Pembiayaan Tidak Boleh Kosong"])
+
+    def test_pesan_kategori_wajib_mengikuti_tipe(self):
+        for tipe, nama in (("T2P", "Pendidikan"), ("T2L", "Pelatihan")):
+            resp = self.kirim_formulir(tipe, self.buat_kegiatan(tipe), kategori="")
+            self.assertEqual(resp.context["form"].errors["kategori"], [f"Kategori {nama} Tidak Boleh Kosong"])
+
+    def test_berangkat_setelah_mulai_kegiatan_ditolak(self):  # #12 (B8)
+        k = self.buat_kegiatan("T1")
+        resp = self.kirim_formulir("T1", k, tgl_berangkat=(k.tgl_mulai + timedelta(days=1)).isoformat())
+        form = resp.context["form"]
+        self.assertIn("tgl_berangkat", form.errors)
+        self.assertNotIn("tgl_kembali", form.errors)
+        self.assertIn("tidak boleh melewati tanggal mulai kegiatan", form.errors["tgl_berangkat"][0])
+        self.assertFalse(form.non_field_errors())
+
+    def test_kembali_sebelum_selesai_kegiatan_ditolak(self):
+        k = self.buat_kegiatan("T1")
+        resp = self.kirim_formulir("T1", k, tgl_kembali=(k.tgl_selesai - timedelta(days=1)).isoformat())
+        form = resp.context["form"]
+        self.assertIn("tgl_kembali", form.errors)
+        self.assertNotIn("tgl_berangkat", form.errors)
+        self.assertIn("tidak boleh sebelum tanggal selesai kegiatan", form.errors["tgl_kembali"][0])
+
+    def test_kedua_tanggal_salah_menghasilkan_dua_error_terpisah(self):
+        k = self.buat_kegiatan("T1")
+        resp = self.kirim_formulir("T1", k, tgl_berangkat=(k.tgl_mulai + timedelta(days=1)).isoformat(),
+                                   tgl_kembali=(k.tgl_selesai + timedelta(days=-1)).isoformat())
+        self.assertTrue({"tgl_berangkat", "tgl_kembali"} <= set(resp.context["form"].errors))
+
+    def test_tanggal_tepat_di_batas_kegiatan_diterima(self):
+        k = self.buat_kegiatan("T1")
+        resp = self.kirim_formulir("T1", k, tgl_berangkat=k.tgl_mulai.isoformat(), tgl_kembali=k.tgl_selesai.isoformat())
+        self.assertEqual(resp.status_code, 302)
 
     def test_dua_pegawai_kegiatan_sama_dan_snapshot(self):  # #13, #14 (B3, B13)
         p = self.isi_formulir("T1")

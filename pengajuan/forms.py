@@ -243,6 +243,17 @@ class PdlnForm(forms.ModelForm):
         self.fields["tgl_berangkat"].required = True
         self.fields["tgl_kembali"].required = True
 
+        # Pesan "wajib diisi" yang menyebut nama field (label kategori mengikuti tipe, lihat formulir_pdln.html).
+        nama_kategori = {"T2P": "Pendidikan", "T2L": "Pelatihan"}.get(tipe, "Perjalanan")
+        for nama, label in {
+            "kategori": f"Kategori {nama_kategori}",
+            "tgl_berangkat": "Tanggal Keberangkatan",
+            "tgl_kembali": "Tanggal Kepulangan",
+            "sumber_pembiayaan": "Sumber Biaya",
+            "keterangan_sumber_pembiayaan": "Keterangan Sumber Pembiayaan",
+        }.items():
+            self.fields[nama].error_messages["required"] = f"{label} Tidak Boleh Kosong"
+
         # Kegiatan yang dapat dipilih (B2, B14) + kegiatan yang sudah
         # terpilih sebelumnya walau kini nonaktif/lewat, agar tidak hilang.
         ids = list(Kegiatan.objects.dapat_dipilih(tipe=tipe).values_list("pk", flat=True))
@@ -305,10 +316,16 @@ class PdlnForm(forms.ModelForm):
             ada = {n.pk for n in negara}
             negara += [n for n in kegiatan.negara.all() if n.pk not in ada]
             cleaned["tujuan_negara"] = negara
-            if berangkat and kembali and (kegiatan.tgl_mulai < berangkat or kegiatan.tgl_selesai > kembali):
-                self.add_error(None, (
-                    f"Periode kegiatan ({kegiatan.tgl_mulai:%d %b %Y} – {kegiatan.tgl_selesai:%d %b %Y}) harus "
-                    "berada di dalam periode perjalanan (tanggal keberangkatan s.d. kepulangan)."
+            # Periode perjalanan wajib mencakup periode kegiatan (B8); tiap aturan menunjuk field-nya.
+            if berangkat and berangkat > kegiatan.tgl_mulai:
+                self.add_error("tgl_berangkat", (
+                    "Tanggal keberangkatan tidak boleh melewati tanggal mulai kegiatan "
+                    f"({kegiatan.tgl_mulai:%d %b %Y})."
+                ))
+            if kembali and kembali < kegiatan.tgl_selesai:
+                self.add_error("tgl_kembali", (
+                    "Tanggal kepulangan tidak boleh sebelum tanggal selesai kegiatan "
+                    f"({kegiatan.tgl_selesai:%d %b %Y})."
                 ))
         if not negara:
             self.add_error("tujuan_negara", "Pilih minimal satu negara tujuan.")
