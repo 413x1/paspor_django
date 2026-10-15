@@ -137,15 +137,16 @@ class UsulanKegiatanTests(_KegiatanBasis, TestCase):
         self.assertIn(k, Kegiatan.objects.dapat_dipilih(tipe="T2L"))
         self.assertTrue(Notification.objects.filter(recipient=self.pegawai, event=Notification.Event.KEGIATAN_DISETUJUI).exists())
 
-    def test_pegawai_tanpa_pilihan_aplikasi_pintar(self):
+    def test_pegawai_tanpa_pilihan_platform_bpsdm(self):
         resp = self.get(self.pegawai, "pegawai:usulkan_kegiatan")
         jenis = [c[0] for c in resp.context["formset"].forms[0].fields["jenis"].choices]
         self.assertNotIn("pintar", jenis)
-        self.assertNotContains(resp, "Aplikasi PINTAR")
+        self.assertNotContains(resp, "Platform BPSDM")
         data = self.data_kegiatan([self.kat("Workshop")], dasar={"dasar-0-jenis": "pintar", "dasar-0-kode_pintar": "X-1"})
         self.assertEqual(self.post(self.pegawai, "pegawai:usulkan_kegiatan", data).status_code, 200)
         self.assertFalse(Kegiatan.objects.exists())
-        # Admin tetap dapat memakai dasar PINTAR.
+        # Admin tetap dapat memakai dasar Platform BPSDM.
+        self.assertContains(self.get(self.admin_pakln, "pakln:tambah_kegiatan"), "Platform BPSDM")
         self.assertIn("pintar", [c[0] for c in self.get(self.admin_pakln, "pakln:tambah_kegiatan")
                                  .context["formset"].forms[0].fields["jenis"].choices])
 

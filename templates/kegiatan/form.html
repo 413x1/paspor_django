@@ -70,12 +70,12 @@
       <div class="column">{% include "kegiatan/_field.html" with field=form.tgl_selesai wajib=1 %}</div>
     </div>
     <p class="helptext">Periode kegiatan berbeda dari periode perjalanan; periode perjalanan pegawai wajib mencakup periode kegiatan.</p>
-    {% if form.kode_pintar %}{% include "kegiatan/_field.html" with field=form.kode_pintar label="Kode Aplikasi PINTAR" %}{% endif %}
+    {% if form.kode_pintar %}{% include "kegiatan/_field.html" with field=form.kode_pintar label="Kode Platform BPSDM" %}{% endif %}
   </div>
 
   <div class="box">
     <div class="section-title is-small">Dasar Kegiatan <span class="badge-auto">Wajib</span></div>
-    <p class="cell-muted is-title-sub">Rujukan resmi keberadaan kegiatan: nomor surat (undangan/penugasan/LoA), tautan resmi, {% if peran != 'pegawai' %}data Aplikasi PINTAR, {% endif %}atau lainnya. Minimal satu.</p>
+    <p class="cell-muted is-title-sub">Rujukan resmi keberadaan kegiatan: nomor surat (undangan/penugasan/LoA), tautan resmi, {% if peran != 'pegawai' %}data Platform BPSDM, {% endif %}atau lainnya. Minimal satu.</p>
     {% if readonly %}
       <ul class="dasar-list">
         {% for d in kegiatan.dasar_list.all %}

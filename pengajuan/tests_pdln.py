@@ -252,7 +252,7 @@ class AlurTipe2Tests(_Basis, TestCase):
         self.assertEqual(pesan_bpsdm[Aksi.DIKEMBALIKAN_PAKLN], "ND belum sesuai")
 
     def test_kegiatan_tipe_lain_tidak_dapat_dipilih(self):
-        # Droplist beasiswa PINTAR diganti Kegiatan: kegiatan pendidikan tidak berlaku untuk T2L.
+        # Droplist beasiswa Platform BPSDM diganti Kegiatan: kegiatan pendidikan tidak berlaku untuk T2L.
         kegiatan = self.buat_kegiatan("T2P")
         self.login(self.pegawai)
         resp = self.client.post(reverse("pegawai:formulir_pengajuan") + "?jenis=pdln&tipe=T2L", {

@@ -32,9 +32,9 @@
 Setiap PDLN selalu memiliki **kegiatan** yang menjadi tujuannya (agenda, program,
 pertemuan, perkuliahan, pelatihan). Saat ini kegiatan tidak menjadi objek
 sendiri: pegawai mengetik penyelenggara, kota, dan tanggal kegiatan di formulir,
-dan khusus Tipe 2 kegiatan diwakili droplist **Nama Beasiswa (Aplikasi PINTAR)**.
+dan khusus Tipe 2 kegiatan diwakili droplist **Nama Beasiswa (Platform BPSDM)**.
 Droplist itu **diganti sepenuhnya** oleh Kegiatan; ke depan data kegiatan juga
-akan **dikonsumsi dari Aplikasi PINTAR** (lihat [§7.5](#75-kesiapan-integrasi-aplikasi-pintar)).
+akan **dikonsumsi dari Platform BPSDM** (lihat [§7.5](#75-kesiapan-integrasi-aplikasi-pintar)).
 
 Akibatnya:
 
@@ -58,7 +58,7 @@ pelatihan) — berlaku setelah disetujui Admin Biro PAKLN.
 | Perguruan tinggi | `DetailPdln.perguruan_tinggi` (teks bebas) | Pegawai | T2P |
 | Kota tujuan | `DetailPdln.kota_tujuan` (teks bebas) | Pegawai | semua |
 | Tgl mulai / selesai kegiatan | `DetailPdln.tgl_mulai_kegiatan` / `tgl_selesai_kegiatan` | Pegawai | semua |
-| Nama beasiswa | `DetailPdln.beasiswa_pintar_id` + `beasiswa_nama` (dari Aplikasi PINTAR) | Pegawai (droplist) | T2P, T2L |
+| Nama beasiswa | `DetailPdln.beasiswa_pintar_id` + `beasiswa_nama` (dari Platform BPSDM) | Pegawai (droplist) | T2P, T2L |
 | Negara tujuan | `Pengajuan.tujuan_negara` (M2M `Negara`) | Pegawai | semua |
 | Kategori perjalanan | `Pengajuan.kategori` (FK `KategoriPerjalanan`, disaring per tipe) | Pegawai | semua |
 | Sumber pembiayaan | `Pengajuan.sumber_pembiayaan` (FK `SumberPembiayaan`, disaring per tipe) | Pegawai | semua |
@@ -80,7 +80,7 @@ Master kategori PDLN saat ini (`paspor/migrations/0007_seed_master_pdln.py`):
 | **Kegiatan** | Acara/program di luar negeri yang menjadi tujuan PDLN — mis. "ASEAN Ministerial Meeting on Infrastructure 2027", "Master of Water Management — IHE Delft 2027". Satu kegiatan dapat diikuti banyak pegawai dan berlangsung di satu negara atau lebih (jarang). |
 | **Kategori kegiatan** | Kategori perjalanan (`KategoriPerjalanan`) tempat kegiatan berlaku. Satu kegiatan boleh punya beberapa kategori, kecuali kegiatan **pendidikan**. |
 | **Skema pendanaan** | Sumber pembiayaan (`SumberPembiayaan`) yang dapat dipakai untuk kegiatan itu. |
-| **Dasar kegiatan** | Bukti/rujukan resmi keberadaan kegiatan: surat (nomor surat undangan/penugasan, opsional berkas PDF), tautan (situs resmi penyelenggara/universitas), data Aplikasi PINTAR, atau lainnya. Setiap kegiatan wajib punya minimal satu dasar. |
+| **Dasar kegiatan** | Bukti/rujukan resmi keberadaan kegiatan: surat (nomor surat undangan/penugasan, opsional berkas PDF), tautan (situs resmi penyelenggara/universitas), data Platform BPSDM, atau lainnya. Setiap kegiatan wajib punya minimal satu dasar. |
 | **Usulan kegiatan** | Kegiatan baru yang diajukan pegawai atau Admin BPSDM; berstatus *Menunggu Persetujuan* sampai diputus Admin Biro PAKLN. |
 | **Kegiatan pendidikan** | Kegiatan yang memuat kategori berlaku `T2P` (Master/Doctoral). Penyelenggara = **universitas**. |
 | **Kegiatan pelatihan** | Kegiatan yang kategorinya berlaku `T2L` (Short Course, Seminar, Workshop, Simposium). |
@@ -244,7 +244,7 @@ Diletakkan di app `paspor` bersama master data lain (`Negara`, `KategoriPerjalan
 | `tgl_diputus` | `DateTimeField` null | — | Waktu keputusan |
 | `catatan_keputusan` | `TextField` | — | Wajib saat ditolak |
 | `sumber_data` | `CharField` choices `manual`/`usulan_pegawai`/`usulan_bpsdm`/`pintar` | ✅ | Asal data: dibuat PAKLN, usulan pegawai, usulan Admin BPSDM, atau sinkron PINTAR (§7.5); disimpan agar tidak bergantung pada peran pengusul yang bisa berubah |
-| `kode_pintar` | `CharField(50)` null, unique | — | ID kegiatan/beasiswa di Aplikasi PINTAR; kosong untuk data manual |
+| `kode_pintar` | `CharField(50)` null, unique | — | ID kegiatan/beasiswa di Platform BPSDM; kosong untuk data manual |
 | `created_at`, `updated_at` | `DateTimeField` | ✅ | |
 
 Properti/metode:
@@ -278,7 +278,7 @@ Index & batasan:
 | `nomor_surat` | `CharField(100)` | jenis `surat` | Nomor surat undangan/penugasan/LoA |
 | `tgl_surat` | `DateField` null | — | Tanggal surat |
 | `tautan` | `URLField(500)` | jenis `tautan` | Halaman resmi kegiatan/program |
-| `kode_pintar` | `CharField(50)` | jenis `pintar` | ID di Aplikasi PINTAR (sama dengan `Kegiatan.kode_pintar` bila hasil sinkron) |
+| `kode_pintar` | `CharField(50)` | jenis `pintar` | ID di Platform BPSDM (sama dengan `Kegiatan.kode_pintar` bila hasil sinkron) |
 | `berkas` | `FileField` (PDF, maks 2 MB, `validate_pdf`) | — | Salinan surat/dokumen pendukung; disimpan di storage S3 seperti dokumen lain |
 | `keterangan` | `CharField(255)` | jenis `lainnya` | Uraian dasar, mis. "Nota dinas Kepala Biro No. …" |
 | `ditambahkan_oleh` | `FK User` (`SET_NULL`, null) | — | |
@@ -323,9 +323,9 @@ Di `views_pegawai._kirim` (di dalam transaksi yang sama), salin ke `DetailPdln`:
 Saat masih draft (status `belum`, termasuk saat dikembalikan Unor), tampilan
 membaca langsung dari `Kegiatan` sehingga koreksi PAKLN ikut terbawa.
 
-### 7.5 Kesiapan integrasi Aplikasi PINTAR
+### 7.5 Kesiapan integrasi Platform BPSDM
 
-Data kegiatan nantinya juga diambil dari Aplikasi PINTAR. Integrasinya **di luar
+Data kegiatan nantinya juga diambil dari Platform BPSDM. Integrasinya **di luar
 cakupan** rencana ini, tetapi model disiapkan agar tidak perlu diubah lagi:
 
 - Kegiatan dari PINTAR disimpan dengan `sumber_data = pintar` dan `kode_pintar`
@@ -367,7 +367,7 @@ Mengikuti [PASPOR_DESIGN_GUIDE.MD](PASPOR_DESIGN_GUIDE.MD) (pola dasbor/daftar, 
 | Isian otomatis | Penyelenggara/Universitas, Negara (semua negara kegiatan dikunci di negara tujuan), Kota, Tgl mulai/selesai kegiatan — read-only |
 | Sumber pembiayaan | Disaring ke skema kegiatan |
 | Tautan usulan | "Kegiatan belum ada? **Usulkan kegiatan baru**" → modal `.paspor-modal` (termasuk minimal satu dasar kegiatan) |
-| Field dihapus | `penyelenggara`, `perguruan_tinggi`, `kota_tujuan`, `tgl_mulai_kegiatan`, `tgl_selesai_kegiatan` (input bebas), dan droplist `beasiswa` (Aplikasi PINTAR) |
+| Field dihapus | `penyelenggara`, `perguruan_tinggi`, `kota_tujuan`, `tgl_mulai_kegiatan`, `tgl_selesai_kegiatan` (input bebas), dan droplist `beasiswa` (Platform BPSDM) |
 
 Endpoint pendukung: `pegawai:kegiatan_opsi` (JSON opsi per tipe/kategori, untuk
 pencarian & isian otomatis), `pegawai:usulkan_kegiatan` (POST modal).
@@ -447,7 +447,7 @@ Pengajuan Non-Kedinasan tidak disentuh. Reverse: kosongkan tautan & hapus kegiat
 Perkiraan urutan rilis: Fase 1–3 (PAKLN dapat mulai mengisi master kegiatan) →
 Fase 4–6 (pegawai memakai kegiatan) → Fase 7–8.
 
-**Lanjutan (di luar cakupan):** sinkron kegiatan dari Aplikasi PINTAR
+**Lanjutan (di luar cakupan):** sinkron kegiatan dari Platform BPSDM
 (`pengajuan/kegiatan.py: sinkron_pintar`, perintah manajemen terjadwal) sesuai
 §7.5, setelah spesifikasi API PINTAR tersedia.
 
@@ -493,7 +493,7 @@ Fase 4–6 (pegawai memakai kegiatan) → Fase 7–8.
 
 | # | Pertanyaan | Keputusan |
 |:-:|---|---|
-| 1 | **Aplikasi PINTAR**: droplist Nama Beasiswa diganti oleh Kegiatan? | **Diganti.** Field `beasiswa_*` hanya untuk data lama. Ke depan data kegiatan juga dikonsumsi dari PINTAR; model disiapkan dengan `sumber_data` & `kode_pintar` (§7.5), integrasi menyusul. |
+| 1 | **Platform BPSDM**: droplist Nama Beasiswa diganti oleh Kegiatan? | **Diganti.** Field `beasiswa_*` hanya untuk data lama. Ke depan data kegiatan juga dikonsumsi dari PINTAR; model disiapkan dengan `sumber_data` & `kode_pintar` (§7.5), integrasi menyusul. |
 | 2 | **Daftar kategori**: disatukan menjadi *pendidikan* / *pelatihan* atau tetap? | **Tetap** seperti master sekarang; "kategori pendidikan" = kategori yang berlaku `T2P` (Master/Doctoral). Ditinjau ulang bila perlu. |
 | 3 | Satu kegiatan di **lebih dari satu negara**? | **Boleh**, meski jarang. `Kegiatan.negara` menjadi M2M (≥1); semua negara kegiatan masuk negara tujuan (B7). Kota tetap satu field teks. |
 | 4 | Apakah kegiatan perlu **sumber/dasar**? | **Ya, wajib** (B15): minimal satu dasar berupa nomor surat, tautan, data PINTAR, atau lainnya; boleh lebih dari satu, berkas PDF opsional (model `DasarKegiatan`). |

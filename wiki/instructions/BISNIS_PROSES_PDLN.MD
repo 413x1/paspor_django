@@ -27,7 +27,7 @@
 9. [Halaman & Navigasi](#9-halaman--navigasi)
 10. [Halaman Report (Dinas & Non-Dinas)](#10-halaman-report-dinas--non-dinas)
 11. [Notifikasi](#11-notifikasi)
-12. [Integrasi Eksternal (Aplikasi PINTAR)](#12-integrasi-eksternal-aplikasi-pintar)
+12. [Integrasi Eksternal (Platform BPSDM)](#12-integrasi-eksternal-aplikasi-pintar)
 13. [Tahapan Implementasi](#13-tahapan-implementasi)
 14. [Keputusan & Pertanyaan Terbuka](#14-keputusan--pertanyaan-terbuka)
 15. [Bahan Pertimbangan untuk Diskusi Lanjutan](#15-bahan-pertimbangan-untuk-diskusi-lanjutan)
@@ -306,7 +306,7 @@ Data pegawai (Nama, NIP, Jabatan, Pangkat, Unit Kerja, Unit Organisasi)
 | **Kegiatan** ([EVENT_IMPLEMENTATION_PLAN.MD](EVENT_IMPLEMENTATION_PLAN.MD)) | — | ✅ | ✅ | ✅ | `Pengajuan.kegiatan` (FK `paspor.Kegiatan`) + snapshot `DetailPdln.kegiatan_nama/kegiatan_tahun` |
 | Penyelenggara | — | otomatis dari kegiatan | — | otomatis dari kegiatan | `DetailPdln.penyelenggara` (snapshot) |
 | Perguruan tinggi | — | — | otomatis dari kegiatan (universitas) | — | `DetailPdln.perguruan_tinggi` (snapshot) |
-| Nama beasiswa (Aplikasi PINTAR) | — | — | diganti Kegiatan (data lama saja) | diganti Kegiatan (data lama saja) | `DetailPdln.beasiswa_*` |
+| Nama beasiswa (Platform BPSDM) | — | — | diganti Kegiatan (data lama saja) | diganti Kegiatan (data lama saja) | `DetailPdln.beasiswa_*` |
 | Negara tujuan | ✅ (M2M) | ✅ | ✅ | ✅ | `Pengajuan.tujuan_negara` |
 | Kota tujuan | — | otomatis dari kegiatan | otomatis | otomatis | `DetailPdln.kota_tujuan` (snapshot) |
 | Tgl keberangkatan / kepulangan | ✅ | ✅ | ✅ | ✅ | `Pengajuan.tgl_berangkat/tgl_kembali` |
@@ -324,7 +324,7 @@ Validasi tambahan (server-side):
 - Pilihan kategori & sumber pembiayaan difilter sesuai tipe ([§8.4](#84-master-data)).
 - Kegiatan wajib dipilih sebelum pengajuan dikirim ke Admin Unor (draft boleh tanpa kegiatan); kategori,
   sumber pembiayaan, dan negara tujuan divalidasi terhadap kegiatan — aturan lengkap di
-  [EVENT_IMPLEMENTATION_PLAN.MD §4](EVENT_IMPLEMENTATION_PLAN.MD#4-aturan-bisnis). Droplist beasiswa Aplikasi PINTAR
+  [EVENT_IMPLEMENTATION_PLAN.MD §4](EVENT_IMPLEMENTATION_PLAN.MD#4-aturan-bisnis). Droplist beasiswa Platform BPSDM
   diganti Kegiatan.
 
 ---
@@ -800,10 +800,10 @@ Pendidikan") alih-alih konstanta `JENIS_SURAT` Non-Dinas.
 
 ---
 
-## 12. Integrasi Eksternal (Aplikasi PINTAR)
+## 12. Integrasi Eksternal (Platform BPSDM)
 
 Menu **Informasi Penawaran Beasiswa LN** dan **Pencalonan Beasiswa**
-berada di Aplikasi PINTAR (sistem terpisah). PASPOR hanya **membaca**:
+berada di Platform BPSDM (sistem terpisah). PASPOR hanya **membaca**:
 
 - Droplist "Nama Beasiswa Pendidikan/Pelatihan" pada formulir T2P/T2L
   menampilkan **pencalonan atas nama pegawai yang login** dengan status
@@ -1091,7 +1091,7 @@ Selain itu, cuti pegawai hanya dipotong untuk Non-Dinas.
 | `pengajuan/views_unor.py`, `views_bpsdm.py`, `views_pakln.py` | Dasbor (tab PDLN/Non-Kedinasan), pratinjau, unggah & teruskan/kembalikan/selesaikan, antrean pembatalan, pelaporan |
 | `pengajuan/riwayat.py` | Label & visibilitas catatan per jalur (BPSDM, laporan, pembatalan) |
 | `notifications/services.py` | Event 4x (BPSDM), 5x (laporan), 6x (pembatalan) |
-| `paspor/integrasi/pintar.py` | Antarmuka Aplikasi PINTAR + stub |
+| `paspor/integrasi/pintar.py` | Antarmuka Platform BPSDM + stub |
 | `templates/partials/_dokumen_tahap.html`, `_direktori_dokumen.html`, `_ringkasan_pengajuan.html`, `_pembatalan.html`, `_ringkasan_dasbor.html`, `_filter_report.html` | Komponen bersama |
 | `templates/bpsdm/`, `templates/bersama/`, `templates/report/`, `templates/akun/profil.html`, `templates/pegawai/{formulir_pdln,pelaporan,pembatalan}.html` | Halaman baru |
 | `pengajuan/tests_pdln.py` | Test alur T1/T2P, visa, pelaporan, satu pengajuan aktif, pembatalan, cakupan role, report |

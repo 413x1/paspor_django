@@ -212,7 +212,7 @@ class Kegiatan(models.Model):
         MANUAL = "manual", "Dibuat Admin Biro PAKLN"
         USULAN_PEGAWAI = "usulan_pegawai", "Usulan Pegawai"
         USULAN_BPSDM = "usulan_bpsdm", "Usulan Admin BPSDM"
-        PINTAR = "pintar", "Aplikasi PINTAR"
+        PINTAR = "pintar", "Platform BPSDM"
 
     nama = models.CharField("Nama Kegiatan", max_length=255)
     deskripsi = models.TextField("Deskripsi", blank=True)
@@ -230,9 +230,9 @@ class Kegiatan(models.Model):
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.DISETUJUI)
     is_active = models.BooleanField("Aktif", default=True)
     sumber_data = models.CharField(max_length=20, choices=SumberData.choices, default=SumberData.MANUAL)
-    # ID kegiatan/beasiswa di Aplikasi PINTAR — kunci sinkron (§7.5). NULL
+    # ID kegiatan/beasiswa di Platform BPSDM — kunci sinkron (§7.5). NULL
     # (bukan string kosong) agar unique tetap berlaku hanya untuk yang terisi.
-    kode_pintar = models.CharField("Kode PINTAR", max_length=50, null=True, blank=True, unique=True)
+    kode_pintar = models.CharField("Kode Platform BPSDM", max_length=50, null=True, blank=True, unique=True)
 
     diusulkan_oleh = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
@@ -303,14 +303,14 @@ class DasarKegiatan(models.Model):
     class Jenis(models.TextChoices):
         SURAT = "surat", "Surat"
         TAUTAN = "tautan", "Tautan"
-        PINTAR = "pintar", "Aplikasi PINTAR"
+        PINTAR = "pintar", "Platform BPSDM"
         LAINNYA = "lainnya", "Lainnya"
 
     # Field yang wajib terisi per jenis.
     FIELD_WAJIB = {
         Jenis.SURAT: ("nomor_surat", "Nomor surat wajib diisi."),
         Jenis.TAUTAN: ("tautan", "Tautan wajib diisi."),
-        Jenis.PINTAR: ("kode_pintar", "Kode PINTAR wajib diisi."),
+        Jenis.PINTAR: ("kode_pintar", "Kode Platform BPSDM wajib diisi."),
         Jenis.LAINNYA: ("keterangan", "Keterangan wajib diisi."),
     }
 
@@ -319,7 +319,7 @@ class DasarKegiatan(models.Model):
     nomor_surat = models.CharField("Nomor Surat", max_length=100, blank=True)
     tgl_surat = models.DateField("Tanggal Surat", null=True, blank=True)
     tautan = models.URLField("Tautan", max_length=500, blank=True)
-    kode_pintar = models.CharField("Kode PINTAR", max_length=50, blank=True)
+    kode_pintar = models.CharField("Kode Platform BPSDM", max_length=50, blank=True)
     berkas = models.FileField("Berkas", upload_to=dasar_kegiatan_path, blank=True)
     keterangan = models.CharField("Keterangan", max_length=255, blank=True)
     ditambahkan_oleh = models.ForeignKey(
