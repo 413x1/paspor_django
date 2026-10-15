@@ -73,7 +73,7 @@ mengisi catatan balasan saat mengirim/meneruskan ulang.
    | Field | Wajib | Disimpan di |
    |---|:-:|---|
    | Kategori (Master / Doctoral) | ✅ | `Pengajuan.kategori` |
-   | Nama Beasiswa — droplist dari **Aplikasi PINTAR** (pencalonan berstatus selesai, jenis `pendidikan`) | ✅ | `DetailPdln.beasiswa_pintar_id`, `beasiswa_nama` |
+   | Nama Beasiswa — droplist dari **Platform BPSDM** (pencalonan berstatus selesai, jenis `pendidikan`) | ✅ | `DetailPdln.beasiswa_pintar_id`, `beasiswa_nama` |
    | Perguruan Tinggi | ✅ | `DetailPdln.perguruan_tinggi` |
    | Negara tujuan | ✅ | `Pengajuan.tujuan_negara` |
    | Kota tujuan | ✅ | `DetailPdln.kota_tujuan` |

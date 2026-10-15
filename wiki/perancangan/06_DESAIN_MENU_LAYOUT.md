@@ -205,7 +205,7 @@ Langkah 1                                     Langkah 2 (bila PDLN)
 │ Unit Kerja [Dit. Bina Teknik SDA ]   Unit Org.  [Ditjen Sumber Daya Air  ]   │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │ Detail Tugas Belajar                                                         │
-│ Nama Beasiswa  [ Pilih ▾ ]                              «Aplikasi PINTAR»    │
+│ Nama Beasiswa  [ Pilih ▾ ]                              «Platform BPSDM»    │
 │   ⓘ Hanya pencalonan atas nama Anda yang berstatus Selesai.                  │
 │ Kategori       [ Master ▾ ]        Perguruan Tinggi [____________________]   │
 │ Negara Tujuan  [ Belanda ▾ ]       Kota Tujuan      [____________________]   │

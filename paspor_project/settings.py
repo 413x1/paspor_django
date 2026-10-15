@@ -231,7 +231,7 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Integrasi Aplikasi PINTAR (pencalonan beasiswa, PDLN Tipe 2) — kosong = pakai
+# Integrasi Platform BPSDM (pencalonan beasiswa, PDLN Tipe 2) — kosong = pakai
 # data stub lokal (paspor/integrasi/pintar.py). Lihat BISNIS_PROSES_PDLN.MD §12.
 PINTAR_API_URL = env("PINTAR_API_URL", "")
 PINTAR_API_TOKEN = env("PINTAR_API_TOKEN", "")

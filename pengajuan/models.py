@@ -801,9 +801,9 @@ class DetailPdln(models.Model):
     keterangan_sumber_pembiayaan = models.TextField("Keterangan Sumber Pembiayaan", blank=True)
     tgl_mulai_kegiatan = models.DateField("Tanggal Mulai Kegiatan", null=True, blank=True)
     tgl_selesai_kegiatan = models.DateField("Tanggal Selesai Kegiatan", null=True, blank=True)
-    # Pencalonan beasiswa dari Aplikasi PINTAR (T2P/T2L) — id + snapshot
-    # nama agar tetap terbaca bila data PINTAR berubah/tidak tersedia.
-    beasiswa_pintar_id = models.CharField("ID Pencalonan PINTAR", max_length=50, blank=True)
+    # Pencalonan beasiswa dari Platform BPSDM (T2P/T2L) — id + snapshot
+    # nama agar tetap terbaca bila data Platform BPSDM berubah/tidak tersedia.
+    beasiswa_pintar_id = models.CharField("ID Pencalonan Platform BPSDM", max_length=50, blank=True)
     beasiswa_nama = models.CharField("Nama Beasiswa", max_length=255, blank=True)
     # Snapshot Kegiatan (EVENT_IMPLEMENTATION_PLAN.MD §7.4) — bersama
     # penyelenggara/perguruan_tinggi, kota_tujuan, dan tanggal kegiatan.

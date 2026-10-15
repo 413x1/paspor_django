@@ -785,7 +785,7 @@ class KegiatanForm(forms.ModelForm):
             "tahun_pelaksanaan": forms.NumberInput(attrs={"class": "input", "placeholder": "Otomatis dari tanggal mulai"}),
             "kategori": forms.SelectMultiple(attrs={"data-multiselect": "Pilih kategori kegiatan…"}),
             "skema_pendanaan": forms.SelectMultiple(attrs={"data-multiselect": "Pilih skema pendanaan…"}),
-            "kode_pintar": forms.TextInput(attrs={"class": "input", "placeholder": "Opsional — ID kegiatan di Aplikasi PINTAR"}),
+            "kode_pintar": forms.TextInput(attrs={"class": "input", "placeholder": "Opsional — ID kegiatan di Platform BPSDM"}),
         }
         labels = {"tahun_pelaksanaan": "Tahun Pelaksanaan"}
 
@@ -870,7 +870,7 @@ class DasarKegiatanForm(forms.ModelForm):
             "nomor_surat": forms.TextInput(attrs={"class": "input", "placeholder": "cth. 123/ASEAN/IX/2027"}),
             "tgl_surat": forms.DateInput(attrs={"type": "date", "class": "input"}, format="%Y-%m-%d"),
             "tautan": forms.URLInput(attrs={"class": "input", "placeholder": "https://…"}),
-            "kode_pintar": forms.TextInput(attrs={"class": "input", "placeholder": "ID di Aplikasi PINTAR"}),
+            "kode_pintar": forms.TextInput(attrs={"class": "input", "placeholder": "ID di Platform BPSDM"}),
             "keterangan": forms.TextInput(attrs={"class": "input", "placeholder": "cth. Nota dinas Kepala Biro No. …"}),
             "berkas": forms.FileInput(attrs={
                 "class": "file-input", "accept": PDF_ACCEPT, "data-pdf-only": "", "data-max-mb": "2",
@@ -881,8 +881,8 @@ class DasarKegiatanForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         jenis = list(DasarKegiatan.Jenis.choices)
         if peran == "pegawai":
-            # Pegawai tidak memakai Aplikasi PINTAR sebagai dasar usulan; kode
-            # PINTAR hanya diisi Admin (atau sinkron PINTAR, §7.5).
+            # Pegawai tidak memakai Platform BPSDM sebagai dasar usulan; kode
+            # Platform BPSDM hanya diisi Admin (atau sinkron Platform BPSDM, §7.5).
             jenis = [c for c in jenis if c[0] != DasarKegiatan.Jenis.PINTAR]
             del self.fields["kode_pintar"]
         self.fields["jenis"].choices = [("", "— Pilih jenis dasar —")] + jenis
@@ -891,13 +891,13 @@ class DasarKegiatanForm(forms.ModelForm):
 
 class BaseDasarKegiatanFormSet(BaseInlineFormSet):
     default_error_messages = {
-        "too_few_forms": "Isi minimal satu dasar kegiatan (nomor surat, tautan, data PINTAR, atau lainnya).",
+        "too_few_forms": "Isi minimal satu dasar kegiatan (nomor surat, tautan, data Platform BPSDM, atau lainnya).",
     }
 
 
 def dasar_formset(data=None, files=None, instance=None, prefix="dasar", peran="admin_pakln"):
     """Formset dasar kegiatan — minimal satu baris (B15); baris pertama
-    kegiatan baru wajib diisi. Pegawai tidak mendapat jenis "Aplikasi PINTAR"."""
+    kegiatan baru wajib diisi. Pegawai tidak mendapat jenis "Platform BPSDM"."""
     FormSet = inlineformset_factory(
         Kegiatan, DasarKegiatan, form=DasarKegiatanForm, formset=BaseDasarKegiatanFormSet,
         extra=0, min_num=1, validate_min=True, can_delete=True,
