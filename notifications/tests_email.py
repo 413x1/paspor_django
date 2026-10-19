@@ -69,11 +69,16 @@ class AntreTests(TestCase):
         self.assertEqual(email_queue.proses_antrean()["diambil"], 0)
         self.assertEqual(len(mail.outbox), 0)
 
-    def test_event_dan_peran_di_luar_daftar_putih_tidak_diantre(self):
-        email_queue.enqueue([_notif(self.unor, event=Event.LAPORAN_DIUNGGAH)])   # event tidak terdaftar
+    def test_event_dan_peran_pegawai_di_luar_daftar_putih_tidak_diantre(self):
         pegawai = _user("peg1", "pegawai", "peg1@pu.go.id")
+        email_queue.enqueue([_notif(pegawai, event=Event.LAPORAN_DISETUJUI)])     # event pegawai tidak terdaftar
         email_queue.enqueue([_notif(pegawai, event=Event.SUBMIT_UNOR)])           # peran tidak sesuai event
         self.assertEqual(EmailLog.objects.count(), 0)
+
+    def test_semua_event_untuk_admin_diantre(self):
+        # Instruksi mentor: admin menerima email untuk SEMUA notifikasi yang ditujukan kepadanya.
+        email_queue.enqueue([_notif(self.unor, event=Event.LAPORAN_DIUNGGAH)])
+        self.assertEqual(EmailLog.objects.count(), 1)
 
     def test_kegagalan_enqueue_tidak_melempar_error(self):
         with mock.patch.object(email_queue, "_baris_email", side_effect=RuntimeError("rusak")):

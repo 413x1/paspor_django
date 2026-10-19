@@ -29,8 +29,15 @@ logger = logging.getLogger("notifications.email")
 
 Event = Notification.Event
 
-# Daftar putih: event yang diemailkan dan peran penerima yang menerimanya.
-# Event di luar daftar ini TIDAK mengirim email (hanya notifikasi in-app).
+# Peran admin: SEMUA notifikasi in-app yang ditujukan kepada peran ini juga dikirim lewat
+# email (Admin Unor, Admin BPSDM, Admin BKO, Admin Biro PAKLN), sehingga setiap kali pegawai
+# melanjutkan proses atau pengajuan bergerak ke tahap berikutnya, admin yang harus
+# menindaklanjuti menerima email dan tidak hanya notifikasi di website.
+PERAN_ADMIN = frozenset({"admin_unor", "admin_bpsdm", "admin_bko", "admin_pakln"})
+
+# Daftar putih untuk penerima NON-admin (pegawai): event yang diemailkan dan peran penerimanya.
+# Event pegawai di luar daftar ini TIDAK mengirim email (hanya notifikasi in-app).
+# Entri peran admin di bawah bersifat dokumentatif; aturan admin ada di `perlu_email`.
 EMAIL_EVENTS = {
     Event.SUBMIT_UNOR: {"admin_unor"},
     Event.RESUBMIT_UNOR: {"admin_unor"},
@@ -61,10 +68,30 @@ def _url_absolut(path):
     return f"{settings.SITE_BASE_URL}{path}"
 
 
-def _template_event(event, ext):
-    """Template khusus event bila ada, selain itu template umum."""
+def _peran_penerima(notif):
+    """Peran yang dituju notifikasi. Memakai `untuk_peran` (bukan `recipient.role`, yaitu peran
+    AKTIF saat ini) agar user ber-role ganda tetap menerima email sesuai peran yang dituju."""
+    return notif.untuk_peran or notif.recipient.role
+
+
+def perlu_email(notif):
+    """Apakah notifikasi ini juga dikirim lewat email?
+    - Peran admin: selalu (semua event yang ditujukan ke admin).
+    - Pegawai: hanya event pada daftar putih `EMAIL_EVENTS`."""
+    peran = _peran_penerima(notif)
+    if peran in PERAN_ADMIN:
+        return True
+    return peran in EMAIL_EVENTS.get(notif.event, ())
+
+
+def _template_event(event, ext, admin=False):
+    """Template khusus event bila ada; untuk admin lalu template umum admin; terakhir template umum."""
     slug = str(event).split("_", 2)[-1].lower() if event else "default"
-    return select_template([f"email/event/{slug}.{ext}", f"email/event/default.{ext}"])
+    kandidat = [f"email/event/{slug}.{ext}"]
+    if admin:
+        kandidat.append(f"email/event/default_admin.{ext}")
+    kandidat.append(f"email/event/default.{ext}")
+    return select_template(kandidat)
 
 
 def _konteks(notif, nama):
@@ -96,6 +123,8 @@ def _baris_email(notif):
     user = notif.recipient
     nama = (user.get_full_name() or user.username).strip()
     konteks = _konteks(notif, nama)
+    admin = _peran_penerima(notif) in PERAN_ADMIN
+    konteks["admin"] = admin
 
     status, catatan = EmailLog.Status.PENDING, ""
     if not (user.email or "").strip():
@@ -110,8 +139,8 @@ def _baris_email(notif):
         pengajuan=notif.pengajuan,
         event=notif.event,
         subject=f"[PASPOR] {notif.title}"[:255],
-        body_text=_template_event(notif.event, "txt").render(konteks),
-        body_html=_template_event(notif.event, "html").render(konteks),
+        body_text=_template_event(notif.event, "txt", admin).render(konteks),
+        body_html=_template_event(notif.event, "html", admin).render(konteks),
         status=status,
         status_note=catatan,
         max_attempts=_cfg()["MAX_ATTEMPTS"],
@@ -124,8 +153,7 @@ def enqueue(notifs):
     try:
         baris = []
         for notif in notifs:
-            peran = EMAIL_EVENTS.get(notif.event)
-            if peran and notif.recipient.role in peran:
+            if perlu_email(notif):
                 baris.append(_baris_email(notif))
         if baris:
             EmailLog.objects.bulk_create(baris)
