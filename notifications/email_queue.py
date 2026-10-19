@@ -47,6 +47,11 @@ EMAIL_EVENTS = {
     Event.COMPLETE_PKLN: {"pegawai"},
     Event.PEMBATALAN_DITOLAK: {"pegawai"},
     Event.PEMBATALAN_DISETUJUI: {"pegawai"},
+    # Proses lain yang dialami pegawai (instruksi mentor: email untuk tiap proses dan pengembalian):
+    Event.FORWARD_BPSDM: {"pegawai", "admin_bpsdm"},        # PDLN Tipe 2 diteruskan ke BPSDM
+    Event.PEMBATALAN_MENUNGGU_PAKLN: {"pegawai", "admin_pakln"},  # pembatalan lolos Unor, menunggu Biro PAKLN
+    Event.LAPORAN_DIKEMBALIKAN: {"pegawai"},                # Laporan PDLN dikembalikan Biro PAKLN
+    Event.LAPORAN_DISETUJUI: {"pegawai"},                   # Laporan PDLN disetujui, pengajuan tuntas
 }
 
 _MAKS_BACKOFF = 3600  # detik

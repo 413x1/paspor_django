@@ -323,8 +323,15 @@ def _create(recipients, *, pengajuan, event, level, title, body, redirect_url):
 Aturan pemasangan:
 - **Aman:** `email_queue.enqueue` dibungkus `try/except` + log. Gagal mengantre email
   **tidak boleh** menggagalkan pembuatan notifikasi in-app atau alur pengajuan.
-- **Daftar putih event:** hanya event yang terdaftar di tabel 5.2 yang diemailkan.
-  Event baru tidak otomatis mengirim email.
+- **Aturan penerima (diperbarui 19 Okt 2026):**
+  - **Admin** (Unor, BPSDM, BKO, Biro PAKLN): **semua** notifikasi in-app yang ditujukan
+    kepada peran admin juga dikirim lewat email (instruksi mentor: email ke semua admin
+    dari Admin Unor hingga Biro PAKLN, tidak hanya notifikasi di website).
+  - **Pegawai:** daftar putih event pada tabel 5.2. Event pegawai baru tidak otomatis
+    mengirim email.
+  - Peran penerima ditentukan dari `Notification.untuk_peran` (peran yang dituju), bukan
+    `recipient.role` (peran aktif), agar user berperan ganda tetap menerima email sesuai
+    peran yang dituju.
 - **Satu transaksi:** baris `EmailLog` dibuat dalam transaksi yang sama dengan data
   bisnis bila `_create` dipanggil di dalamnya. Bila transaksi dibatalkan, email ikut
   batal. Worker hanya melihat baris yang sudah di-*commit*.
@@ -350,11 +357,22 @@ Cakupan sesuai arahan: tiga arah. Event diambil dari `Notification.Event` yang s
 | **Sistem → Admin PAKLN ("Admin KLN")** | Ajuan diteruskan ke PAKLN | `NOTIF_02A_APPROVE_UNOR` (salinan admin PAKLN) | `notify_approve_unor` |
 | | Perbaikan berkas diteruskan ulang | `NOTIF_02A_APPROVE_UNOR` (dengan catatan) | `notify_approve_unor(catatan=...)` |
 
-Pembeda salinan: satu event dapat menghasilkan notifikasi untuk beberapa peran (pegawai,
-admin). Template dipilih berdasarkan **event + peran penerima** (`recipient.role`).
+**Cakupan lanjutan (sudah diimplementasikan, 19 Okt 2026).** Selain tabel di atas:
 
-**Fase 2 (opsional, di luar cakupan awal):** event pembatalan ke Admin Unor/PAKLN,
-laporan PDLN, alur BPSDM, dan pengingat terjadwal.
+| Arah | Kejadian | Event |
+|---|---|---|
+| **Sistem → Pegawai** | PDLN Tipe 2 diteruskan ke BPSDM | `NOTIF_04A_FORWARD_BPSDM` (salinan pegawai) |
+| | Pembatalan lolos Admin Unor, menunggu Biro PAKLN | `NOTIF_06B_PEMBATALAN_MENUNGGU_PAKLN` (salinan pegawai) |
+| | Laporan PDLN dikembalikan | `NOTIF_05B_LAPORAN_DIKEMBALIKAN` |
+| | Laporan PDLN disetujui | `NOTIF_05C_LAPORAN_DISETUJUI` |
+| **Sistem → semua admin** | Setiap notifikasi yang ditujukan ke Admin Unor, BPSDM, BKO, atau Biro PAKLN | Seluruh event (alur BPSDM, track BKO, laporan PDLN, pembatalan, usulan kegiatan) |
+
+Pembeda salinan: satu event dapat menghasilkan notifikasi untuk beberapa peran (pegawai,
+admin). Template dipilih berdasarkan **event + peran yang dituju**: template khusus event
+bila ada; untuk admin lalu `default_admin` (kotak "Tindak lanjut diperlukan"); terakhir
+`default`.
+
+**Di luar cakupan:** pengingat terjadwal (mis. batas pelaporan PDLN).
 
 ### 5.3 Isi dinamis
 
@@ -387,6 +405,7 @@ templates/email/
     _catatan.html          kotak catatan revisi (bila ada)
   event/
     default.html / .txt    template umum: judul + isi + tombol
+    default_admin.html / .txt   template umum untuk admin: + kotak "Tindak lanjut diperlukan"
     submit_unor.html       dst., hanya bila butuh wording khusus
 ```
 
@@ -508,7 +527,7 @@ Memakai backend email `locmem` Django (`mail.outbox`) agar tidak ada email nyata
 | Area | Kasus uji |
 |---|---|
 | Konfigurasi | `MAIL_ALLOW_SEND` bawaan `False`; pemetaan `MAIL_*` ke `EMAIL_*`; `MAIL_TIMEOUT_MS` ke detik |
-| Antre | Baris `pending` dibuat untuk penerima beremail; `skipped` untuk tanpa email; `skipped` bila `MAIL_ALLOW_SEND=false`; event di luar daftar putih tidak diantre |
+| Antre | Baris `pending` dibuat untuk penerima beremail; `skipped` untuk tanpa email; `skipped` bila `MAIL_ALLOW_SEND=false`; event pegawai di luar daftar putih tidak diantre; semua event untuk peran admin diantre; peran dituju (`untuk_peran`) menentukan, bukan peran aktif |
 | Hook | Kegagalan `enqueue` tidak menggagalkan `_create` dan notifikasi in-app tetap terbuat |
 | Worker | Satu putaran mengirim sesuai `BATCH_SIZE`; `sent` ditandai; gagal kembali ke `pending` dengan `next_attempt_at`; `failed` setelah `max_attempts`; baris `sending` kedaluwarsa diambil ulang; baris dengan `next_attempt_at` di masa depan tidak diambil |
 | Konkurensi | Dua pemanggil bersamaan tidak mengambil baris yang sama (`SKIP LOCKED`) |
@@ -558,11 +577,11 @@ folder spam, dan cek tampilan di Outlook dan Gmail.
 
 | # | Pertanyaan | Rekomendasi |
 |---|---|---|
-| 1 | Email akun wajib atau opsional? | Opsional + dilewati dengan jejak (`skipped`) dulu |
+| 1 | Email akun wajib atau opsional? | Opsional + dilewati dengan jejak (`skipped`) dulu. **Pembaruan:** sejak merge `development` (AB-17), email wajib saat Admin Biro PAKLN membuat/mengedit akun; akun lama tanpa email tetap dilewati dengan jejak |
 | 2 | Dari mana data email pegawai diisi? | Tentukan sumber resmi (SDM/Biro). Sementara via Manajemen User |
 | 3 | Boleh menambah status `skipped` di luar empat status yang diminta? | Ya, agar "dilewati" tidak bercampur dengan "gagal" |
 | 4 | Apakah SMTP AUTH Office 365 sudah diaktifkan untuk `support.eiln@pu.go.id`, dan berapa batas kirimnya? | Konfirmasi ke pengelola email PU |
-| 5 | Cakupan event awal sudah sesuai tabel 5.2? | Ya; sisanya Fase 2 |
+| 5 | Cakupan event awal sudah sesuai tabel 5.2? | Ya. **Pembaruan:** diperluas (19 Okt 2026): semua event admin diemailkan dan empat event pegawai ditambahkan (bagian 5.2) |
 | 6 | Retensi `EmailLog` berapa hari? | 90 hari untuk `sent` dan `skipped`; `failed` disimpan lebih lama |
 | 7 | Worker dijalankan sebagai container terpisah atau cron? | Container `mail-worker` terpisah |
 
@@ -602,8 +621,28 @@ Ringkasan hasil pengerjaan, dan hal yang berbeda atau ditambahkan dari rancangan
   (penanda "email belum diisi"), bukan kolom baru, agar urutan kolom tabel tidak berubah.
 - **Aktivitas Log Sistem** baru: `email.kirim_ulang`.
 
+**Pembaruan 19 Oktober 2026**
+
+- **Merge `development`** (multi-role, kontak, SSO, e-HRM) ke branch ini. Konflik diselesaikan dengan
+  mengikuti aturan `development` (email dan nomor HP wajib pada form user, email dinormalkan huruf
+  kecil dan unik). Graf migrasi `notifications` digabung lewat `0009_gabung_emaillog_dan_peran`.
+- **Email ke semua admin** (instruksi mentor): lihat bagian 5.1 dan 5.2. Fungsi `perlu_email`
+  di `notifications/email_queue.py`; template baru `email/event/default_admin.html` dan `.txt`.
+- **Empat event pegawai** ditambahkan ke daftar putih (diteruskan ke BPSDM, pembatalan menunggu
+  Biro PAKLN, laporan dikembalikan, laporan disetujui).
+- **Penentuan peran memakai `untuk_peran`**, bukan `recipient.role`, agar aman untuk user berperan ganda.
+- **Konfigurasi `.env`:** loader `.env` memakai nilai PERTAMA bila satu kunci muncul dua kali
+  (`os.environ.setdefault`). Jangan menyimpan blok `MAIL_*` contoh di atas blok kredensial asli,
+  karena blok contoh akan menimpa kredensial. Pakai satu blok saja.
+- **Uji kirim nyata** lewat SMTP Office 365 (`smtp.office365.com:587`, TLS) berhasil: email uji
+  dengan template admin diterima di kotak masuk dengan tampilan baik.
+
 **Belum dilakukan / perlu tindak lanjut**
 
 - Pengisian email untuk 47 akun yang ada (bagian 1.3). Email baru bisa diisi lewat Manajemen User.
-- Uji pengiriman nyata lewat Office 365 (SMTP AUTH, batas kecepatan) dan tampilan di Outlook/Gmail.
-- Event Fase 2 (pembatalan ke admin, laporan PDLN, alur BPSDM, pengingat terjadwal).
+- Uji pengiriman melalui worker antrean (`kirim_email_antrean`) dengan `MAIL_DEV_REDIRECT_TO`, batas
+  kecepatan Office 365, dan tampilan di Outlook (uji kirim langsung ke satu alamat sudah berhasil).
+- Pengisian email akun yang masih kosong (pegawai belum bisa mengisi email sendiri; sumber email
+  resmi belum diputuskan, lihat bagian 12 butir 2).
+- `SITE_BASE_URL` dan `MAIL_SITE_NAME`/`MAIL_FROM_NAME` (saat ini "EILN") perlu disesuaikan untuk server.
+- Pengingat terjadwal (mis. batas pelaporan PDLN).

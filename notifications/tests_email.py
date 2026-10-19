@@ -71,7 +71,7 @@ class AntreTests(TestCase):
 
     def test_event_dan_peran_pegawai_di_luar_daftar_putih_tidak_diantre(self):
         pegawai = _user("peg1", "pegawai", "peg1@pu.go.id")
-        email_queue.enqueue([_notif(pegawai, event=Event.LAPORAN_DISETUJUI)])     # event pegawai tidak terdaftar
+        email_queue.enqueue([_notif(pegawai, event=Event.PEMBATALAN_DITARIK)])    # event pegawai tidak terdaftar
         email_queue.enqueue([_notif(pegawai, event=Event.SUBMIT_UNOR)])           # peran tidak sesuai event
         self.assertEqual(EmailLog.objects.count(), 0)
 

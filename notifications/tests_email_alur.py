@@ -122,6 +122,35 @@ class EmailSemuaAdminTests(_Basis, TestCase):
         self.assertIn("NOTIF_03A_COMPLETE_PKLN", pegawai)
         self.assertNotIn("NOTIF_05A_LAPORAN_DIUNGGAH", pegawai)
 
+    def test_pegawai_menerima_email_untuk_tiap_proses_lanjutan(self):
+        # Tipe 2: pegawai diberi tahu saat pengajuan diteruskan ke BPSDM.
+        p = self.isi_formulir("T2P")
+        self.kirim(p)
+        self.unor_teruskan(p)
+        self.assertIn(("pegawai", "NOTIF_04A_FORWARD_BPSDM"), self._email())
+
+    def test_pegawai_menerima_email_laporan_dikembalikan_dan_disetujui(self):
+        p = self.isi_formulir("T1")
+        self.kirim(p)
+        self.unor_teruskan(p)
+        self.pakln_selesai(p)
+        self.unggah_laporan(p)
+        self.post(self.admin_pakln, "pakln:verifikasi_laporan", {"keputusan": "kembalikan", "catatan_pakln": "Lengkapi lampiran"}, kode=p.kode)
+        self.assertIn(("pegawai", "NOTIF_05B_LAPORAN_DIKEMBALIKAN"), self._email())
+        self.unggah_laporan(p, catatan="Sudah dilengkapi")
+        self.post(self.admin_pakln, "pakln:verifikasi_laporan", {"keputusan": "setujui"}, kode=p.kode)
+        self.assertIn(("pegawai", "NOTIF_05C_LAPORAN_DISETUJUI"), self._email())
+
+    def test_pegawai_menerima_email_pembatalan_menunggu_biro_pakln(self):
+        p = self.isi_formulir("T1")
+        self.kirim(p)
+        self.post(self.pegawai, "pegawai:ajukan_pembatalan", {"alasan": "Agenda diundur"}, kode=p.kode)
+        m = p.permohonan_pembatalan.get()
+        self.post(self.admin_unor, "unor:putuskan_pembatalan", {"keputusan": "setuju"}, pk=m.pk)
+        email = self._email()
+        self.assertIn(("pegawai", "NOTIF_06B_PEMBATALAN_MENUNGGU_PAKLN"), email)
+        self.assertIn(("admin_pakln", "NOTIF_06B_PEMBATALAN_MENUNGGU_PAKLN"), email)
+
     def test_admin_tanpa_email_tidak_membuat_alur_gagal(self):
         User.objects.filter(pk=self.admin_unor.pk).update(email="")
         p = self.isi_formulir("T1")
