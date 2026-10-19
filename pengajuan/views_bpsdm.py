@@ -14,7 +14,7 @@ from logs.utils import catat_riwayat
 from notifications.services import notify_approve_unor, notify_forward_bko, notify_info_bko, notify_reject_bpsdm
 
 from . import alur, bko, persyaratan, report, riwayat, tahap
-from .decorators import role_required
+from .decorators import role_required, tolak_pengajuan_sendiri
 from .models import Pengajuan, PermohonanPembatalan, RiwayatPengajuan
 from .views_unor import status_html
 
@@ -75,6 +75,8 @@ def dashboard_data(request):
 @role_required("admin_bpsdm")
 def preview(request, kode):
     pengajuan = get_object_or_404(_scoped(request), kode=kode)
+    if request.method == "POST":
+        tolak_pengajuan_sendiri(request, pengajuan)  # AB-12
 
     if request.method == "POST":
         pesan = alur.alasan_dibekukan(pengajuan)
@@ -122,6 +124,8 @@ def preview(request, kode):
 @role_required("admin_bpsdm")
 def upload_dokumen(request, kode):
     pengajuan = get_object_or_404(_scoped(request), kode=kode)
+    if request.method == "POST":
+        tolak_pengajuan_sendiri(request, pengajuan)  # AB-12
     if not pengajuan.preview_bpsdm_agree or pengajuan.status != S.PROSES_BPSDM:
         return redirect("bpsdm:preview", kode=kode)
 
@@ -188,6 +192,7 @@ def _teruskan(request, pengajuan):
 @role_required("admin_bpsdm")
 def hapus_dokumen(request, kode, jenis):
     pengajuan = get_object_or_404(_scoped(request), kode=kode)
+    tolak_pengajuan_sendiri(request, pengajuan)  # AB-12
     if pengajuan.status == S.PROSES_BPSDM:
         tahap.hapus(request, pengajuan, "bpsdm", jenis)
     return redirect("bpsdm:upload_dokumen", kode=kode)

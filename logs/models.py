@@ -31,6 +31,20 @@ class ActivityLog(models.Model):
         UBAH_MASTER = "master.ubah", "Mengubah data master"
         UBAH_KEGIATAN = "kegiatan.ubah", "Mengelola/mengusulkan kegiatan"
         RESET_LOG = "log.reset", "Reset Log"
+        # Akun, kontak & role ganda (SSO_PROFIL_ROLE_GANDA_IMPLEMENTATION_PLAN.MD)
+        LOGIN_SSO = "auth.login_sso", "Login SSO"
+        UBAH_KONTAK = "akun.ubah_kontak", "Mengubah email/nomor HP"
+        BUKA_KUNCI_KONTAK = "akun.buka_kunci_kontak", "Membuka kunci kontak"
+        UBAH_USERNAME = "akun.ubah_username", "Mengubah username"
+        ATUR_PASSWORD = "akun.atur_password", "Mengatur password"
+        GANTI_PASSWORD = "akun.ganti_password", "Mengganti password"
+        HAPUS_PASSWORD = "akun.hapus_password", "Menghapus password"
+        GANTI_PERAN = "akun.ganti_peran", "Mengganti peran aktif"
+        PERAN_DIBERIKAN = "akun.peran_diberikan", "Memberikan peran"
+        PERAN_DICABUT = "akun.peran_dicabut", "Mencabut peran"
+        SINKRON_EHRM = "akun.sinkron_ehrm", "Sinkronisasi e-HRM"
+        SINKRON_EHRM_GAGAL = "akun.sinkron_ehrm_gagal", "Sinkronisasi e-HRM gagal"
+        PRA_DAFTAR = "akun.pra_daftar", "Pra-daftar pegawai via NIP"
 
     class Status(models.TextChoices):
         BERHASIL = "success", "Berhasil"

@@ -130,6 +130,11 @@ class PengajuanForm(forms.ModelForm):
         self.fields["kategori"].queryset = kategori_queryset
         self.fields["kategori"].required = True
 
+        # Kolom model boleh kosong (blank=True, dipakai bersama alur PDLN),
+        # tetapi pada pengajuan Non-Dinas ketiganya wajib diisi.
+        for nama in ("maksud", "tgl_berangkat", "tgl_kembali"):
+            self.fields[nama].required = True
+
     def clean(self):
         """Jumlah hari kerja selalu dihitung ulang di server dari tanggal &
         kalender libur (nilai kiriman browser tidak dipercaya), lalu
@@ -219,6 +224,7 @@ class PdlnForm(forms.ModelForm):
         self.fields["tujuan_negara"].queryset = negara
         # Wajib setelah negara kegiatan ditambahkan otomatis (lihat clean).
         self.fields["tujuan_negara"].required = False
+        self.fields["tujuan_negara"].widget.attrs["data-wajib"] = ""   # penanda * di label
 
         kategori = KategoriPerjalanan.objects.filter(
             jenis_perjalanan=KategoriPerjalanan.JenisPerjalanan.PDLN, is_active=True,
@@ -711,6 +717,8 @@ class LaporanPdlnForm(forms.ModelForm):
         self._berkas_lama = ""
         if not perlu_catatan:
             del self.fields["catatan_perbaikan"]
+        for field in self.fields.values():   # semua wajib saat "Laporkan" (penanda * di label)
+            field.widget.attrs["data-wajib"] = ""
         if self.instance.pk and not self.is_bound:
             for nama in ("estimasi_biaya", "realisasi_biaya"):
                 nilai = getattr(self.instance, nama)

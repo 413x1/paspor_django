@@ -2,6 +2,7 @@ import os
 from datetime import date
 
 from django.contrib import messages
+from django.contrib.auth import update_session_auth_hash
 from django.db import transaction
 from django.db.models import Q
 from django.http import FileResponse, Http404, JsonResponse
@@ -11,7 +12,10 @@ from django.utils import timezone
 from django.utils.html import escape, format_html
 from django.views.decorators.http import require_POST
 
-from accounts.models import DokumenKepegawaian, PasporPegawai
+from accounts.forms import (
+    AturPasswordForm, GantiPasswordForm, HapusPasswordForm, KontakForm, UbahUsernameForm,
+)
+from accounts.models import URUTAN_PERAN, DokumenKepegawaian, PasporPegawai, User
 from logs.models import ActivityLog
 from paspor.validators import KODE_BUKAN_PDF, periksa_pdf, tandai_ditolak
 from logs.utils import catat_riwayat, record_activity
@@ -668,17 +672,131 @@ def tarik_pembatalan(request, pk):
 # Profil (BISNIS_PROSES_PDLN.MD §9.1)
 # ---------------------------------------------------------------------------
 
+def _jenis_dokumen_profil(user):
+    if user.role == "pegawai":
+        return [c for c in DokumenKepegawaian.Jenis.choices if c[0] != DokumenKepegawaian.Jenis.SK_PENUGASAN]
+    return [(DokumenKepegawaian.Jenis.SK_PENUGASAN, DokumenKepegawaian.Jenis.SK_PENUGASAN.label)]
+
+
+def _aksi_akun_tersedia(user):
+    """Whitelist aksi akun per kondisi akun & peran aktif (AB-07, AB-16,
+    AB-21). Aksi di luar daftar ini ditolak, sekalipun HTML dimanipulasi."""
+    tersedia = {"ubah_username"}
+    if user.has_usable_password():
+        tersedia.add("ganti_password")
+        if user.punya_sso():
+            tersedia.add("hapus_password")
+    else:
+        tersedia.add("atur_password")
+    if user.role == User.Role.ADMIN_PAKLN:
+        tersedia.add("ubah_kontak")
+    return tersedia
+
+
+def _form_akun(aksi, user, data=None):
+    """Form untuk `aksi` akun — hanya field yang diizinkan yang dibaca."""
+    if aksi == "ubah_username":
+        return UbahUsernameForm(data, instance=user)
+    if aksi == "atur_password":
+        return AturPasswordForm(user, data)
+    if aksi == "ganti_password":
+        return GantiPasswordForm(user, data)
+    if aksi == "hapus_password":
+        return HapusPasswordForm(user, data)
+    if aksi == "ubah_kontak":
+        return KontakForm(data, instance=user)
+    return None
+
+
+_PESAN_AKUN = {
+    "ubah_username": "Username berhasil diubah.",
+    "atur_password": "Password berhasil diatur. Anda kini dapat masuk dengan username & password.",
+    "ganti_password": "Password berhasil diganti.",
+    "hapus_password": "Password dihapus. Selanjutnya masuk dengan SSO.",
+    "ubah_kontak": "Email & nomor HP berhasil diubah.",
+}
+
+
+def _proses_aksi_akun(request, aksi):
+    """Proses satu aksi akun. Mengembalikan form berisi error (untuk dirender
+    ulang) atau None bila berhasil/ditolak (pemanggil melakukan redirect)."""
+    user = request.user
+    if aksi not in _aksi_akun_tersedia(user):
+        messages.error(request, "Aksi tidak tersedia untuk akun Anda.")
+        return None
+    # Salinan terpisah agar error validasi tidak mengubah `request.user` (mis.
+    # username di header) sebelum tersimpan.
+    akun = User.objects.get(pk=user.pk)
+    akun._role_db = akun.role
+    akun.role = user.role
+    form = _form_akun(aksi, akun, request.POST)
+    if not form.is_valid():
+        return form
+
+    A = ActivityLog.Aktivitas
+    if aksi == "ubah_username":
+        lama = user.username
+        form.save()
+        record_activity(request, A.UBAH_USERNAME, f"Ubah username: {lama} → {akun.username}",
+                        target_type="user", target_id=user.pk)
+    elif aksi in ("atur_password", "ganti_password"):
+        form.save()
+        update_session_auth_hash(request, akun)
+        record_activity(request, A.ATUR_PASSWORD if aksi == "atur_password" else A.GANTI_PASSWORD,
+                        "Mengatur password" if aksi == "atur_password" else "Mengganti password",
+                        target_type="user", target_id=user.pk)
+    elif aksi == "hapus_password":
+        form.save()
+        update_session_auth_hash(request, akun)
+        record_activity(request, A.HAPUS_PASSWORD, "Menghapus password (SSO saja)",
+                        target_type="user", target_id=user.pk)
+    elif aksi == "ubah_kontak":
+        berubah = form.save(kunci=akun.tersinkron_ehrm())
+        if berubah:
+            record_activity(
+                request, A.UBAH_KONTAK, "Mengubah kontak sendiri", target_type="user", target_id=user.pk,
+                detail="; ".join(f"{f}: {lama or '—'} → {baru or '—'}" for f, (lama, baru) in berubah.items()),
+            )
+    messages.success(request, _PESAN_AKUN[aksi])
+    return None
+
+
+def _context_profil(request, form_akun=None, aksi_terbuka=""):
+    user = request.user
+    jenis_dokumen = _jenis_dokumen_profil(user)
+    dokumen = {d.jenis: d for d in DokumenKepegawaian.objects.filter(user=user)}
+    tersedia = _aksi_akun_tersedia(user)
+    forms_akun = {aksi: _form_akun(aksi, user) for aksi in tersedia}
+    if form_akun is not None:
+        forms_akun[aksi_terbuka] = form_akun
+    peran = (
+        user.peran_list.filter(is_active=True).select_related("unit_organisasi")
+        if user.pk else []
+    )
+    return {
+        "profile": getattr(user, "profile", None),
+        "paspor_list": PasporPegawai.objects.filter(pegawai=user),
+        "jenis_paspor": PasporPegawai.Jenis.choices,
+        "jenis_dokumen": [(k, label, dokumen.get(k)) for k, label in jenis_dokumen],
+        "forms_akun": forms_akun,
+        "aksi_terbuka": aksi_terbuka,
+        "peran_list": sorted(peran, key=lambda p: URUTAN_PERAN.index(p.role)),
+    }
+
+
 @role_required("pegawai", "admin_unor", "admin_bpsdm", "admin_bko", "admin_pakln")
 def profil(request):
     user = request.user
-    jenis_dokumen = (
-        [c for c in DokumenKepegawaian.Jenis.choices if c[0] != DokumenKepegawaian.Jenis.SK_PENUGASAN]
-        if user.role == "pegawai" else [(DokumenKepegawaian.Jenis.SK_PENUGASAN, DokumenKepegawaian.Jenis.SK_PENUGASAN.label)]
-    )
+    jenis_dokumen = _jenis_dokumen_profil(user)
 
     if request.method == "POST":
         aksi = request.POST.get("aksi")
-        if aksi == "tambah_paspor" and user.role == "pegawai":
+        if aksi in _PESAN_AKUN:
+            form = _proses_aksi_akun(request, aksi)
+            if form is not None:
+                messages.error(request, "Periksa kembali isian formulir.")
+                return render(request, "akun/profil.html", _context_profil(request, form, aksi))
+        elif aksi == "tambah_paspor" and user.role == "pegawai":
             nomor = request.POST.get("nomor", "").strip()
             jenis = request.POST.get("jenis", "")
             try:
@@ -711,10 +829,4 @@ def profil(request):
                 messages.success(request, "Dokumen berhasil diunggah.")
         return redirect("profil")
 
-    dokumen = {d.jenis: d for d in DokumenKepegawaian.objects.filter(user=user)}
-    return render(request, "akun/profil.html", {
-        "profile": getattr(user, "profile", None),
-        "paspor_list": PasporPegawai.objects.filter(pegawai=user),
-        "jenis_paspor": PasporPegawai.Jenis.choices,
-        "jenis_dokumen": [(k, label, dokumen.get(k)) for k, label in jenis_dokumen],
-    })
+    return render(request, "akun/profil.html", _context_profil(request))

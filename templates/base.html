@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}PASPOR{% endblock %} — Kementerian PU</title>
   <link rel="stylesheet" href="{% static 'vendors/bulma/css/versions/bulma-no-dark-mode.min.css' %}">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20261014b">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20261019">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -19,6 +19,15 @@
 
 <main class="page-wrap{% block wrap_extra_class %}{% endblock %}">
   {% block breadcrumb %}{% include "partials/_breadcrumb.html" %}{% endblock %}
+  {% if no_hp_kosong %}
+    <div class="notification paspor-msg is-warning banner-no-hp">
+      {% if user.role == "admin_pakln" %}
+        Nomor HP Anda belum tercatat. <a href="{% url 'profil' %}">Lengkapi di menu Profil →</a>
+      {% else %}
+        Nomor HP belum tercatat — hubungi Admin Biro PAKLN.
+      {% endif %}
+    </div>
+  {% endif %}
   {% if messages %}
     {% for message in messages %}
       <div class="notification paspor-msg {% if message.tags == 'error' %}is-danger{% elif message.tags == 'success' %}is-success{% elif message.tags == 'warning' %}is-warning{% else %}is-info{% endif %}"{% if message.tags == 'success' %} data-flash-success{% endif %}>{{ message }}</div>
@@ -523,6 +532,21 @@
     }
     $('select[data-multiselect]').each(function () { initMultiselect($(this)); });
     $(document).on('click', function () { $('.multiselect-panel.is-active').removeClass('is-active'); });
+
+    // Penanda wajib: tambahkan "*" merah pada label setiap isian ber-atribut
+    // `required` (Django memasangnya otomatis untuk field wajib) atau
+    // `data-wajib` (wajib secara bisnis tetapi boleh kosong saat draft). Label yang
+    // sudah punya penanda (.text-danger) dilewati; badge "Otomatis" tetap di
+    // belakang tanda bintang.
+    $('input[required], select[required], textarea[required], [data-wajib]').each(function () {
+      if (this.type === 'hidden') { return; }
+      var $label = this.id ? $('label[for="' + this.id + '"]').first() : $();
+      if (!$label.length) { $label = $(this).closest('.field').find('label.label').first(); }
+      if (!$label.length || $label.find('.text-danger').length) { return; }
+      var $tanda = $('<span class="text-danger" aria-hidden="true"> *</span>');
+      var $badge = $label.children('.badge-auto').first();
+      if ($badge.length) { $badge.before($tanda); } else { $label.append($tanda); }
+    });
 
     // Toast pop-up: muncul bertahap lalu hilang otomatis setelah beberapa detik.
     $('[data-notif-toast]').each(function (i) {

@@ -11,6 +11,8 @@ urlpatterns = [
     path("", account_views.role_redirect, name="home"),
     path("login/", account_views.login_view, name="login"),
     path("logout/", account_views.logout_view, name="logout"),
+    path("login/sso/", account_views.sso_login, name="sso_login"),
+    path("akun/peran/", account_views.ganti_peran, name="ganti_peran"),
 
     # Role-based sections (namespaced, sesuai 3 role pada mockup)
     path("pegawai/", include(("pengajuan.urls_pegawai", "pegawai"), namespace="pegawai")),

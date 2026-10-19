@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from .models import DokumenKepegawaian, PasporPegawai, PegawaiProfile, User
+from .models import DokumenKepegawaian, PasporPegawai, PegawaiProfile, PeranUser, User
 
 
 class PegawaiProfileInline(admin.StackedInline):
@@ -10,21 +10,34 @@ class PegawaiProfileInline(admin.StackedInline):
     extra = 0
 
 
+class PeranUserInline(admin.TabularInline):
+    model = PeranUser
+    fk_name = "user"
+    extra = 0
+    fields = ("role", "unit_organisasi", "is_active", "diberikan_oleh", "created_at")
+    readonly_fields = ("diberikan_oleh", "created_at")
+    autocomplete_fields = ("unit_organisasi",)
+
+
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
-    inlines = [PegawaiProfileInline]
-    list_display = ("username", "get_full_name", "role", "unit_organisasi", "is_active", "is_staff")
-    list_filter = ("role", "unit_organisasi", "is_active", "is_staff")
+    inlines = [PeranUserInline, PegawaiProfileInline]
+    list_display = ("username", "get_full_name", "role", "no_hp", "sumber_akun", "is_active", "is_staff")
+    list_filter = ("peran_list__role", "sumber_akun", "is_active", "is_staff")
+    search_fields = ("username", "first_name", "last_name", "email", "no_hp", "profile__nip")
     fieldsets = DjangoUserAdmin.fieldsets + (
         ("Peran PASPOR", {"fields": ("role", "unit_kerja", "unit_organisasi")}),
+        ("Kontak & SSO", {"fields": ("no_hp", "email_dikunci", "no_hp_dikunci", "sumber_akun",
+                                     "sso_sub", "ehrm_sinkron_at")}),
     )
+    readonly_fields = ("sso_sub", "ehrm_sinkron_at")
     autocomplete_fields = ("unit_organisasi",)
 
     def get_inlines(self, request, obj):
-        # Inline profil pegawai hanya relevan untuk role Pegawai.
-        if obj and obj.role == User.Role.PEGAWAI:
-            return [PegawaiProfileInline]
-        return []
+        # Inline profil pegawai hanya relevan untuk user yang memiliki role Pegawai.
+        if obj and obj.punya_peran(User.Role.PEGAWAI):
+            return [PeranUserInline, PegawaiProfileInline]
+        return [PeranUserInline] if obj else []
 
 
 @admin.register(PegawaiProfile)

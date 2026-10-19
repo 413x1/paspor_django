@@ -1026,3 +1026,62 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .dasar-list li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
 .dasar-list li:last-child { border-bottom: 0; }
 .kegiatan-info { margin-top: 10px; }
+
+/* ---------- Role ganda, kontak & akun (SSO_PROFIL_ROLE_GANDA_IMPLEMENTATION_PLAN.MD) ---------- */
+.peran-switcher { position: relative; }
+.peran-switcher-btn {
+  display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px;
+  background: var(--blue-bg); border: 1px solid var(--line); color: var(--navy-900);
+  font: inherit; font-size: 13px; cursor: pointer;
+}
+.peran-switcher-btn:hover { border-color: var(--teal); }
+.peran-switcher-label { color: var(--slate-600); }
+.peran-switcher.is-active .sidebar-chevron { transform: rotate(-135deg) translateY(-2px); }
+.peran-switcher-menu {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 45; min-width: 200px;
+  background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 6px;
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transition: opacity var(--duration-fast) var(--ease-apple), visibility 0s linear var(--duration-fast);
+}
+.peran-switcher.is-active .peran-switcher-menu {
+  opacity: 1; visibility: visible; pointer-events: auto;
+  transition: opacity var(--duration-fast) var(--ease-apple);
+}
+.peran-switcher-menu form { margin: 0; }
+.peran-switcher-item {
+  display: block; width: 100%; text-align: left; padding: 8px 12px; border-radius: 8px;
+  background: none; border: none; font: inherit; font-size: 14px; color: var(--slate-600); cursor: pointer;
+}
+.peran-switcher-item:hover { background: var(--bg); color: var(--slate-900); }
+.peran-switcher-item.is-aktif { color: var(--navy-900); font-weight: 700; }
+@media (max-width: 640px) { .peran-switcher-label { display: none; } }
+
+.badge-peran {
+  display: inline-block; font-size: 11px; font-weight: 600; color: var(--navy-900);
+  background: var(--blue-bg); border-radius: 999px; padding: 2px 8px; margin: 1px 0;
+}
+.badge-peran.is-aktif { background: var(--navy-900); color: var(--white); }
+.badge-kunci {
+  display: inline-block; font-size: 10px; font-weight: 700; color: var(--gold-dark);
+  background: var(--gold-bg); border-radius: 999px; padding: 2px 8px; margin-left: 4px;
+}
+.kontak-wa { display: inline-flex; align-items: center; gap: 4px; color: var(--green-dark); font-weight: 600; white-space: nowrap; }
+.kontak-wa:hover { color: var(--green); text-decoration: underline; }
+.kontak-wa-field { padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; min-height: 40px; }
+
+.akun-panel { margin-top: 12px; }
+.akun-panel > summary { list-style: none; }
+.akun-panel > summary::-webkit-details-marker { display: none; }
+.akun-panel[open] > summary { margin-bottom: 12px; }
+.akun-form { max-width: 420px; }
+.akun-form .field:not(:last-child) { margin-bottom: 12px; }
+
+.peran-list { display: flex; flex-direction: column; gap: 10px; }
+.peran-list .checkbox.is-disabled { color: var(--slate-400); }
+.peran-unit { margin-left: 24px; max-width: 420px; }
+.pratinjau-ehrm { margin-top: 14px; padding: 14px 16px; border: 1px dashed var(--line); border-radius: var(--radius); }
+.filter-check { align-self: flex-end; margin-bottom: 8px; }
+
+.login-divider { display: flex; align-items: center; gap: 10px; margin: 16px 0; color: var(--slate-400); font-size: 12px; }
+.login-divider::before, .login-divider::after { content: ""; flex: 1; border-top: 1px solid var(--line); }

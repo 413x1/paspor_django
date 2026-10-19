@@ -46,9 +46,10 @@ def queryset_untuk(user, termasuk_draft=False):
         # ke pegawai) atau yang sudah dibatalkan setelah dikirim.
         qs = qs.exclude(tgl_pengajuan__isnull=True)
     if user.role == User.Role.ADMIN_UNOR:
-        if not user.unit_organisasi_id:
+        unit_id = user.unit_admin_id()
+        if not unit_id:
             return qs.none()
-        qs = qs.filter(q_unor(user.unit_organisasi_id))
+        qs = qs.filter(q_unor(unit_id))
     elif user.role == User.Role.ADMIN_BPSDM:
         qs = qs.filter(jenis_perjalanan=JP.PDLN, tipe_pdln__in=[T.T2P, T.T2L])
     elif user.role == User.Role.ADMIN_BKO:
