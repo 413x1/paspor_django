@@ -524,6 +524,21 @@
     $('select[data-multiselect]').each(function () { initMultiselect($(this)); });
     $(document).on('click', function () { $('.multiselect-panel.is-active').removeClass('is-active'); });
 
+    // Penanda wajib: tambahkan "*" merah pada label setiap isian ber-atribut
+    // `required` (Django memasangnya otomatis untuk field wajib) atau
+    // `data-wajib` (wajib secara bisnis tetapi boleh kosong saat draft). Label yang
+    // sudah punya penanda (.text-danger) dilewati; badge "Otomatis" tetap di
+    // belakang tanda bintang.
+    $('input[required], select[required], textarea[required], [data-wajib]').each(function () {
+      if (this.type === 'hidden') { return; }
+      var $label = this.id ? $('label[for="' + this.id + '"]').first() : $();
+      if (!$label.length) { $label = $(this).closest('.field').find('label.label').first(); }
+      if (!$label.length || $label.find('.text-danger').length) { return; }
+      var $tanda = $('<span class="text-danger" aria-hidden="true"> *</span>');
+      var $badge = $label.children('.badge-auto').first();
+      if ($badge.length) { $badge.before($tanda); } else { $label.append($tanda); }
+    });
+
     // Toast pop-up: muncul bertahap lalu hilang otomatis setelah beberapa detik.
     $('[data-notif-toast]').each(function (i) {
       var $t = $(this);
