@@ -18,8 +18,9 @@ def _input(**attrs):
 
 
 def _email_unik(email, kecuali=None):
-    """Email unik tanpa membedakan huruf besar/kecil, bila diisi (AB-20)."""
-    email = (email or "").strip()
+    """Email unik tanpa membedakan huruf besar/kecil, bila diisi (AB-20). Disimpan huruf
+    kecil agar seragam sebagai alamat tujuan email notifikasi."""
+    email = (email or "").strip().lower()
     if email:
         qs = User.objects.filter(email__iexact=email)
         if kecuali is not None:

@@ -31,6 +31,7 @@ class ActivityLog(models.Model):
         UBAH_MASTER = "master.ubah", "Mengubah data master"
         UBAH_KEGIATAN = "kegiatan.ubah", "Mengelola/mengusulkan kegiatan"
         RESET_LOG = "log.reset", "Reset Log"
+        KIRIM_ULANG_EMAIL = "email.kirim_ulang", "Kirim ulang email"
         # Akun, kontak & role ganda (SSO_PROFIL_ROLE_GANDA_IMPLEMENTATION_PLAN.MD)
         LOGIN_SSO = "auth.login_sso", "Login SSO"
         UBAH_KONTAK = "akun.ubah_kontak", "Mengubah email/nomor HP"

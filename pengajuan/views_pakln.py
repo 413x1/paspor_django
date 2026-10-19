@@ -691,7 +691,9 @@ def users_data(request):
         )
         data.append([
             format_html("<strong>{}</strong>", u.username),
-            escape(nama),
+            format_html(
+                '{}<br><span class="cell-muted">{}</span>', nama, u.email or "email belum diisi",
+            ),
             _badge_peran(u),
             escape(nip),
             render_to_string("partials/_kontak_wa.html", {"no_hp": u.no_hp}),
