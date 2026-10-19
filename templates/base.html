@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}PASPOR{% endblock %} — Kementerian PU</title>
   <link rel="stylesheet" href="{% static 'vendors/bulma/css/versions/bulma-no-dark-mode.min.css' %}">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20261014b">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20261019">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -19,6 +19,15 @@
 
 <main class="page-wrap{% block wrap_extra_class %}{% endblock %}">
   {% block breadcrumb %}{% include "partials/_breadcrumb.html" %}{% endblock %}
+  {% if no_hp_kosong %}
+    <div class="notification paspor-msg is-warning banner-no-hp">
+      {% if user.role == "admin_pakln" %}
+        Nomor HP Anda belum tercatat. <a href="{% url 'profil' %}">Lengkapi di menu Profil →</a>
+      {% else %}
+        Nomor HP belum tercatat — hubungi Admin Biro PAKLN.
+      {% endif %}
+    </div>
+  {% endif %}
   {% if messages %}
     {% for message in messages %}
       <div class="notification paspor-msg {% if message.tags == 'error' %}is-danger{% elif message.tags == 'success' %}is-success{% elif message.tags == 'warning' %}is-warning{% else %}is-info{% endif %}"{% if message.tags == 'success' %} data-flash-success{% endif %}>{{ message }}</div>

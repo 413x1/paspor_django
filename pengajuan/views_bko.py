@@ -13,7 +13,7 @@ from django.utils.html import escape, format_html
 from logs.utils import catat_riwayat
 
 from . import bko, persyaratan, report, riwayat, tahap
-from .decorators import role_required
+from .decorators import role_required, tolak_pengajuan_sendiri
 from .models import Pengajuan, PermohonanPembatalan, RiwayatPengajuan
 from .views_unor import status_html
 
@@ -78,6 +78,8 @@ def proses(request, kode):
     """Satu halaman: pratinjau data pegawai & pengajuan (read-only),
     unggah SK Tubel, Tutup Pemrosesan, atau Buka Kembali."""
     pengajuan = get_object_or_404(_scoped(request), kode=kode)
+    if request.method == "POST":
+        tolak_pengajuan_sendiri(request, pengajuan)  # AB-12
 
     if request.method == "POST":
         hasil = _proses_post(request, pengajuan)
@@ -135,6 +137,7 @@ def _proses_post(request, pengajuan):
 @role_required("admin_bko")
 def hapus_dokumen(request, kode, jenis):
     pengajuan = get_object_or_404(_scoped(request), kode=kode)
+    tolak_pengajuan_sendiri(request, pengajuan)  # AB-12
     if request.method == "POST" and bko.bisa_diubah(pengajuan) and pengajuan.status_bko == SB.DIUNGGAH:
         tahap.hapus(request, pengajuan, "bko", jenis)
         bko.setelah_hapus(pengajuan)

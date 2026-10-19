@@ -62,6 +62,9 @@ class Notification(models.Model):
     title = models.CharField(max_length=200)
     body = models.TextField()
     redirect_url = models.CharField(max_length=255, blank=True)
+    # Peran yang tepat untuk membuka `redirect_url` (metadata role ganda, AB-13):
+    # saat notifikasi dibuka, peran aktif berpindah ke peran ini bila dimiliki.
+    untuk_peran = models.CharField(max_length=20, blank=True)
 
     is_read = models.BooleanField(default=False)
     is_toasted = models.BooleanField(default=False)

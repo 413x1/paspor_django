@@ -19,6 +19,7 @@ from accounts.models import User
 from notifications import services as notif
 
 from . import alur, riwayat
+from .decorators import PESAN_PENGAJUAN_SENDIRI, pengajuan_milik_sendiri
 from .models import Pengajuan, PermohonanPembatalan, RiwayatPengajuan
 
 Aksi = RiwayatPengajuan.Aksi
@@ -44,6 +45,8 @@ def alasan_tidak_bisa(pengajuan, user):
     selain itu kalimat alasannya. Cakupan unor/kepemilikan diperiksa view."""
     if user.role not in (User.Role.PEGAWAI, User.Role.ADMIN_UNOR):
         return "Hanya Pegawai atau Admin Unor yang dapat mengajukan pembatalan."
+    if pengajuan_milik_sendiri(user, pengajuan):
+        return PESAN_PENGAJUAN_SENDIRI
     if pengajuan.status == Pengajuan.Status.DIBATALKAN:
         return "Pengajuan sudah dibatalkan."
     if not pengajuan.pernah_dikirim:
@@ -121,6 +124,9 @@ def putuskan(permohonan, user, setuju, catatan=""):
     if not setuju and not catatan:
         raise PembatalanError("Catatan wajib diisi bila menolak permohonan pembatalan.")
 
+    if pengajuan_milik_sendiri(user, permohonan.pengajuan):
+        raise PembatalanError(PESAN_PENGAJUAN_SENDIRI)
+
     with transaction.atomic():
         p = alur.kunci(permohonan.pengajuan)
         permohonan = PermohonanPembatalan.objects.select_for_update().get(pk=permohonan.pk)
@@ -169,6 +175,8 @@ def hentikan_oleh_pakln(pengajuan, user, alasan):
     sekaligus disetujui PAKLN — tanpa jenjang Admin Unor."""
     if user.role != User.Role.ADMIN_PAKLN:
         raise PembatalanError("Hanya Admin Biro PAKLN yang dapat menghentikan pengajuan.")
+    if pengajuan_milik_sendiri(user, pengajuan):
+        raise PembatalanError(PESAN_PENGAJUAN_SENDIRI)
     alasan = _wajib(alasan, "Alasan penghentian wajib diisi.")
     with transaction.atomic():
         p = alur.kunci(pengajuan)

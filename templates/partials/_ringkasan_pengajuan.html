@@ -1,8 +1,13 @@
 {# Ringkasan data pengajuan (read-only) untuk halaman Pratinjau Admin Unor/BPSDM/PAKLN. Context: pengajuan. #}
 {% with profil=pengajuan.pegawai.profile detail=pengajuan.detail %}
+{% if pengajuan.pegawai_id == user.pk and user.role != "pegawai" %}
+  <div class="notification paspor-msg is-warning"><strong>Pengajuan Anda.</strong> Anda tidak dapat memproses pengajuan milik sendiri; pengajuan ini diproses admin lain.</div>
+{% endif %}
 <div class="field-readonly-grid">
   <div class="field"><label class="label">Nama Pegawai</label><div class="control"><input class="input" value="{{ profil.nama }}" readonly></div></div>
   <div class="field"><label class="label">NIP</label><div class="control"><input class="input" value="{{ profil.nip }}" readonly></div></div>
+  <div class="field"><label class="label">No. HP (WhatsApp)</label><div class="control readonly-field kontak-wa-field">{% include "partials/_kontak_wa.html" with no_hp=pengajuan.pegawai.no_hp %}</div></div>
+  <div class="field"><label class="label">Email</label><div class="control"><input class="input" value="{{ pengajuan.pegawai.email|default:'—' }}" readonly></div></div>
   <div class="field"><label class="label">Jabatan</label><div class="control"><input class="input" value="{{ profil.jabatan }}" readonly></div></div>
   <div class="field"><label class="label">Pangkat/Golongan</label><div class="control"><input class="input" value="{{ profil.pangkat_golongan }}" readonly></div></div>
   <div class="field"><label class="label">Unit Kerja</label><div class="control"><input class="input" value="{{ profil.unit_kerja }}" readonly></div></div>

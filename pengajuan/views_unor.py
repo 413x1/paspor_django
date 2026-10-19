@@ -12,7 +12,7 @@ from logs.utils import catat_riwayat, record_activity
 from notifications.services import notify_approve_unor, notify_forward_bpsdm, notify_reject_unor
 
 from . import alur, pembatalan, persyaratan, report, riwayat, tahap
-from .decorators import role_required
+from .decorators import role_required, tolak_pengajuan_sendiri
 from .models import DokumenUnorPendukung, LaporanPdln, Pengajuan, PermohonanPembatalan, RiwayatPengajuan
 
 S = Pengajuan.Status
@@ -24,9 +24,10 @@ def _scoped(request, qs=None):
     Unor yang sedang login (snapshot unit organisasi pengajuan)."""
     if qs is None:
         qs = Pengajuan.objects.all()
-    if not request.user.unit_organisasi_id:
+    unit_id = request.user.unit_admin_id()
+    if not unit_id:
         return qs.none()
-    return qs.filter(report.q_unor(request.user.unit_organisasi_id))
+    return qs.filter(report.q_unor(unit_id))
 
 
 def _tab(request):
@@ -131,6 +132,8 @@ def preview(request, kode):
     """Pratinjau Pengajuan dari Pegawai (read-only) + persetujuan sebelum
     lanjut ke unggah dokumen administrasi, atau kembalikan ke pegawai."""
     pengajuan = get_object_or_404(_scoped(request).exclude(tgl_pengajuan__isnull=True), kode=kode)
+    if request.method == "POST":
+        tolak_pengajuan_sendiri(request, pengajuan)  # AB-12
 
     if request.method == "POST" and ("lanjutkan" in request.POST or "kembalikan" in request.POST):
         pesan = alur.alasan_dibekukan(pengajuan)
@@ -183,6 +186,8 @@ def upload_dokumen(request, kode):
     """Unggah Dokumen Administrasi Unor (sesuai registri per tipe), lalu
     meneruskan ke tahap berikut — Admin BPSDM (PDLN Tipe 2) atau Biro PAKLN."""
     pengajuan = get_object_or_404(_scoped(request), kode=kode)
+    if request.method == "POST":
+        tolak_pengajuan_sendiri(request, pengajuan)  # AB-12
     if not pengajuan.preview_unor_agree or pengajuan.status != S.PROSES:
         return redirect("unor:preview", kode=kode)
 
@@ -299,6 +304,7 @@ def _teruskan(request, pengajuan, ke_bpsdm):
 def hapus_dokumen(request, kode, jenis):
     """Hapus salah satu dokumen administrasi Unor yang sudah diunggah."""
     pengajuan = get_object_or_404(_scoped(request), kode=kode)
+    tolak_pengajuan_sendiri(request, pengajuan)  # AB-12
     if pengajuan.status == S.PROSES:
         tahap.hapus(request, pengajuan, "unor", jenis)
     return redirect("unor:upload_dokumen", kode=pengajuan.kode)

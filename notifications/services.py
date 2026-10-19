@@ -16,7 +16,10 @@ wiki/instructions/BISNIS_PROSES_PDLN.MD §11.
     Event 8x (NOTIF_08*)                  — Usulan Kegiatan PDLN
 """
 
-from django.urls import reverse
+from urllib.parse import urlsplit
+
+from django.db.models import Q
+from django.urls import Resolver404, resolve, reverse
 
 from .models import Notification
 
@@ -58,36 +61,86 @@ def _perihal(pengajuan):
     return pengajuan.maksud or (pengajuan.kategori.nama_kategori if pengajuan.kategori_id else None) or "-"
 
 
+def _pemegang_peran(role, *extra):
+    """User aktif yang memiliki role `role` (PeranUser aktif). Semua kondisi
+    pada `peran_list` berada dalam satu `filter()` agar merujuk ke baris
+    PeranUser yang sama."""
+    from accounts.models import User
+
+    return User.objects.filter(
+        Q(is_active=True, peran_list__role=role, peran_list__is_active=True), *extra,
+    ).distinct()
+
+
 def _admin_unor_recipients(pengajuan):
     from accounts.models import User
 
     unit = _unit_organisasi(pengajuan)
     if not unit:
         return User.objects.none()
-    return User.objects.filter(role=User.Role.ADMIN_UNOR, unit_organisasi_id=unit.id, is_active=True)
+    # Unit yang dikelola tercatat di PeranUser; data lama tanpa unit di
+    # PeranUser memakai User.unit_organisasi (sama dengan User.unit_admin_id()).
+    return _pemegang_peran(
+        User.Role.ADMIN_UNOR,
+        Q(peran_list__unit_organisasi_id=unit.id)
+        | Q(peran_list__unit_organisasi__isnull=True, unit_organisasi_id=unit.id),
+    )
 
 
 def _admin_bpsdm_recipients():
     from accounts.models import User
 
-    return User.objects.filter(role=User.Role.ADMIN_BPSDM, is_active=True)
+    return _pemegang_peran(User.Role.ADMIN_BPSDM)
 
 
 def _admin_pakln_recipients():
     from accounts.models import User
 
-    return User.objects.filter(role=User.Role.ADMIN_PAKLN, is_active=True)
+    return _pemegang_peran(User.Role.ADMIN_PAKLN)
 
 
 def _admin_bko_recipients():
     from accounts.models import User
 
-    return User.objects.filter(role=User.Role.ADMIN_BKO, is_active=True)
+    return _pemegang_peran(User.Role.ADMIN_BKO)
 
 
-def _create(recipients, *, pengajuan, event, level, title, body, redirect_url):
-    notifs = [
-        Notification(
+# Namespace URL -> peran yang berhak membukanya (metadata `untuk_peran`).
+_PERAN_NAMESPACE = {
+    "pegawai": "pegawai",
+    "unor": "admin_unor",
+    "bpsdm": "admin_bpsdm",
+    "bko": "admin_bko",
+    "pakln": "admin_pakln",
+}
+
+
+def peran_untuk_url(url):
+    """Peran yang tepat untuk membuka `url` (dari namespace URL-nya), atau ''."""
+    if not url:
+        return ""
+    try:
+        match = resolve(urlsplit(url).path)
+    except Resolver404:
+        return ""
+    return _PERAN_NAMESPACE.get(match.namespace.split(":")[0], "")
+
+
+def _create(recipients, *, pengajuan, event, level, title, body, redirect_url, untuk_peran=None):
+    """Buat notifikasi untuk tiap penerima. `untuk_peran` (bawaan: diturunkan
+    dari namespace `redirect_url`) dipakai untuk memindahkan peran aktif saat
+    notifikasi dibuka. Satu baris per (penerima, untuk_peran): user ber-role
+    ganda tidak menerima notifikasi yang sama dua kali (AB-13)."""
+    if untuk_peran is None:
+        untuk_peran = peran_untuk_url(redirect_url)
+    terkirim = set()
+    notifs = []
+    for user in recipients:
+        kunci = (user.pk, untuk_peran)
+        if kunci in terkirim:
+            continue
+        terkirim.add(kunci)
+        notifs.append(Notification(
             recipient=user,
             pengajuan=pengajuan,
             event=event,
@@ -95,9 +148,8 @@ def _create(recipients, *, pengajuan, event, level, title, body, redirect_url):
             title=title,
             body=body,
             redirect_url=redirect_url,
-        )
-        for user in recipients
-    ]
+            untuk_peran=untuk_peran,
+        ))
     if notifs:
         Notification.objects.bulk_create(notifs)
 
@@ -602,11 +654,16 @@ def _nama_user(user):
     return (profile.nama if profile else None) or user.get_full_name() or user.username
 
 
-def _url_usulan_pengusul(kegiatan):
-    from accounts.models import User
+def _diusulkan_bpsdm(kegiatan):
+    """Snapshot peran saat mengusulkan (`sumber_data`), bukan role pengusul
+    sekarang — pengusul bisa ber-role ganda."""
+    from paspor.models import Kegiatan
 
-    pengusul = kegiatan.diusulkan_oleh
-    if pengusul and pengusul.role == User.Role.ADMIN_BPSDM:
+    return kegiatan.sumber_data == Kegiatan.SumberData.USULAN_BPSDM
+
+
+def _url_usulan_pengusul(kegiatan):
+    if _diusulkan_bpsdm(kegiatan):
         return reverse("bpsdm:kegiatan") + "?tab=usulan"
     return reverse("pegawai:beranda")
 
@@ -614,7 +671,8 @@ def _url_usulan_pengusul(kegiatan):
 def notify_kegiatan_diusulkan(kegiatan):
     """Event 8A: Pegawai / Admin BPSDM mengusulkan kegiatan baru."""
     pengusul = kegiatan.diusulkan_oleh
-    oleh = f"{pengusul.get_role_display()} {_nama_user(pengusul)}" if pengusul else "Pengguna"
+    sebagai = "Admin BPSDM" if _diusulkan_bpsdm(kegiatan) else "Pegawai"
+    oleh = f"{sebagai} {_nama_user(pengusul)}" if pengusul else "Pengguna"
     _create(
         _admin_pakln_recipients(),
         pengajuan=None,

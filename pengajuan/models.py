@@ -711,7 +711,8 @@ class DokumenTemplate(models.Model):
             return False
 
         unit_ids = set(self.unit_organisasi.values_list("id", flat=True))
-        if unit_ids and user.unit_organisasi_id not in unit_ids:
+        unit = user.get_unit_organisasi()
+        if unit_ids and getattr(unit, "id", None) not in unit_ids:
             return False
 
         if self.kategori and kategori and self.kategori != kategori:

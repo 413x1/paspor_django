@@ -91,6 +91,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "accounts.middleware.PeranAktifMiddleware",  # peran aktif user ber-role ganda
     "django.contrib.messages.middleware.MessageMiddleware",
     "paspor.middleware.UnggahDitolakMiddleware",  # unggahan bukan-PDF -> status 400
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -116,6 +117,7 @@ TEMPLATES = [
                 "notifications.context_processors.notifications",
                 "pengajuan.context_processors.badge_sidebar",
                 "pengajuan.context_processors.breadcrumbs",
+                "accounts.context_processors.status_profil",
             ],
         },
     },
@@ -236,6 +238,27 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 PINTAR_API_URL = env("PINTAR_API_URL", "")
 PINTAR_API_TOKEN = env("PINTAR_API_TOKEN", "")
 PINTAR_API_TIMEOUT = int(env("PINTAR_API_TIMEOUT", "5"))
+
+# Integrasi e-HRM (data kepegawaian, email & nomor HP) — kosong = pakai data
+# stub lokal (paspor/integrasi/ehrm.py). Lihat IMPROVEMENT_PLAN_19102026.MD §9.2.
+EHRM_API_URL = env("EHRM_API_URL", "")
+EHRM_API_TOKEN = env("EHRM_API_TOKEN", "")
+EHRM_TIMEOUT = int(env("EHRM_TIMEOUT", "5"))
+
+# Login SSO (IMPROVEMENT_PLAN_19102026.MD §9.1). Adaptor protokol menunggu Q1;
+# selama SSO_ENABLED=False dan DEBUG=True tersedia stub pilih-NIP di /login/sso/.
+SSO_ENABLED = env("SSO_ENABLED", "False") == "True"
+SSO_PROTOCOL = env("SSO_PROTOCOL", "oidc")
+SSO_ISSUER_URL = env("SSO_ISSUER_URL", "")
+SSO_CLIENT_ID = env("SSO_CLIENT_ID", "")
+SSO_CLIENT_SECRET = env("SSO_CLIENT_SECRET", "")
+SSO_NIP_CLAIM = env("SSO_NIP_CLAIM", "nip")
+SSO_SCOPES = env("SSO_SCOPES", "openid profile email")
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "accounts.sso.SsoBackend",  # sesi user yang masuk lewat SSO
+]
 
 
 # ---------------------------------------------------------------------------
