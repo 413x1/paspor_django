@@ -1,8 +1,13 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Monitor Progres{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/pelaporan.css' %}?v=20261013c">
+{% endblock %}
 {% block wrap_extra_class %} medium{% endblock %}
 
 {% block content %}
+{% include "partials/_status_bko.html" %}
 <div class="page-head">
   <div>
     <h2>Monitor Progres</h2>
@@ -27,8 +32,10 @@
       </div>
       <div class="meta">
         {{ pengajuan.jenis_label }} · {{ pengajuan.kategori|default:"—" }}
+        {% if pengajuan.detail.kegiatan_nama %}· {{ pengajuan.detail.kegiatan_nama }}{% endif %}
         {% if pengajuan.detail.penyelenggara %}· {{ pengajuan.detail.penyelenggara }}{% endif %}
         {% if pengajuan.detail.perguruan_tinggi %}· {{ pengajuan.detail.perguruan_tinggi }}{% endif %}
+        {% if pengajuan.detail.keterangan_sumber_pembiayaan %}· Sumber biaya: {{ pengajuan.detail.keterangan_sumber_pembiayaan|truncatechars:120 }}{% endif %}
         · Diajukan {{ pengajuan.tgl_pengajuan|date:"d M Y"|default:"—" }} via {{ pengajuan.get_kanal_display }}
       </div>
     </div>
@@ -56,20 +63,22 @@
 </div>
 
 {% if pengajuan.is_pdln and pengajuan.status == "selesai" %}
-<div class="box {% if not laporan or laporan.status == 'dikembalikan' %}is-warning-soft{% endif %}">
-  <div class="section-title" style="font-size:14px;">Laporan PDLN</div>
+<div class="box {% if not laporan or laporan.status == 'draft' or laporan.status == 'dikembalikan' %}is-warning-soft{% endif %}">
+  <div class="section-title is-small">Laporan PDLN</div>
   {% if not laporan %}
     <p>Laporan perjalanan dinas belum diunggah. Pengajuan baru dinyatakan <strong>tuntas</strong> setelah laporan disetujui Admin Biro PAKLN.</p>
+  {% elif laporan.status == "draft" %}
+    <p>Draft laporan sudah tersimpan tetapi <strong>belum dilaporkan</strong> ke Biro PAKLN.</p>
   {% else %}
     <p>Status: <strong>{{ laporan.get_status_display }}</strong> · diunggah {{ laporan.uploaded_at|date:"d M Y H:i" }}</p>
     {% if laporan.status == "dikembalikan" %}<p>Catatan Biro PAKLN: {{ laporan.catatan_pakln }}</p>{% endif %}
   {% endif %}
-  <a href="{% url 'pegawai:pelaporan' %}" class="button is-small is-primary" style="margin-top:8px;">Ke Pelaporan PDLN →</a>
+  <a href="{% url 'pegawai:laporan_form' kode=pengajuan.kode %}" class="button is-small is-info" style="margin-top:8px;">Pelaporan PDLN →</a>
 </div>
 {% endif %}
 
 <div class="box">
-  <div class="section-title" style="font-size:14px;">Timeline Proses</div>
+  <div class="section-title is-small">Timeline Proses</div>
   {% include "partials/_timeline_proses.html" %}
 </div>
 {% endblock %}

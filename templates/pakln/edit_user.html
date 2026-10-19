@@ -6,23 +6,23 @@
 <div class="page-head">
   <div>
     <h2>Edit User</h2>
-    <p class="sub">{{ user_obj.username }} · {{ user_obj.get_role_display }}</p>
+    <p class="sub">{{ user_obj.username }} · {{ user_obj.get_sumber_akun_display }} · {{ user_obj.metode_login_display }}</p>
   </div>
   <a href="{% url 'pakln:kelola_user' %}" class="button is-small">← Kembali ke Manajemen User</a>
 </div>
 
+{# Form aksi e-HRM — tombolnya berada di dalam form utama lewat atribut form="…" #}
+<form method="post" id="formSinkronEhrm">{% csrf_token %}<input type="hidden" name="aksi" value="sinkron_ehrm"></form>
+<form method="post" id="formKembalikanEmail">{% csrf_token %}<input type="hidden" name="aksi" value="kembalikan_ehrm"><input type="hidden" name="field" value="email"></form>
+<form method="post" id="formKembalikanNoHp">{% csrf_token %}<input type="hidden" name="aksi" value="kembalikan_ehrm"><input type="hidden" name="field" value="no_hp"></form>
+
 <div class="box">
+  <div class="section-title is-small is-spaced">Akun &amp; Kontak</div>
   <form method="post" novalidate>
     {% csrf_token %}
+    <input type="hidden" name="aksi" value="simpan">
 
     <div class="columns">
-      <div class="column">
-        <div class="field">
-          <label class="label">Peran</label>
-          <div class="control"><input class="input" value="{{ user_obj.get_role_display }}" disabled></div>
-          <p class="helptext">Peran tidak dapat diubah di sini.</p>
-        </div>
-      </div>
       <div class="column">
         <div class="field">
           <label class="label" for="{{ form.username.id_for_label }}">Username</label>
@@ -30,28 +30,62 @@
           {% for e in form.username.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
         </div>
       </div>
-    </div>
-
-    <div class="field">
-      <label class="label" for="{{ form.nama.id_for_label }}">Nama Lengkap</label>
-      <div class="control">{{ form.nama }}</div>
-      {% for e in form.nama.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
-    </div>
-
-    <div class="field">
-      <label class="label" for="{{ form.email.id_for_label }}">Email <span class="badge-auto is-optional">Opsional</span></label>
-      <div class="control">{{ form.email }}</div>
-      {% for e in form.email.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
-      {% if form.email.help_text %}<p class="helptext">{{ form.email.help_text }}</p>{% endif %}
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.nama.id_for_label }}">Nama Lengkap</label>
+          <div class="control">{{ form.nama }}</div>
+          {% for e in form.nama.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
     </div>
 
     <div class="field">
       <label class="checkbox" for="{{ form.is_active.id_for_label }}">
         {{ form.is_active }} Akun aktif
       </label>
-      <p class="helptext">Nonaktifkan untuk mencegah user ini masuk (login) tanpa menghapus datanya.</p>
+      <p class="helptext">Nonaktifkan untuk mencegah user ini masuk (SSO maupun username/password) tanpa menghapus datanya.</p>
     </div>
 
+    <div class="section-title" style="font-size:13px;margin:6px 0 12px;">
+      Kontak <span class="badge-auto">Email &amp; nomor HP hanya diubah Admin Biro PAKLN</span>
+    </div>
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.email.id_for_label }}">Email {% if user_obj.email_dikunci %}<span class="badge-kunci">Dikunci</span>{% endif %}</label>
+          <div class="control">{{ form.email }}</div>
+          {% for e in form.email.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+          {% if form.buka_kunci_email %}
+            <label class="checkbox helptext">{{ form.buka_kunci_email }} Buka kunci (sinkron e-HRM berikutnya boleh menimpa)</label>
+            {% if profile %}<button type="submit" form="formKembalikanEmail" class="button is-small is-light">↺ Kembalikan ke data e-HRM</button>{% endif %}
+          {% endif %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.no_hp.id_for_label }}">Nomor HP (WhatsApp) {% if user_obj.no_hp_dikunci %}<span class="badge-kunci">Dikunci</span>{% endif %}</label>
+          <div class="control">{{ form.no_hp }}</div>
+          {% for e in form.no_hp.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+          {% if user_obj.no_hp %}<p class="helptext">{% include "partials/_kontak_wa.html" with no_hp=user_obj.no_hp %}</p>{% endif %}
+          {% if form.buka_kunci_no_hp %}
+            <label class="checkbox helptext">{{ form.buka_kunci_no_hp }} Buka kunci (sinkron e-HRM berikutnya boleh menimpa)</label>
+            {% if profile %}<button type="submit" form="formKembalikanNoHp" class="button is-small is-light">↺ Kembalikan ke data e-HRM</button>{% endif %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% if user_obj.tersinkron_ehrm %}<p class="helptext" style="margin:-6px 0 12px;">Perubahan email/nomor HP pada akun ini dikunci agar tidak ditimpa sinkronisasi e-HRM.</p>{% endif %}
+
+    <div class="section-title" style="font-size:13px;margin:6px 0 12px;">
+      Data Kepegawaian
+      {% if form.data_ehrm_baca_saja %}<span class="badge-auto">Sinkronisasi e-HRM</span>{% endif %}
+    </div>
+    {% if form.data_ehrm_baca_saja %}
+      <p class="helptext" style="margin:-6px 0 12px;">
+        Terakhir sinkron: {{ user_obj.ehrm_sinkron_at|date:"d M Y H:i"|default:"belum pernah" }}.
+        <button type="submit" form="formSinkronEhrm" class="button is-small is-light">⟳ Sinkron ulang dari e-HRM</button>
+      </p>
+    {% endif %}
     <div class="columns">
       <div class="column">
         <div class="field">
@@ -69,10 +103,7 @@
       </div>
     </div>
 
-    {% if user_obj.role == "pegawai" %}
-      <div class="section-title" style="font-size:13px;margin:6px 0 12px;">
-        Data Kepegawaian <span class="badge-auto">Khusus role Pegawai</span>
-      </div>
+    {% if form.punya_profil %}
       <div class="columns">
         <div class="column">
           <div class="field">
@@ -108,7 +139,7 @@
     {% endif %}
 
     <div class="section-title" style="font-size:13px;margin:6px 0 12px;">
-      Ganti Password <span class="badge-auto">Opsional</span>
+      Password <span class="badge-auto">Opsional</span>
     </div>
     <div class="columns">
       <div class="column">
@@ -126,6 +157,12 @@
         </div>
       </div>
     </div>
+    {% if form.hapus_password %}
+      <div class="field">
+        <label class="checkbox" for="{{ form.hapus_password.id_for_label }}">{{ form.hapus_password }} {{ form.hapus_password.label }}</label>
+        {% for e in form.hapus_password.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+      </div>
+    {% endif %}
 
     {% if form.non_field_errors %}<p class="help is-danger">{{ form.non_field_errors }}</p>{% endif %}
 
@@ -135,4 +172,47 @@
     </div>
   </form>
 </div>
+
+<div class="box">
+  <div class="section-title is-small is-spaced">Peran</div>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="aksi" value="simpan_peran">
+
+    <div class="peran-list">
+      <label class="checkbox is-disabled">
+        <input type="checkbox" disabled {% if peran_form.punya_profil %}checked{% endif %}> Pegawai
+        <span class="helptext">— otomatis untuk user yang memiliki data kepegawaian</span>
+      </label>
+      <label class="checkbox" for="{{ peran_form.admin_unor.id_for_label }}">{{ peran_form.admin_unor }} Admin Unor</label>
+      <div class="field peran-unit">
+        <label class="label" for="{{ peran_form.unit_admin_unor.id_for_label }}">Unit organisasi yang dikelola</label>
+        <div class="control"><div class="select is-fullwidth">{{ peran_form.unit_admin_unor }}</div></div>
+        {% for e in peran_form.unit_admin_unor.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+      </div>
+      <label class="checkbox" for="{{ peran_form.admin_bpsdm.id_for_label }}">{{ peran_form.admin_bpsdm }} Admin BPSDM</label>
+      <label class="checkbox" for="{{ peran_form.admin_bko.id_for_label }}">{{ peran_form.admin_bko }} Admin BKO</label>
+      <label class="checkbox" for="{{ peran_form.admin_pakln.id_for_label }}">{{ peran_form.admin_pakln }} Admin Biro PAKLN</label>
+      {% for e in peran_form.admin_pakln.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+    </div>
+    {% if peran_form.non_field_errors %}<p class="help is-danger">{{ peran_form.non_field_errors }}</p>{% endif %}
+    <p class="helptext">Mencabut peran tidak menghapus riwayatnya. Bila peran yang dicabut sedang dipakai user, sesi user beralih ke peran lain pada permintaan berikutnya.</p>
+
+    <div class="actions-bar">
+      <button type="submit" class="button is-primary">Simpan Peran</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  $(function () {
+    function toggleUnit() {
+      $('.peran-unit').toggle($('#{{ peran_form.admin_unor.id_for_label }}').is(':checked'));
+    }
+    $('#{{ peran_form.admin_unor.id_for_label }}').on('change', toggleUnit);
+    toggleUnit();
+  });
+</script>
 {% endblock %}

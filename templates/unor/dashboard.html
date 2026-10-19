@@ -10,7 +10,7 @@
 <div class="page-head">
   <div>
     <h2>Dasbor Admin Unor</h2>
-    <p class="sub">Unit Organisasi: <strong>{{ user.unit_organisasi.name|default:"— belum ditetapkan —" }}</strong></p>
+    <p class="sub">Unit Organisasi: <strong>{{ user.get_unit_organisasi.name|default:"— belum ditetapkan —" }}</strong></p>
   </div>
   <div class="buttons">
     <a href="{% url 'unor:pembatalan' %}" class="button is-small">Pembatalan</a>

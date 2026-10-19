@@ -1,6 +1,6 @@
 """
 Helper bersama halaman unggah dokumen per tahap (Pegawai, Admin Unor,
-Admin BPSDM, Admin Biro PAKLN) — membaca registri `persyaratan` sehingga
+Admin BPSDM, Admin BKO, Admin Biro PAKLN) — membaca registri `persyaratan` sehingga
 setiap jenis/tipe perjalanan memakai satu jalur kode yang sama.
 """
 
@@ -9,15 +9,17 @@ from django.shortcuts import redirect
 
 from logs.models import ActivityLog
 from logs.utils import record_activity
+from paspor.validators import KODE_BUKAN_PDF, tandai_ditolak
 
 from . import persyaratan
-from .forms import DokumenBpsdmForm, DokumenPaklnForm, DokumenPegawaiForm, DokumenUnorForm
+from .forms import DokumenBkoForm, DokumenBpsdmForm, DokumenPaklnForm, DokumenPegawaiForm, DokumenUnorForm
 from .models import DokumenTemplate
 
 FORM_TAHAP = {
     "pegawai": DokumenPegawaiForm,
     "unor": DokumenUnorForm,
     "bpsdm": DokumenBpsdmForm,
+    "bko": DokumenBkoForm,
     "pakln": DokumenPaklnForm,
 }
 
@@ -75,7 +77,10 @@ def proses_unggah(request, pengajuan, tahap, url_name):
     existing = model.objects.filter(pengajuan=pengajuan, jenis=jenis).first()
     form = FORM_TAHAP[tahap](request.POST, request.FILES, instance=existing)
     if not form.is_valid():
-        if "tanggal_surat" in form.errors:
+        if any(e.code == KODE_BUKAN_PDF for e in form.errors.as_data().get("file", [])):
+            tandai_ditolak(request)  # response menjadi 400 (UnggahDitolakMiddleware)
+            messages.error(request, form.errors["file"][0])
+        elif "tanggal_surat" in form.errors:
             messages.error(request, form.errors["tanggal_surat"][0] + ".")
         else:
             messages.error(request, "Gagal mengunggah dokumen. Periksa kembali berkas Anda.")

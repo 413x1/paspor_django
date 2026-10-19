@@ -1,16 +1,35 @@
 {# Ringkasan data pengajuan (read-only) untuk halaman Pratinjau Admin Unor/BPSDM/PAKLN. Context: pengajuan. #}
 {% with profil=pengajuan.pegawai.profile detail=pengajuan.detail %}
+{% if pengajuan.pegawai_id == user.pk and user.role != "pegawai" %}
+  <div class="notification paspor-msg is-warning"><strong>Pengajuan Anda.</strong> Anda tidak dapat memproses pengajuan milik sendiri; pengajuan ini diproses admin lain.</div>
+{% endif %}
 <div class="field-readonly-grid">
   <div class="field"><label class="label">Nama Pegawai</label><div class="control"><input class="input" value="{{ profil.nama }}" readonly></div></div>
   <div class="field"><label class="label">NIP</label><div class="control"><input class="input" value="{{ profil.nip }}" readonly></div></div>
+  <div class="field"><label class="label">No. HP (WhatsApp)</label><div class="control readonly-field kontak-wa-field">{% include "partials/_kontak_wa.html" with no_hp=pengajuan.pegawai.no_hp %}</div></div>
+  <div class="field"><label class="label">Email</label><div class="control"><input class="input" value="{{ pengajuan.pegawai.email|default:'—' }}" readonly></div></div>
   <div class="field"><label class="label">Jabatan</label><div class="control"><input class="input" value="{{ profil.jabatan }}" readonly></div></div>
   <div class="field"><label class="label">Pangkat/Golongan</label><div class="control"><input class="input" value="{{ profil.pangkat_golongan }}" readonly></div></div>
   <div class="field"><label class="label">Unit Kerja</label><div class="control"><input class="input" value="{{ profil.unit_kerja }}" readonly></div></div>
   <div class="field"><label class="label">Unit Organisasi</label><div class="control"><input class="input" value="{{ pengajuan.unit_organisasi.name|default:profil.unit_organisasi.name }}" readonly></div></div>
   <div class="field"><label class="label">Jenis Perjalanan</label><div class="control"><input class="input" value="{{ pengajuan.jenis_label }}" readonly></div></div>
   <div class="field"><label class="label">Kategori</label><div class="control"><input class="input" value="{{ pengajuan.kategori|default:'—' }}" readonly></div></div>
+  {% if pengajuan.kegiatan_id %}
+    <div class="field" style="grid-column:1/-1;"><label class="label">Kegiatan</label><div class="control"><input class="input" value="{{ detail.kegiatan_nama|default:pengajuan.kegiatan.nama }}{% if detail.kegiatan_tahun %} ({{ detail.kegiatan_tahun }}){% endif %}" readonly></div></div>
+    {% with dasar=pengajuan.kegiatan.dasar_list.all %}{% if dasar %}
+    <div class="field" style="grid-column:1/-1;"><label class="label">Dasar Kegiatan</label>
+      <ul class="dasar-list">
+        {% for d in dasar %}
+          <li><span><strong>{{ d.get_jenis_display }}</strong> —
+            {% if d.jenis == "tautan" %}<a href="{{ d.tautan }}" target="_blank" rel="noopener">{{ d.tautan }}</a>{% else %}{{ d.ringkas }}{% endif %}</span>
+            {% if d.berkas %}<button type="button" class="button is-small" data-doc-preview="{{ d.berkas.url }}" data-doc-title="Dasar Kegiatan">👁 Lihat</button>{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}{% endwith %}
+  {% endif %}
   {% if detail.beasiswa_nama %}
-    <div class="field" style="grid-column:1/-1;"><label class="label">Beasiswa (Aplikasi PINTAR)</label><div class="control"><input class="input" value="{{ detail.beasiswa_nama }}" readonly></div></div>
+    <div class="field" style="grid-column:1/-1;"><label class="label">Beasiswa (Platform BPSDM)</label><div class="control"><input class="input" value="{{ detail.beasiswa_nama }}" readonly></div></div>
   {% endif %}
   {% if detail.penyelenggara %}
     <div class="field"><label class="label">Penyelenggara</label><div class="control"><input class="input" value="{{ detail.penyelenggara }}" readonly></div></div>
@@ -33,5 +52,8 @@
   {% endif %}
   <div class="field"><label class="label">Jumlah Hari Kerja</label><div class="control"><input class="input" value="{{ pengajuan.jumlah_hari_kerja|default_if_none:'—' }}" readonly></div></div>
   <div class="field"><label class="label">Sumber Pembiayaan</label><div class="control"><input class="input" value="{{ pengajuan.sumber_pembiayaan|default:'—' }}" readonly></div></div>
+  {% if detail.keterangan_sumber_pembiayaan %}
+    <div class="field" style="grid-column:1/-1;"><label class="label">Keterangan Sumber Pembiayaan</label><div class="control"><textarea class="textarea" rows="2" readonly>{{ detail.keterangan_sumber_pembiayaan }}</textarea></div></div>
+  {% endif %}
 </div>
 {% endwith %}

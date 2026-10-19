@@ -6,7 +6,7 @@ Menggambarkan interaksi antara pengguna, view Django, modul layanan
 Nama modul mengikuti rancangan di
 [BISNIS_PROSES_PDLN.MD §6.5, §12, §13](../instructions/BISNIS_PROSES_PDLN.MD#13-tahapan-implementasi).
 
-## 4.1 Pegawai mengisi formulir PDLN Tipe 2 (dengan Aplikasi PINTAR)
+## 4.1 Pegawai mengisi formulir PDLN Tipe 2 (dengan Platform BPSDM)
 
 ```mermaid
 sequenceDiagram
@@ -15,7 +15,7 @@ sequenceDiagram
     participant V as views_pegawai
     participant A as alur.pengajuan_belum_tuntas
     participant PT as integrasi.pintar
-    participant X as Aplikasi PINTAR
+    participant X as Platform BPSDM
     participant DB as Database
 
     P->>V: GET /pegawai/formulir/?jenis=pdln&tipe=T2P

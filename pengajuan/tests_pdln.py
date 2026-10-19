@@ -8,7 +8,7 @@ from django.urls import reverse
 
 from accounts.models import PegawaiProfile, User
 from notifications.models import Notification
-from paspor.models import KategoriPerjalanan, Negara, SumberPembiayaan, UnitOrganisasi
+from paspor.models import DasarKegiatan, KategoriPerjalanan, Kegiatan, Negara, SumberPembiayaan, UnitOrganisasi
 
 from . import alur, persyaratan, riwayat
 from .models import (
@@ -30,6 +30,7 @@ class _Basis:
         self.admin_unor = User.objects.create_user("unor1", password="x", role="admin_unor", unit_organisasi=self.unor)
         self.admin_bpsdm = User.objects.create_user("bpsdm1", password="x", role="admin_bpsdm")
         self.admin_pakln = User.objects.create_user("pakln1", password="x", role="admin_pakln")
+        self.admin_bko = User.objects.create_user("bko1", password="x", role="admin_bko")
         self.jepang = Negara.objects.create(nama_negara="Jepang Uji", perlu_visa=True)
         self.singapura = Negara.objects.create(nama_negara="Singapura Uji", perlu_visa=False)
         self.berangkat = date.today() + timedelta(days=30)
@@ -58,20 +59,30 @@ class _Basis:
             if not s.tipe_pdln or tipe in s.tipe_pdln
         )
 
+    def buat_kegiatan(self, tipe, negara=None, penyelenggara="Penyelenggara Uji"):
+        """Kegiatan disetujui untuk `tipe` dengan periode di dalam periode perjalanan uji."""
+        kegiatan = Kegiatan.objects.create(
+            nama=f"Kegiatan Uji {tipe}", kota="Kota Uji", penyelenggara=penyelenggara,
+            tgl_mulai=self.berangkat + timedelta(days=1), tgl_selesai=self.berangkat + timedelta(days=5),
+            tahun_pelaksanaan=self.berangkat.year,
+        )
+        kegiatan.negara.set([negara or self.singapura])
+        kegiatan.kategori.set([self.kategori(tipe)])
+        kegiatan.skema_pendanaan.set([self.sumber(tipe)])
+        DasarKegiatan.objects.create(kegiatan=kegiatan, jenis="surat", nomor_surat="UND/001")
+        return kegiatan
+
     def isi_formulir(self, tipe, negara=None):
         negara = negara or self.singapura
+        kegiatan = self.buat_kegiatan(tipe, negara)
         data = {
             "kategori": self.kategori(tipe).pk,
+            "kegiatan": kegiatan.pk,
             "tujuan_negara": [negara.pk],
             "sumber_pembiayaan": self.sumber(tipe).pk,
             "tgl_berangkat": self.berangkat.isoformat(),
             "tgl_kembali": (self.berangkat + timedelta(days=6)).isoformat(),
-            "kota_tujuan": "Kota Uji",
-            "tgl_mulai_kegiatan": (self.berangkat + timedelta(days=1)).isoformat(),
-            "tgl_selesai_kegiatan": (self.berangkat + timedelta(days=5)).isoformat(),
-            "penyelenggara": "Penyelenggara Uji",
-            "perguruan_tinggi": "Universitas Uji",
-            "beasiswa": "STUB-P-001" if tipe == "T2P" else "STUB-L-001",
+            "keterangan_sumber_pembiayaan": "Biaya Uji",
             "pernyataan_benar": "on",
         }
         self.login(self.pegawai)
@@ -101,6 +112,15 @@ class _Basis:
         self.lengkapi(p, "bpsdm")
         return self.post(self.admin_bpsdm, "bpsdm:upload_dokumen", {"teruskan": "1", "agree": "on", "catatan": catatan}, kode=p.kode)
 
+    def bko_unggah(self, p):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        self.login(self.admin_bko)
+        return self.client.post(reverse("bko:proses", kwargs={"kode": p.kode}), {
+            "jenis": "sk_tubel", "tanggal_surat": date.today().isoformat(),
+            "file": SimpleUploadedFile("sk_tubel.pdf", b"%PDF-1.4 sk", content_type="application/pdf"),
+        })
+
     def pakln_selesai(self, p, kecuali=()):
         self.post(self.admin_pakln, "pakln:preview", {"lanjutkan": "1"}, kode=p.kode)
         self.lengkapi(p, "pakln", kecuali=kecuali)
@@ -111,8 +131,14 @@ class _Basis:
 
         self.login(self.pegawai)
         return self.client.post(
-            reverse("pegawai:unggah_laporan", kwargs={"kode": p.kode}),
-            {"file": SimpleUploadedFile("laporan.pdf", b"%PDF-1.4 uji"), "catatan": catatan},
+            reverse("pegawai:laporan_form", kwargs={"kode": p.kode}),
+            {
+                "action": "submit",
+                "tujuan_kegiatan": "Mengikuti pertemuan", "materi_kegiatan": "Materi inti", "tindak_lanjut": "Tindak lanjut",
+                "dampak_rekomendasi": "Dampak dan rekomendasi", "estimasi_biaya": "10.000.000", "realisasi_biaya": "9.500.000",
+                "dokumen_laporan": SimpleUploadedFile("laporan.pdf", b"%PDF-1.4 uji", content_type="application/pdf"),
+                "catatan_perbaikan": catatan,
+            },
         )
 
     def refresh(self, p):
@@ -123,7 +149,7 @@ class _Basis:
 class AlurTipe1Tests(_Basis, TestCase):
     def test_kode_dan_detail_pdln(self):
         p = self.isi_formulir("T1")
-        self.assertTrue(p.kode.startswith(f"PDLN-{date.today().year}-T1-"))
+        self.assertTrue(p.kode.startswith(f"PDLN{self.unor.code}-1-{date.today():%d%m%y}-"))
         self.assertEqual(p.jenis_perjalanan, "pdln")
         self.assertEqual(DetailPdln.objects.get(pengajuan=p).penyelenggara, "Penyelenggara Uji")
 
@@ -180,7 +206,9 @@ class AlurTipe1Tests(_Basis, TestCase):
 class AlurTipe2Tests(_Basis, TestCase):
     def test_alur_t2p_melalui_bpsdm_dan_pengembalian_ke_tahap_sebelumnya(self):
         p = self.isi_formulir("T2P")
-        self.assertEqual(p.detail.beasiswa_pintar_id, "STUB-P-001")
+        # Penyelenggara kegiatan pendidikan = universitas (perguruan_tinggi pada snapshot).
+        self.assertEqual(p.detail.perguruan_tinggi, "Penyelenggara Uji")
+        self.assertEqual(p.detail.kegiatan_nama, "Kegiatan Uji T2P")
         self.kirim(p)
         self.unor_teruskan(p)
         self.assertEqual(self.refresh(p).status, S.PROSES_BPSDM)
@@ -202,13 +230,15 @@ class AlurTipe2Tests(_Basis, TestCase):
         self.assertEqual(self.refresh(p).status, S.PROSES_BPSDM)
         self.bpsdm_teruskan(p, catatan="ND diperbaiki")
         self.assertEqual(self.refresh(p).status, S.PROSES_PAKLN)
+        self.bko_unggah(p)
         self.pakln_selesai(p)
         self.assertEqual(self.refresh(p).status, S.SELESAI)
 
         aksi = list(p.riwayat.values_list("aksi", flat=True))
         self.assertEqual(aksi, [
             Aksi.DIKIRIM, Aksi.DITERUSKAN_BPSDM, Aksi.DIKEMBALIKAN_BPSDM, Aksi.DITERUSKAN_ULANG_BPSDM,
-            Aksi.DITERUSKAN_PAKLN, Aksi.DIKEMBALIKAN_PAKLN, Aksi.DITERUSKAN_ULANG, Aksi.SELESAI,
+            Aksi.DITERUSKAN_PAKLN, Aksi.DITERUSKAN_BKO, Aksi.DIKEMBALIKAN_PAKLN, Aksi.DITERUSKAN_ULANG,
+            Aksi.SK_TUBEL_DIUNGGAH, Aksi.SELESAI,
         ])
         # Timeline Tipe 2 berisi 5 tahap.
         self.assertEqual([s["status"] for s in p.timeline],
@@ -221,17 +251,17 @@ class AlurTipe2Tests(_Basis, TestCase):
         pesan_bpsdm = {e["aksi"]: e["catatan"] for e in riwayat.riwayat_untuk(p, self.admin_bpsdm)}
         self.assertEqual(pesan_bpsdm[Aksi.DIKEMBALIKAN_PAKLN], "ND belum sesuai")
 
-    def test_t2_wajib_beasiswa(self):
+    def test_kegiatan_tipe_lain_tidak_dapat_dipilih(self):
+        # Droplist beasiswa Platform BPSDM diganti Kegiatan: kegiatan pendidikan tidak berlaku untuk T2L.
+        kegiatan = self.buat_kegiatan("T2P")
         self.login(self.pegawai)
         resp = self.client.post(reverse("pegawai:formulir_pengajuan") + "?jenis=pdln&tipe=T2L", {
-            "kategori": self.kategori("T2L").pk, "tujuan_negara": [self.singapura.pk],
+            "kategori": self.kategori("T2L").pk, "kegiatan": kegiatan.pk, "tujuan_negara": [self.singapura.pk],
             "sumber_pembiayaan": self.sumber("T2L").pk, "tgl_berangkat": self.berangkat.isoformat(),
-            "tgl_kembali": (self.berangkat + timedelta(days=3)).isoformat(), "kota_tujuan": "X",
-            "tgl_mulai_kegiatan": self.berangkat.isoformat(), "tgl_selesai_kegiatan": self.berangkat.isoformat(),
-            "penyelenggara": "JICA", "pernyataan_benar": "on",
+            "tgl_kembali": (self.berangkat + timedelta(days=6)).isoformat(), "pernyataan_benar": "on",
         })
         self.assertEqual(resp.status_code, 200)
-        self.assertIn("beasiswa", resp.context["form"].errors)
+        self.assertIn("kegiatan", resp.context["form"].errors)
 
     def test_cakupan_bpsdm_hanya_tipe2(self):
         p1 = self.isi_formulir("T1")
@@ -239,6 +269,223 @@ class AlurTipe2Tests(_Basis, TestCase):
         self.assertEqual(self.get(self.admin_bpsdm, "bpsdm:preview", kode=p1.kode).status_code, 404)
         lain = User.objects.create_user("unor2", password="x", role="admin_unor", unit_organisasi=self.unor_lain)
         self.assertEqual(self.get(lain, "unor:preview", kode=p1.kode).status_code, 404)
+
+
+class AlurT2PBkoTests(_Basis, TestCase):
+    """PDLN Tipe 2 Pendidikan v2 — track paralel Admin BKO
+    (wiki/instructions/PDLN_TIPE_2_FLOW.MD §8)."""
+
+    SB = Pengajuan.StatusBko
+
+    def sampai_pakln(self, tipe="T2P"):
+        p = self.isi_formulir(tipe)
+        self.kirim(p)
+        self.unor_teruskan(p)
+        self.bpsdm_teruskan(p)
+        self.post(self.admin_pakln, "pakln:preview", {"lanjutkan": "1"}, kode=p.kode)
+        self.lengkapi(p, "pakln")
+        return self.refresh(p)
+
+    def selesai(self, p):
+        return self.post(self.admin_pakln, "pakln:upload_dokumen", {"selesaikan": "1", "agree": "on"}, kode=p.kode)
+
+    def tutup(self, p, catatan="Pencalonan beasiswa belum ditetapkan"):
+        return self.post(self.admin_bko, "bko:proses", {"tutup": "1", "catatan": catatan}, kode=p.kode)
+
+    def pesan(self, p, user, aksi):
+        return next(e["catatan"] for e in riwayat.riwayat_untuk(p, user) if e["aksi"] == aksi)
+
+    def test_bpsdm_teruskan_membuka_track_bko_dan_notifikasi(self):
+        p = self.sampai_pakln()
+        self.assertEqual(p.status, S.PROSES_PAKLN)
+        self.assertEqual(p.status_bko, self.SB.MENUNGGU)
+        self.assertIsNotNone(p.tgl_masuk_bko)
+        self.assertTrue(p.riwayat.filter(aksi=Aksi.DITERUSKAN_BKO).exists())
+        self.assertTrue(Notification.objects.filter(
+            recipient=self.admin_bko, event=Notification.Event.FORWARD_BKO, pengajuan=p).exists())
+        self.assertNotIn("sk_tubel", [s.jenis for s in persyaratan.daftar_syarat(p, "pakln")])
+
+    def test_t2l_tidak_memakai_bko(self):
+        p = self.sampai_pakln("T2L")
+        self.assertEqual(p.status_bko, "")
+        self.assertEqual(self.get(self.admin_bko, "bko:proses", kode=p.kode).status_code, 404)
+        self.selesai(p)
+        self.assertEqual(self.refresh(p).status, S.SELESAI)
+
+    def test_selesai_menunggu_sk_tubel_lalu_berhasil(self):
+        p = self.sampai_pakln()
+        self.selesai(p)
+        self.assertEqual(self.refresh(p).status, S.PROSES_PAKLN)
+
+        self.bko_unggah(p)
+        self.assertEqual(self.refresh(p).status_bko, self.SB.DIUNGGAH)
+        self.assertTrue(Notification.objects.filter(
+            recipient=self.admin_pakln, event=Notification.Event.SK_TUBEL_DIUNGGAH).exists())
+        self.selesai(p)
+        self.assertEqual(self.refresh(p).status, S.SELESAI)
+        # SK Tubel dari BKO dapat diunduh pegawai.
+        resp = self.get(self.pegawai, "pegawai:unduh_hasil", kode=p.kode, jenis="sk_tubel")
+        self.assertEqual(resp.status_code, 200)
+
+    def test_hapus_sk_tubel_kembali_menunggu(self):
+        p = self.sampai_pakln()
+        self.bko_unggah(p)
+        self.post(self.admin_bko, "bko:hapus_dokumen", kode=p.kode, jenis="sk_tubel")
+        self.assertEqual(self.refresh(p).status_bko, self.SB.MENUNGGU)
+        self.assertFalse(p.dokumen_bko.exists())
+
+    def test_tutup_wajib_catatan_dan_terlihat_semua_pihak(self):
+        p = self.sampai_pakln()
+        self.tutup(p, catatan="")
+        self.assertEqual(self.refresh(p).status_bko, self.SB.MENUNGGU)
+        self.tutup(p)
+        p = self.refresh(p)
+        self.assertEqual(p.status_bko, self.SB.DITUTUP)
+        self.assertEqual(p.catatan_bko, "Pencalonan beasiswa belum ditetapkan")
+        for user in (self.pegawai, self.admin_unor, self.admin_bpsdm, self.admin_pakln, self.admin_bko):
+            with self.subTest(role=user.role):
+                self.assertEqual(self.pesan(p, user, Aksi.DITUTUP_BKO), "Pencalonan beasiswa belum ditetapkan")
+        penerima = set(Notification.objects.filter(event=Notification.Event.BKO_DITUTUP).values_list("recipient", flat=True))
+        self.assertEqual(penerima, {self.pegawai.pk, self.admin_unor.pk, self.admin_bpsdm.pk, self.admin_pakln.pk})
+        self.assertContains(self.get(self.pegawai, "pegawai:monitor_progres", kode=p.kode), "Pencalonan beasiswa belum ditetapkan")
+
+    def test_ditutup_selesai_normal_ditolak_lanjutkan_tanpa_sk_tubel(self):
+        p = self.sampai_pakln()
+        self.tutup(p)
+        resp = self.get(self.admin_pakln, "pakln:upload_dokumen", kode=p.kode)
+        for teks in ("Pencalonan beasiswa belum ditetapkan", "Buka Kembali Pemrosesan BKO",
+                     "Lanjutkan tanpa SK Tubel", "Hentikan Pengajuan"):
+            self.assertContains(resp, teks)
+        for user, nama in ((self.admin_unor, "unor:preview"), (self.admin_bpsdm, "bpsdm:preview")):
+            self.assertContains(self.get(user, nama, kode=p.kode), "Pencalonan beasiswa belum ditetapkan")
+        self.selesai(p)
+        self.assertEqual(self.refresh(p).status, S.PROSES_PAKLN)
+        # Catatan wajib.
+        self.post(self.admin_pakln, "pakln:upload_dokumen", {"selesaikan_tanpa_sk_tubel": "1", "agree": "on"}, kode=p.kode)
+        self.assertEqual(self.refresh(p).status, S.PROSES_PAKLN)
+        self.post(self.admin_pakln, "pakln:upload_dokumen",
+                  {"selesaikan_tanpa_sk_tubel": "1", "agree": "on", "catatan": "Disetujui pimpinan tanpa SK"}, kode=p.kode)
+        p = self.refresh(p)
+        self.assertEqual(p.status, S.SELESAI)
+        self.assertTrue(p.riwayat.filter(aksi=Aksi.SELESAI_TANPA_SK_TUBEL).exists())
+        # Catatan hanya terlihat Admin PAKLN.
+        self.assertEqual(self.pesan(p, self.admin_pakln, Aksi.SELESAI_TANPA_SK_TUBEL), "Disetujui pimpinan tanpa SK")
+        for user in (self.pegawai, self.admin_unor, self.admin_bpsdm, self.admin_bko):
+            with self.subTest(role=user.role):
+                self.assertEqual(self.pesan(p, user, Aksi.SELESAI_TANPA_SK_TUBEL), "")
+        self.assertEqual(p.timeline[-1]["sub"], "Diselesaikan tanpa SK Tugas Belajar")
+        for body in Notification.objects.filter(pengajuan=p).values_list("body", flat=True):
+            self.assertNotIn("Disetujui pimpinan", body)
+        # Track terkunci setelah selesai.
+        self.post(self.admin_bko, "bko:proses", {"buka_kembali": "1", "catatan": "x"}, kode=p.kode)
+        self.assertEqual(self.refresh(p).status_bko, self.SB.DITUTUP)
+
+    def test_lanjutkan_tanpa_sk_tubel_hanya_saat_ditutup(self):
+        p = self.sampai_pakln()
+        self.post(self.admin_pakln, "pakln:upload_dokumen",
+                  {"selesaikan_tanpa_sk_tubel": "1", "agree": "on", "catatan": "x"}, kode=p.kode)
+        self.assertEqual(self.refresh(p).status, S.PROSES_PAKLN)
+
+    def test_buka_kembali_oleh_bko_dan_pakln_saja(self):
+        p = self.sampai_pakln()
+        self.tutup(p)
+        for user, url in ((self.admin_unor, "unor:upload_dokumen"), (self.admin_bpsdm, "bpsdm:upload_dokumen")):
+            self.post(user, url, {"buka_kembali_bko": "1", "catatan": "x"}, kode=p.kode)
+        self.assertEqual(self.refresh(p).status_bko, self.SB.DITUTUP)
+
+        self.post(self.admin_bko, "bko:proses", {"buka_kembali": "1", "catatan": ""}, kode=p.kode)
+        self.assertEqual(self.refresh(p).status_bko, self.SB.DITUTUP)
+        self.post(self.admin_bko, "bko:proses", {"buka_kembali": "1", "catatan": "Beasiswa sudah ditetapkan"}, kode=p.kode)
+        p = self.refresh(p)
+        self.assertEqual(p.status_bko, self.SB.MENUNGGU)
+        self.assertEqual(p.catatan_bko, "")
+
+        self.tutup(p)
+        self.post(self.admin_pakln, "pakln:upload_dokumen", {"buka_kembali_bko": "1", "catatan": "Mohon diproses ulang"}, kode=p.kode)
+        self.assertEqual(self.refresh(p).status_bko, self.SB.MENUNGGU)
+        self.assertEqual(self.pesan(p, self.pegawai, Aksi.DIBUKA_ULANG_BKO), "Beasiswa sudah ditetapkan")
+        self.assertTrue(Notification.objects.filter(
+            recipient=self.admin_bko, event=Notification.Event.BKO_DIBUKA).exists())
+
+    def test_hentikan_oleh_pakln_hanya_saat_ditutup(self):
+        p = self.sampai_pakln()
+        self.post(self.admin_pakln, "pakln:upload_dokumen", {"hentikan": "1", "alasan": "x"}, kode=p.kode)
+        self.assertEqual(self.refresh(p).status, S.PROSES_PAKLN)
+        self.tutup(p)
+        self.post(self.admin_pakln, "pakln:upload_dokumen", {"hentikan": "1", "alasan": "SK tidak terbit"}, kode=p.kode)
+        p = self.refresh(p)
+        self.assertEqual(p.status, S.DIBATALKAN)
+        m = p.permohonan_pembatalan.get()
+        self.assertEqual((m.diajukan_role, m.status), ("admin_pakln", PermohonanPembatalan.Status.DISETUJUI))
+        self.assertTrue(Notification.objects.filter(
+            recipient=self.admin_bko, event=Notification.Event.PEMBATALAN_DISETUJUI).exists())
+
+    def test_pengembalian_tidak_menyentuh_track_dan_bko_tetap_bisa_unggah(self):
+        p = self.sampai_pakln()
+        self.post(self.admin_pakln, "pakln:preview", {"kembalikan": "1", "catatan": "ND belum sesuai"}, kode=p.kode)
+        p = self.refresh(p)
+        self.assertEqual(p.status, S.PROSES_BPSDM)
+        self.assertEqual(p.status_bko, self.SB.MENUNGGU)
+        self.bko_unggah(p)
+        self.assertEqual(self.refresh(p).status_bko, self.SB.DIUNGGAH)
+        tgl_masuk = p.tgl_masuk_bko
+        self.bpsdm_teruskan(p, catatan="ND diperbaiki")
+        p = self.refresh(p)
+        self.assertEqual((p.status, p.status_bko, p.tgl_masuk_bko), (S.PROSES_PAKLN, self.SB.DIUNGGAH, tgl_masuk))
+        self.assertEqual(p.riwayat.filter(aksi=Aksi.DITERUSKAN_BKO).count(), 1)
+        self.assertTrue(p.dokumen_bko.exists())
+
+    def test_aksi_bko_dibekukan_saat_pembatalan_terbuka(self):
+        p = self.sampai_pakln()
+        self.post(self.pegawai, "pegawai:ajukan_pembatalan", {"alasan": "Batal berangkat"}, kode=p.kode)
+        self.assertIsNotNone(self.refresh(p).pembatalan_terbuka)
+        self.bko_unggah(p)
+        self.tutup(p)
+        self.assertEqual(self.refresh(p).status_bko, self.SB.MENUNGGU)
+        self.assertFalse(p.dokumen_bko.exists())
+
+    def test_cakupan_dan_halaman_bko(self):
+        p = self.sampai_pakln()
+        t1 = Pengajuan.objects.create(pegawai=self.pegawai, jenis_perjalanan="pdln", tipe_pdln="T1",
+                                      status=S.PROSES_PAKLN, tgl_pengajuan=date.today())
+        for nama in ("bko:dashboard", "bko:pembatalan", "bko:rekap", "bko:export"):
+            with self.subTest(nama=nama):
+                self.assertEqual(self.get(self.admin_bko, nama).status_code, 200)
+        data = self.get(self.admin_bko, "bko:dashboard_data").json()
+        self.assertEqual(data["recordsTotal"], 1)
+        self.assertEqual(self.get(self.admin_bko, "bko:proses", kode=t1.kode).status_code, 404)
+        resp = self.get(self.admin_bko, "bko:proses", kode=p.kode)
+        self.assertContains(resp, "Tutup Pemrosesan")
+        self.assertContains(resp, "Letter of Guarantee")
+        self.assertRedirects(self.get(self.admin_bko, "home"), reverse("bko:dashboard"), fetch_redirect_response=False)
+        # Role lain tidak dapat membuka halaman BKO.
+        self.assertNotEqual(self.get(self.admin_unor, "bko:proses", kode=p.kode).status_code, 200)
+
+    def test_timeline_sub_keterangan_bko(self):
+        p = self.sampai_pakln()
+        langkah = {s["status"]: s for s in p.timeline}
+        self.assertEqual(len(langkah), 5)
+        self.assertEqual(langkah[S.PROSES_PAKLN]["sub"], "SK Tugas Belajar (Admin BKO): Menunggu")
+        self.tutup(p)
+        sub = {s["status"]: s for s in self.refresh(p).timeline}[S.PROSES_PAKLN]["sub"]
+        self.assertIn("Pencalonan beasiswa belum ditetapkan", sub)
+
+    def test_migrasi_data_memindah_sk_tubel_pakln(self):
+        from importlib import import_module
+
+        from django.apps import apps
+
+        from .models import DokumenBko, DokumenPakln
+
+        p = self.sampai_pakln()
+        p.status_bko, p.tgl_masuk_bko = "", None
+        p.save()
+        DokumenPakln.objects.create(pengajuan=p, jenis="sk_tubel", file="lama/sk.pdf", tanggal_surat=date.today())
+        import_module("pengajuan.migrations.0021_v2_bko_data").maju(apps, None)
+        p = self.refresh(p)
+        self.assertEqual((p.status_bko, p.tgl_masuk_bko), (self.SB.DIUNGGAH, p.tgl_masuk_pakln))
+        self.assertEqual(DokumenBko.objects.get(pengajuan=p).file.name, "lama/sk.pdf")
+        self.assertFalse(DokumenPakln.objects.filter(pengajuan=p, jenis="sk_tubel").exists())
 
 
 class SatuPengajuanAktifTests(_Basis, TestCase):
@@ -347,6 +594,13 @@ class HalamanDanReportTests(_Basis, TestCase):
                 resp = self.get(user, nama, query="?tab=pdln&jenis=pdln")
                 self.assertEqual(resp.status_code, 200)
         self.assertEqual(self.get(self.admin_bpsdm, "bpsdm:dashboard_data").json()["recordsTotal"], 1)
+
+    def test_dashboard_data_bpsdm_saat_masih_di_unor(self):
+        p = self.isi_formulir("T2P")
+        self.kirim(p)
+        resp = self.get(self.admin_bpsdm, "bpsdm:dashboard_data")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("Menunggu Admin Unor", resp.json()["data"][0][8])
 
     def test_halaman_formulir_dan_unggah_tiap_tahap(self):
         for tipe in ("T1", "T2P", "T2L", "T3"):

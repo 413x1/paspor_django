@@ -7,11 +7,12 @@ from django.utils.html import escape, format_html
 from django.views.decorators.http import require_POST
 
 from logs.models import ActivityLog
+from paspor.validators import periksa_pdf
 from logs.utils import catat_riwayat, record_activity
 from notifications.services import notify_approve_unor, notify_forward_bpsdm, notify_reject_unor
 
 from . import alur, pembatalan, persyaratan, report, riwayat, tahap
-from .decorators import role_required
+from .decorators import role_required, tolak_pengajuan_sendiri
 from .models import DokumenUnorPendukung, LaporanPdln, Pengajuan, PermohonanPembatalan, RiwayatPengajuan
 
 S = Pengajuan.Status
@@ -23,9 +24,10 @@ def _scoped(request, qs=None):
     Unor yang sedang login (snapshot unit organisasi pengajuan)."""
     if qs is None:
         qs = Pengajuan.objects.all()
-    if not request.user.unit_organisasi_id:
+    unit_id = request.user.unit_admin_id()
+    if not unit_id:
         return qs.none()
-    return qs.filter(report.q_unor(request.user.unit_organisasi_id))
+    return qs.filter(report.q_unor(unit_id))
 
 
 def _tab(request):
@@ -57,10 +59,14 @@ _UNOR_DASHBOARD_ORDER_FIELDS = {
 }
 
 
-def status_html(p):
+def status_html(p, dengan_bko=True):
     html = format_html(
         '<span class="tag paspor-status is-{}"><span class="dot"></span>{}</span>', p.status, p.get_status_display(),
     )
+    if dengan_bko and p.track_bko_terbuka and p.status not in (S.SELESAI, S.DIBATALKAN):
+        html = format_html(
+            '{}<br><span class="tag bko-status is-{}">BKO: {}</span>', html, p.status_bko, p.get_status_bko_display(),
+        )
     if p.pembatalan_terbuka:
         html = format_html('{}<br><span class="cell-muted">✕ Pembatalan diproses</span>', html)
     return html
@@ -117,7 +123,7 @@ def _catatan_kembali(pengajuan):
     if pengajuan.is_tipe2 and pengajuan.catatan_bpsdm:
         return "Admin BPSDM", pengajuan.catatan_bpsdm
     if not pengajuan.is_tipe2 and pengajuan.catatan_pakln:
-        return "Admin PKLN", pengajuan.catatan_pakln
+        return "Admin Biro PAKLN", pengajuan.catatan_pakln
     return "", ""
 
 
@@ -126,6 +132,8 @@ def preview(request, kode):
     """Pratinjau Pengajuan dari Pegawai (read-only) + persetujuan sebelum
     lanjut ke unggah dokumen administrasi, atau kembalikan ke pegawai."""
     pengajuan = get_object_or_404(_scoped(request).exclude(tgl_pengajuan__isnull=True), kode=kode)
+    if request.method == "POST":
+        tolak_pengajuan_sendiri(request, pengajuan)  # AB-12
 
     if request.method == "POST" and ("lanjutkan" in request.POST or "kembalikan" in request.POST):
         pesan = alur.alasan_dibekukan(pengajuan)
@@ -178,6 +186,8 @@ def upload_dokumen(request, kode):
     """Unggah Dokumen Administrasi Unor (sesuai registri per tipe), lalu
     meneruskan ke tahap berikut — Admin BPSDM (PDLN Tipe 2) atau Biro PAKLN."""
     pengajuan = get_object_or_404(_scoped(request), kode=kode)
+    if request.method == "POST":
+        tolak_pengajuan_sendiri(request, pengajuan)  # AB-12
     if not pengajuan.preview_unor_agree or pengajuan.status != S.PROSES:
         return redirect("unor:preview", kode=kode)
 
@@ -196,6 +206,8 @@ def upload_dokumen(request, kode):
             file_obj = request.FILES.get("file")
             if not file_obj:
                 messages.error(request, "Pilih berkas dokumen pendukung terlebih dahulu.")
+            elif (galat := periksa_pdf(request, file_obj)):
+                messages.error(request, galat)
             else:
                 pendukung.file = file_obj
                 pendukung.uploaded_at = timezone.now()
@@ -292,6 +304,7 @@ def _teruskan(request, pengajuan, ke_bpsdm):
 def hapus_dokumen(request, kode, jenis):
     """Hapus salah satu dokumen administrasi Unor yang sudah diunggah."""
     pengajuan = get_object_or_404(_scoped(request), kode=kode)
+    tolak_pengajuan_sendiri(request, pengajuan)  # AB-12
     if pengajuan.status == S.PROSES:
         tahap.hapus(request, pengajuan, "unor", jenis)
     return redirect("unor:upload_dokumen", kode=pengajuan.kode)
@@ -382,10 +395,16 @@ def _konteks_pelaporan(qs_pengajuan):
     hari_ini = timezone.localdate()
     for p in qs:
         laporan = p.laporan
+        if laporan is not None and laporan.status == LaporanPdln.Status.DRAFT:
+            laporan = None   # draft belum dilaporkan: dihitung "belum melapor"
         status = laporan.status if laporan else "belum"
         terlambat = laporan is None and p.tgl_kembali and (hari_ini - p.tgl_kembali).days > report.BATAS_HARI_LAPORAN
         hitung["selesai"] += 1
         hitung[status] = hitung.get(status, 0) + 1
         hitung["terlambat"] += 1 if terlambat else 0
-        baris.append({"p": p, "laporan": laporan, "status": status, "terlambat": terlambat})
+        uraian = [] if laporan is None else [
+            ("Tujuan Kegiatan", laporan.tujuan_kegiatan), ("Materi Kegiatan", laporan.materi_kegiatan),
+            ("Tindak Lanjut", laporan.tindak_lanjut), ("Dampak Rekomendasi", laporan.dampak_rekomendasi),
+        ]
+        baris.append({"p": p, "laporan": laporan, "status": status, "terlambat": terlambat, "uraian": uraian})
     return {"baris": baris, "hitung": hitung, "Status": LaporanPdln.Status}

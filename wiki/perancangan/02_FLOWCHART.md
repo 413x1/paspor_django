@@ -20,7 +20,7 @@ flowchart TD
     H -- "Tipe 1 / Tipe 3" --> I["Formulir T1/T3"]
     H -- "Tipe 2 Pendidikan" --> J["Formulir T2P"]
     H -- "Tipe 2 Pelatihan" --> K["Formulir T2L"]
-    J & K --> L[["Ambil daftar beasiswa<br/>dari Aplikasi PINTAR"]]
+    J & K --> L[["Ambil daftar beasiswa<br/>dari Platform BPSDM"]]
     G & I & L --> M["Isi & simpan formulir"]
     M --> N{"Validasi server"}
     N -- Gagal --> M

@@ -1,0 +1,20 @@
+{% load pengajuan_extras %}{# Pengganti peran aktif (AB-10) — hanya untuk user dengan lebih dari satu role. #}
+{% with daftar=user.daftar_peran %}{% if daftar|length > 1 %}
+<div class="peran-switcher" data-dropdown>
+  <button type="button" class="peran-switcher-btn" data-dropdown-toggle aria-haspopup="true" aria-expanded="false">
+    <span class="peran-switcher-label">Masuk sebagai:</span> <strong>{{ user.get_role_display }}</strong>
+    <span class="sidebar-chevron" aria-hidden="true"></span>
+  </button>
+  <div class="peran-switcher-menu" data-dropdown-panel>
+    {% for peran in daftar %}
+      <form method="post" action="{% url 'ganti_peran' %}">
+        {% csrf_token %}
+        <input type="hidden" name="peran" value="{{ peran }}">
+        <button type="submit" class="peran-switcher-item{% if peran == user.role %} is-aktif{% endif %}"{% if peran == user.role %} aria-current="true"{% endif %}>
+          {% if peran == user.role %}✓ {% endif %}{{ peran|label_peran }}
+        </button>
+      </form>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}{% endwith %}

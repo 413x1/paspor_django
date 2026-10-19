@@ -12,9 +12,14 @@ wiki/instructions/BISNIS_PROSES_PDLN.MD §11.
     Event 4x (NOTIF_04*)                  — tahap BPSDM (PDLN Tipe 2)
     Event 5x (NOTIF_05*)                  — Laporan PDLN
     Event 6x (NOTIF_06*)                  — Pembatalan (mekanisme interim)
+    Event 7x (NOTIF_07*)                  — Track Admin BKO (PDLN Tipe 2 Pendidikan)
+    Event 8x (NOTIF_08*)                  — Usulan Kegiatan PDLN
 """
 
-from django.urls import reverse
+from urllib.parse import urlsplit
+
+from django.db.models import Q
+from django.urls import Resolver404, resolve, reverse
 
 from . import email_queue
 from .models import Notification
@@ -52,9 +57,20 @@ def _unit_organisasi(pengajuan):
 def _perihal(pengajuan):
     if getattr(pengajuan, "is_pdln", False):
         detail = pengajuan.detail
-        if detail and (detail.penyelenggara or detail.perguruan_tinggi):
-            return detail.penyelenggara or detail.perguruan_tinggi
+        if detail and (detail.kegiatan_nama or detail.penyelenggara or detail.perguruan_tinggi):
+            return detail.kegiatan_nama or detail.penyelenggara or detail.perguruan_tinggi
     return pengajuan.maksud or (pengajuan.kategori.nama_kategori if pengajuan.kategori_id else None) or "-"
+
+
+def _pemegang_peran(role, *extra):
+    """User aktif yang memiliki role `role` (PeranUser aktif). Semua kondisi
+    pada `peran_list` berada dalam satu `filter()` agar merujuk ke baris
+    PeranUser yang sama."""
+    from accounts.models import User
+
+    return User.objects.filter(
+        Q(is_active=True, peran_list__role=role, peran_list__is_active=True), *extra,
+    ).distinct()
 
 
 def _admin_unor_recipients(pengajuan):
@@ -63,24 +79,69 @@ def _admin_unor_recipients(pengajuan):
     unit = _unit_organisasi(pengajuan)
     if not unit:
         return User.objects.none()
-    return User.objects.filter(role=User.Role.ADMIN_UNOR, unit_organisasi_id=unit.id, is_active=True)
+    # Unit yang dikelola tercatat di PeranUser; data lama tanpa unit di
+    # PeranUser memakai User.unit_organisasi (sama dengan User.unit_admin_id()).
+    return _pemegang_peran(
+        User.Role.ADMIN_UNOR,
+        Q(peran_list__unit_organisasi_id=unit.id)
+        | Q(peran_list__unit_organisasi__isnull=True, unit_organisasi_id=unit.id),
+    )
 
 
 def _admin_bpsdm_recipients():
     from accounts.models import User
 
-    return User.objects.filter(role=User.Role.ADMIN_BPSDM, is_active=True)
+    return _pemegang_peran(User.Role.ADMIN_BPSDM)
 
 
 def _admin_pakln_recipients():
     from accounts.models import User
 
-    return User.objects.filter(role=User.Role.ADMIN_PAKLN, is_active=True)
+    return _pemegang_peran(User.Role.ADMIN_PAKLN)
 
 
-def _create(recipients, *, pengajuan, event, level, title, body, redirect_url):
-    notifs = [
-        Notification(
+def _admin_bko_recipients():
+    from accounts.models import User
+
+    return _pemegang_peran(User.Role.ADMIN_BKO)
+
+
+# Namespace URL -> peran yang berhak membukanya (metadata `untuk_peran`).
+_PERAN_NAMESPACE = {
+    "pegawai": "pegawai",
+    "unor": "admin_unor",
+    "bpsdm": "admin_bpsdm",
+    "bko": "admin_bko",
+    "pakln": "admin_pakln",
+}
+
+
+def peran_untuk_url(url):
+    """Peran yang tepat untuk membuka `url` (dari namespace URL-nya), atau ''."""
+    if not url:
+        return ""
+    try:
+        match = resolve(urlsplit(url).path)
+    except Resolver404:
+        return ""
+    return _PERAN_NAMESPACE.get(match.namespace.split(":")[0], "")
+
+
+def _create(recipients, *, pengajuan, event, level, title, body, redirect_url, untuk_peran=None):
+    """Buat notifikasi untuk tiap penerima. `untuk_peran` (bawaan: diturunkan
+    dari namespace `redirect_url`) dipakai untuk memindahkan peran aktif saat
+    notifikasi dibuka. Satu baris per (penerima, untuk_peran): user ber-role
+    ganda tidak menerima notifikasi yang sama dua kali (AB-13)."""
+    if untuk_peran is None:
+        untuk_peran = peran_untuk_url(redirect_url)
+    terkirim = set()
+    notifs = []
+    for user in recipients:
+        kunci = (user.pk, untuk_peran)
+        if kunci in terkirim:
+            continue
+        terkirim.add(kunci)
+        notifs.append(Notification(
             recipient=user,
             pengajuan=pengajuan,
             event=event,
@@ -88,9 +149,8 @@ def _create(recipients, *, pengajuan, event, level, title, body, redirect_url):
             title=title,
             body=body,
             redirect_url=redirect_url,
-        )
-        for user in recipients
-    ]
+            untuk_peran=untuk_peran,
+        ))
     if notifs:
         Notification.objects.bulk_create(notifs)
         # Email dipicu dari titik yang sama agar sinkron dengan notifikasi in-app;
@@ -236,7 +296,7 @@ def notify_approve_unor(pengajuan, catatan="", dari_bpsdm=False):
         title="Pengajuan Diteruskan ke Biro PAKLN" if dari_bpsdm else "Pengajuan Surat Disetujui Unor",
         body=(
             f'Surat Anda perihal "{perihal}" telah disetujui oleh '
-            f'{"Admin BPSDM" if dari_bpsdm else "Admin Unor"} dan diteruskan ke Admin PKLN.'
+            f'{"Admin BPSDM" if dari_bpsdm else "Admin Unor"} dan diteruskan ke Admin Biro PAKLN.'
         ),
         redirect_url=_url_monitor(pengajuan),
     )
@@ -246,7 +306,7 @@ def notify_approve_unor(pengajuan, catatan="", dari_bpsdm=False):
         event=Notification.Event.APPROVE_UNOR,
         level=Notification.Level.INFO,
         title=(f"Perbaikan Berkas dari {pengirim} Diterima" if catatan
-               else "Penugasan Verifikasi Surat PKLN Baru"),
+               else "Penugasan Verifikasi Biro PAKLN Baru"),
         body=(
             f'{pengirim} telah mengirimkan perbaikan berkas atas nama {nama} '
             f'perihal "{perihal}". Catatan: "{catatan}".'
@@ -259,7 +319,7 @@ def notify_approve_unor(pengajuan, catatan="", dari_bpsdm=False):
 
 
 def notify_reject_pakln_to_unor(pengajuan, catatan):
-    """Event 3B: Admin PKLN mengembalikan pengajuan ke tahap sebelumnya —
+    """Event 3B: Admin Biro PAKLN mengembalikan pengajuan ke tahap sebelumnya —
     Admin Unor, atau Admin BPSDM untuk PDLN Tipe 2."""
     nama = _nama_pegawai(pengajuan)
     perihal = _perihal(pengajuan)
@@ -272,10 +332,10 @@ def notify_reject_pakln_to_unor(pengajuan, catatan):
         pengajuan=pengajuan,
         event=Notification.Event.REJECT_PKLN_UNOR,
         level=Notification.Level.WARNING,
-        title="Berkas Surat Dikembalikan oleh Admin PKLN",
+        title="Berkas Surat Dikembalikan oleh Admin Biro PAKLN",
         body=(
-            f'Surat pengajuan {nama} dikembalikan oleh PKLN. '
-            f'Catatan PKLN: "{catatan}". Mohon diperbaiki.'
+            f'Surat pengajuan {nama} dikembalikan oleh Biro PAKLN. '
+            f'Catatan Biro PAKLN: "{catatan}". Mohon diperbaiki.'
         ),
         redirect_url=reverse("bpsdm:preview" if ke_bpsdm else "unor:preview", args=[pengajuan.kode]),
     )
@@ -291,7 +351,7 @@ def notify_reject_pakln_to_unor(pengajuan, catatan):
 
 
 def notify_complete_pkln(pengajuan):
-    """Event 3A: Admin PKLN menyelesaikan/menerbitkan surat."""
+    """Event 3A: Admin Biro PAKLN menyelesaikan/menerbitkan surat."""
     perihal = _perihal(pengajuan)
     nama = _nama_pegawai(pengajuan)
     lanjutan = (
@@ -305,7 +365,7 @@ def notify_complete_pkln(pengajuan):
         event=Notification.Event.COMPLETE_PKLN,
         level=Notification.Level.SUCCESS,
         title="Pengajuan Surat Selesai (Siap Unduh)",
-        body=f'Selamat, surat Anda perihal "{perihal}" telah selesai diproses oleh Admin PKLN.{lanjutan}',
+        body=f'Selamat, surat Anda perihal "{perihal}" telah selesai diproses oleh Admin Biro PAKLN.{lanjutan}',
         redirect_url=_url_monitor(pengajuan),
     )
     _create(
@@ -313,10 +373,10 @@ def notify_complete_pkln(pengajuan):
         pengajuan=pengajuan,
         event=Notification.Event.COMPLETE_PKLN,
         level=Notification.Level.SUCCESS,
-        title="Proses Surat PKLN Selesai",
+        title="Proses Biro PAKLN Selesai",
         body=(
             f'Pengajuan surat milik {nama} perihal "{perihal}" telah selesai '
-            f"diproses oleh Admin PKLN."
+            f"diproses oleh Admin Biro PAKLN."
         ),
         redirect_url=reverse("unor:preview", args=[pengajuan.kode]),
     )
@@ -462,6 +522,8 @@ def notify_pembatalan_disetujui(permohonan):
     penerima = [p.pegawai, *_admin_unor_recipients(p)]
     if p.is_tipe2 and (p.tgl_masuk_bpsdm or permohonan.status_pengajuan_saat_diajukan == "proses_bpsdm"):
         penerima.extend(_admin_bpsdm_recipients())
+    if p.track_bko_terbuka:
+        penerima.extend(_admin_bko_recipients())
     _create(
         penerima,
         pengajuan=p,
@@ -487,4 +549,170 @@ def notify_pembatalan_ditarik(permohonan, status_sebelumnya):
         title=f"Permohonan Pembatalan Ditarik - {p.kode}",
         body=f"Permohonan pembatalan {p.kode} ditarik oleh pengaju. Proses pengajuan dilanjutkan.",
         redirect_url=url,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Track Admin BKO — PDLN Tipe 2 Pendidikan (wiki/instructions/PDLN_TIPE_2_FLOW.MD §8)
+# ---------------------------------------------------------------------------
+
+def notify_forward_bko(pengajuan):
+    """Event 7A: Admin BPSDM meneruskan T2P — Admin BKO diminta melengkapi
+    SK Tugas Belajar (paralel dengan proses Biro PAKLN)."""
+    _create(
+        _admin_bko_recipients(),
+        pengajuan=pengajuan,
+        event=Notification.Event.FORWARD_BKO,
+        level=Notification.Level.INFO,
+        title=f"Menunggu SK Tugas Belajar - {pengajuan.kode}",
+        body=(
+            f'Admin BPSDM meneruskan {pengajuan.jenis_label} atas nama {_nama_pegawai(pengajuan)} '
+            f'perihal "{_perihal(pengajuan)}". Mohon lengkapi SK Tugas Belajar.'
+        ),
+        redirect_url=reverse("bko:proses", args=[pengajuan.kode]),
+    )
+
+
+def notify_info_bko(pengajuan):
+    """Event 7E: info penerusan ulang BPSDM → Biro PAKLN (tanpa catatan
+    antar-admin)."""
+    _create(
+        _admin_bko_recipients(),
+        pengajuan=pengajuan,
+        event=Notification.Event.INFO_BKO,
+        level=Notification.Level.INFO,
+        title=f"Perbaikan Berkas Diteruskan Ulang - {pengajuan.kode}",
+        body=f"Admin BPSDM meneruskan ulang perbaikan berkas {pengajuan.kode} ke Biro PAKLN.",
+        redirect_url=reverse("bko:proses", args=[pengajuan.kode]),
+    )
+
+
+def notify_sk_tubel_diunggah(pengajuan):
+    """Event 7B: Admin BKO mengunggah SK Tugas Belajar."""
+    _create(
+        _admin_pakln_recipients(),
+        pengajuan=pengajuan,
+        event=Notification.Event.SK_TUBEL_DIUNGGAH,
+        level=Notification.Level.SUCCESS,
+        title=f"SK Tugas Belajar Tersedia - {pengajuan.kode}",
+        body=f"Admin BKO telah mengunggah SK Tugas Belajar atas nama {_nama_pegawai(pengajuan)}.",
+        redirect_url=reverse("pakln:preview", args=[pengajuan.kode]),
+    )
+
+
+def _penerima_bko_semua(pengajuan, kecuali_role=None):
+    """Pegawai, Admin Unor, Admin BPSDM, Admin PAKLN, Admin BKO — tanpa role
+    `kecuali_role` (pihak yang melakukan aksi)."""
+    from accounts.models import User
+
+    kelompok = {
+        User.Role.ADMIN_UNOR: _admin_unor_recipients(pengajuan),
+        User.Role.ADMIN_BPSDM: _admin_bpsdm_recipients(),
+        User.Role.ADMIN_PAKLN: _admin_pakln_recipients(),
+        User.Role.ADMIN_BKO: _admin_bko_recipients(),
+    }
+    penerima = [pengajuan.pegawai]
+    for role, qs in kelompok.items():
+        if role != kecuali_role:
+            penerima.extend(qs)
+    return penerima
+
+
+def notify_bko_ditutup(pengajuan, catatan):
+    """Event 7C: Admin BKO menutup pemrosesan — alasan terlihat semua pihak."""
+    from accounts.models import User
+
+    _create(
+        _penerima_bko_semua(pengajuan, kecuali_role=User.Role.ADMIN_BKO),
+        pengajuan=pengajuan,
+        event=Notification.Event.BKO_DITUTUP,
+        level=Notification.Level.WARNING,
+        title=f"Pemrosesan SK Tugas Belajar Ditutup - {pengajuan.kode}",
+        body=f'Admin BKO menutup pemrosesan SK Tugas Belajar {pengajuan.kode}. Alasan: "{catatan}".',
+        redirect_url="",
+    )
+
+
+def notify_bko_dibuka(pengajuan, catatan, aktor_role):
+    """Event 7D: track BKO dibuka kembali oleh Admin BKO atau Admin PAKLN."""
+    from accounts.models import User
+
+    oleh = "Admin BKO" if aktor_role == User.Role.ADMIN_BKO else "Biro PAKLN"
+    _create(
+        _penerima_bko_semua(pengajuan, kecuali_role=aktor_role),
+        pengajuan=pengajuan,
+        event=Notification.Event.BKO_DIBUKA,
+        level=Notification.Level.INFO,
+        title=f"Pemrosesan SK Tugas Belajar Dibuka Kembali - {pengajuan.kode}",
+        body=f'{oleh} membuka kembali pemrosesan SK Tugas Belajar {pengajuan.kode}. Catatan: "{catatan}".',
+        redirect_url="",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Kegiatan PDLN (EVENT_IMPLEMENTATION_PLAN.MD §9) — tanpa pengajuan terkait
+# ---------------------------------------------------------------------------
+
+def _nama_user(user):
+    profile = getattr(user, "profile", None)
+    return (profile.nama if profile else None) or user.get_full_name() or user.username
+
+
+def _diusulkan_bpsdm(kegiatan):
+    """Snapshot peran saat mengusulkan (`sumber_data`), bukan role pengusul
+    sekarang — pengusul bisa ber-role ganda."""
+    from paspor.models import Kegiatan
+
+    return kegiatan.sumber_data == Kegiatan.SumberData.USULAN_BPSDM
+
+
+def _url_usulan_pengusul(kegiatan):
+    if _diusulkan_bpsdm(kegiatan):
+        return reverse("bpsdm:kegiatan") + "?tab=usulan"
+    return reverse("pegawai:beranda")
+
+
+def notify_kegiatan_diusulkan(kegiatan):
+    """Event 8A: Pegawai / Admin BPSDM mengusulkan kegiatan baru."""
+    pengusul = kegiatan.diusulkan_oleh
+    sebagai = "Admin BPSDM" if _diusulkan_bpsdm(kegiatan) else "Pegawai"
+    oleh = f"{sebagai} {_nama_user(pengusul)}" if pengusul else "Pengguna"
+    _create(
+        _admin_pakln_recipients(),
+        pengajuan=None,
+        event=Notification.Event.KEGIATAN_DIUSULKAN,
+        level=Notification.Level.INFO,
+        title="Usulan Kegiatan Baru",
+        body=f'{oleh} mengusulkan kegiatan "{kegiatan.nama}" ({kegiatan.tahun_pelaksanaan}). Mohon ditinjau.',
+        redirect_url=reverse("pakln:edit_kegiatan", args=[kegiatan.pk]),
+    )
+
+
+def notify_kegiatan_disetujui(kegiatan):
+    """Event 8B: usulan disetujui — kegiatan sudah dapat dipilih."""
+    if not kegiatan.diusulkan_oleh:
+        return
+    _create(
+        [kegiatan.diusulkan_oleh],
+        pengajuan=None,
+        event=Notification.Event.KEGIATAN_DISETUJUI,
+        level=Notification.Level.SUCCESS,
+        title="Usulan Kegiatan Disetujui",
+        body=f'Kegiatan "{kegiatan.nama}" disetujui Admin Biro PAKLN dan sudah dapat dipilih pada formulir PDLN.',
+        redirect_url=_url_usulan_pengusul(kegiatan),
+    )
+
+
+def notify_kegiatan_ditolak(kegiatan):
+    """Event 8C: usulan ditolak beserta catatan."""
+    if not kegiatan.diusulkan_oleh:
+        return
+    _create(
+        [kegiatan.diusulkan_oleh],
+        pengajuan=None,
+        event=Notification.Event.KEGIATAN_DITOLAK,
+        level=Notification.Level.DANGER,
+        title="Usulan Kegiatan Ditolak",
+        body=f'Usulan kegiatan "{kegiatan.nama}" ditolak Admin Biro PAKLN. Catatan: "{kegiatan.catatan_keputusan}".',
+        redirect_url=_url_usulan_pengusul(kegiatan),
     )

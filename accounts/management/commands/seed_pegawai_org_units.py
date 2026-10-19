@@ -4,6 +4,8 @@ from django.db import transaction
 from accounts.models import PegawaiProfile, User
 from paspor.models import UnitOrganisasi
 
+from ._seed_akun import beri_peran, isi_kontak
+
 # 3 nama dummy per unit organisasi (11 unit x 3 = 33), dipetakan berurutan
 # sesuai `code` org_units.
 NAMA_PEGAWAI = [
@@ -79,6 +81,9 @@ class Command(BaseCommand):
                         "sisa_cuti_tahun_berjalan": 12,
                     },
                 )
+                beri_peran(user, User.Role.PEGAWAI)
+                # Sama dengan data stub e-HRM (paspor/integrasi/ehrm.py).
+                isi_kontak(user, email=f"pegawai.{alias_lower}{n}@pu.go.id", no_hp=f"628110{unit.code}{n:05d}")
 
         self.stdout.write(self.style.SUCCESS(
             f"\nSelesai. {created_count} user pegawai baru dibuat "

@@ -3,6 +3,7 @@
 {% block wrap_extra_class %} narrow{% endblock %}
 
 {% block content %}
+{% include "partials/_status_bko.html" %}
 {% if catatan_kembali %}
   <div class="notification paspor-msg is-warning">
     <strong>⚠ Dikembalikan oleh {{ catatan_kembali_dari }} untuk diperbaiki:</strong> {{ catatan_kembali }}
@@ -20,7 +21,7 @@
 <div class="preview-split">
 <div class="box">
   <div class="section-title">Pratinjau Pengajuan dari Pegawai — {{ pengajuan.kode }}</div>
-  <p class="sub" style="margin:-10px 0 12px;">
+  <p class="sub is-title-sub">
     <span class="tag paspor-status is-{{ pengajuan.status }}"><span class="dot"></span>{{ pengajuan.get_status_display }}</span>
   </p>
   {% include "partials/_ringkasan_pengajuan.html" %}
@@ -58,8 +59,8 @@
 <div class="preview-split">
 {% if pengajuan.status == "proses" and not dibekukan %}
 <div class="box is-danger-soft">
-  <div class="section-title" style="font-size:14px;">↩ Kembalikan ke Pegawai</div>
-  <p class="cell-muted" style="margin:-8px 0 14px;">
+  <div class="section-title is-small">↩ Kembalikan ke Pegawai</div>
+  <p class="cell-muted is-title-sub">
     Gunakan ini jika formulir atau dokumen pengajuan perlu diperbaiki pegawai sebelum dapat diproses lebih lanjut.
     Pengajuan akan berstatus <strong>Belum Diajukan</strong> kembali sampai pegawai mengirim ulang.
   </p>

@@ -9,17 +9,17 @@ class Notification(models.Model):
     Pengajuan Surat, mengikuti wiki/instructions/SKENARIO_NOTIFIKASI_SURAT.md.
 
     Satu baris = satu notifikasi untuk satu penerima. Event dengan beberapa
-    penerima (mis. NOTIF_02A ke Pegawai sekaligus seluruh Admin PKLN)
+    penerima (mis. NOTIF_02A ke Pegawai sekaligus seluruh Admin Biro PAKLN)
     menghasilkan beberapa baris dengan `event` yang sama.
     """
 
     class Event(models.TextChoices):
         SUBMIT_UNOR = "NOTIF_01_SUBMIT_UNOR", "Pengajuan Surat Baru"
-        APPROVE_UNOR = "NOTIF_02A_APPROVE_UNOR", "Disetujui Unor / Diteruskan ke PKLN"
+        APPROVE_UNOR = "NOTIF_02A_APPROVE_UNOR", "Disetujui Unor / Diteruskan ke Biro PAKLN"
         REJECT_UNOR = "NOTIF_02B_REJECT_UNOR", "Dikembalikan oleh Admin Unor"
         RESUBMIT_UNOR = "NOTIF_02C_RESUBMIT_UNOR", "Pengajuan Ulang ke Admin Unor"
-        COMPLETE_PKLN = "NOTIF_03A_COMPLETE_PKLN", "Selesai & Terbit oleh Admin PKLN"
-        REJECT_PKLN_UNOR = "NOTIF_03B_REJECT_PKLN_TO_UNOR", "Dikembalikan Admin PKLN ke Admin Unor"
+        COMPLETE_PKLN = "NOTIF_03A_COMPLETE_PKLN", "Selesai & Terbit oleh Admin Biro PAKLN"
+        REJECT_PKLN_UNOR = "NOTIF_03B_REJECT_PKLN_TO_UNOR", "Dikembalikan Admin Biro PAKLN ke Admin Unor"
         # PDLN Tipe 2 — tahap BPSDM
         FORWARD_BPSDM = "NOTIF_04A_FORWARD_BPSDM", "Diteruskan Unor ke Admin BPSDM"
         RESUBMIT_BPSDM = "NOTIF_04B_RESUBMIT_BPSDM", "Perbaikan diteruskan ke Admin BPSDM"
@@ -34,6 +34,16 @@ class Notification(models.Model):
         PEMBATALAN_DITOLAK = "NOTIF_06C_PEMBATALAN_DITOLAK", "Permohonan pembatalan ditolak"
         PEMBATALAN_DISETUJUI = "NOTIF_06D_PEMBATALAN_DISETUJUI", "Perjalanan dibatalkan"
         PEMBATALAN_DITARIK = "NOTIF_06E_PEMBATALAN_DITARIK", "Permohonan pembatalan ditarik"
+        # Track Admin BKO (PDLN Tipe 2 Pendidikan)
+        FORWARD_BKO = "NOTIF_07A_FORWARD_BKO", "Diteruskan ke Admin BKO"
+        SK_TUBEL_DIUNGGAH = "NOTIF_07B_SK_TUBEL_DIUNGGAH", "SK Tugas Belajar diunggah"
+        BKO_DITUTUP = "NOTIF_07C_BKO_DITUTUP", "Pemrosesan ditutup Admin BKO"
+        BKO_DIBUKA = "NOTIF_07D_BKO_DIBUKA", "Pemrosesan BKO dibuka kembali"
+        INFO_BKO = "NOTIF_07E_INFO_BKO", "Perbaikan diteruskan ulang (info BKO)"
+        # Kegiatan PDLN (EVENT_IMPLEMENTATION_PLAN.MD §9)
+        KEGIATAN_DIUSULKAN = "NOTIF_08A_KEGIATAN_DIUSULKAN", "Kegiatan diusulkan"
+        KEGIATAN_DISETUJUI = "NOTIF_08B_KEGIATAN_DISETUJUI", "Usulan kegiatan disetujui"
+        KEGIATAN_DITOLAK = "NOTIF_08C_KEGIATAN_DITOLAK", "Usulan kegiatan ditolak"
 
     class Level(models.TextChoices):
         INFO = "info", "Info"
@@ -53,6 +63,9 @@ class Notification(models.Model):
     title = models.CharField(max_length=200)
     body = models.TextField()
     redirect_url = models.CharField(max_length=255, blank=True)
+    # Peran yang tepat untuk membuka `redirect_url` (metadata role ganda, AB-13):
+    # saat notifikasi dibuka, peran aktif berpindah ke peran ini bila dimiliki.
+    untuk_peran = models.CharField(max_length=20, blank=True)
 
     is_read = models.BooleanField(default=False)
     is_toasted = models.BooleanField(default=False)

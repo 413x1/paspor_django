@@ -42,7 +42,14 @@ class Pengajuan(models.Model):
         T2L = "T2L", "PDLN Tipe 2 — Pelatihan"
         T3 = "T3", "PDLN Tipe 3 — Penugasan Khusus"
 
-    kode = models.CharField("Kode Pengajuan", max_length=20, unique=True, blank=True)
+    class StatusBko(models.TextChoices):
+        """Status track paralel Admin BKO (khusus T2P) — terpisah dari
+        `status`, lihat wiki/instructions/PDLN_TIPE_2_FLOW.MD §8."""
+        MENUNGGU = "menunggu", "Menunggu SK Tubel"
+        DIUNGGAH = "diunggah", "SK Tubel Diunggah"
+        DITUTUP = "ditutup", "Ditutup Admin BKO"
+
+    kode = models.CharField("Kode Pengajuan", max_length=25, unique=True, blank=True)
     pegawai = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="pengajuan_list"
     )
@@ -71,6 +78,12 @@ class Pengajuan(models.Model):
         "paspor.SumberPembiayaan", on_delete=models.PROTECT, null=True, blank=True,
         related_name="pengajuan_list", verbose_name="Sumber Pembiayaan",
     )
+    # Kegiatan yang menjadi tujuan PDLN (wajib saat Kirim, aturan B1) —
+    # data kegiatannya di-snapshot ke DetailPdln (B13).
+    kegiatan = models.ForeignKey(
+        "paspor.Kegiatan", on_delete=models.PROTECT, null=True, blank=True,
+        related_name="pengajuan_list", verbose_name="Kegiatan",
+    )
     tgl_berangkat = models.DateField(null=True, blank=True)
     tgl_kembali = models.DateField(null=True, blank=True)
     # Snapshot hasil hitung sistem (paspor.kalender), bukan input pegawai —
@@ -98,7 +111,15 @@ class Pengajuan(models.Model):
 
     # Catatan Admin Biro PAKLN saat mengembalikan pengajuan ke tahap
     # sebelumnya (Admin Unor, atau Admin BPSDM untuk Tipe 2).
-    catatan_pakln = models.TextField("Catatan Admin PKLN", blank=True)
+    catatan_pakln = models.TextField("Catatan Admin Biro PAKLN", blank=True)
+
+    # --- Track paralel Admin BKO (T2P): dibuka saat BPSDM meneruskan ke
+    # Biro PAKLN; bukan bagian `status` (lihat `pengajuan.bko`).
+    tgl_masuk_bko = models.DateField(null=True, blank=True)
+    status_bko = models.CharField(max_length=10, choices=StatusBko.choices, blank=True)
+    # Alasan Admin BKO menutup pemrosesan — terlihat semua pihak terlibat.
+    catatan_bko = models.TextField("Catatan Penutupan BKO", blank=True)
+    tgl_bko_ditutup = models.DateField(null=True, blank=True)
 
     # --- Tanggal penting untuk pelaporan / monitor progres ---
     tgl_pengajuan = models.DateField(null=True, blank=True)
@@ -117,6 +138,7 @@ class Pengajuan(models.Model):
             models.Index(fields=["unit_organisasi", "status"]),
             models.Index(fields=["status", "tgl_pengajuan"]),
             models.Index(fields=["pegawai", "status"]),
+            models.Index(fields=["tipe_pdln", "status_bko"]),
         ]
         verbose_name = "Pengajuan"
         verbose_name_plural = "Pengajuan"
@@ -133,19 +155,33 @@ class Pengajuan(models.Model):
         unit = (profile.unit_organisasi if profile else None) or self.pegawai.unit_organisasi
         return unit.code if unit else "00"
 
+    # Kode tipe PDLN pada nomor pengajuan (wiki/instructions/PENGKODEAN_AJUAN.MD).
+    KODE_TIPE = {TipePdln.T1: "1", TipePdln.T2P: "2A", TipePdln.T2L: "2B", TipePdln.T3: "3"}
+
+    def _kepala_kode(self):
+        """Bagian kode sebelum tanggal: `PDLN[Kode Unor]-[Tipe]-` untuk PDLN,
+        `PLN[Kode Unor]-` untuk Non-Dinas."""
+        if self.jenis_perjalanan == self.JenisPerjalanan.PDLN and self.tipe_pdln in self.KODE_TIPE:
+            return f"PDLN{self._kode_unor()}-{self.KODE_TIPE[self.tipe_pdln]}-"
+        return f"PLN{self._kode_unor()}-"
+
     def _generate_kode(self):
-        """Format PLN[Kode Unor]-ddmmyy-NOURUT (mis. PLN01-071026-020).
-        NOURUT 3 digit dan mulai lagi dari 001 tiap hari per Kode Unor —
-        lihat wiki/instructions/PENGKODEAN_AJUAN.MD."""
-        prefix = f"PLN{self._kode_unor()}-{timezone.localdate():%d%m%y}-"
+        """Non-Dinas `PLN[Kode Unor]-ddmmyy-NOURUT` (mis. PLN01-071026-020),
+        PDLN `PDLN[Kode Unor]-[Tipe]-ddmmyy-NOURUT` (mis. PDLN01-2A-071026-021).
+        NOURUT minimal 3 digit, berlanjut sepanjang tahun dan kembali ke 001
+        tiap pergantian tahun, terpisah per jenis/tipe/Kode Unor — lihat
+        wiki/instructions/PENGKODEAN_AJUAN.MD."""
+        kepala = self._kepala_kode()
+        hari_ini = timezone.localdate()
+        pola = rf"^{kepala}[0-9]{{4}}{hari_ini:%y}-[0-9]+$"
         terakhir = max(
             (
                 int(kode.rsplit("-", 1)[1])
-                for kode in Pengajuan.objects.filter(kode__startswith=prefix).values_list("kode", flat=True)
+                for kode in Pengajuan.objects.filter(kode__regex=pola).values_list("kode", flat=True)
             ),
             default=0,
         )
-        return f"{prefix}{terakhir + 1:03d}"
+        return f"{kepala}{hari_ini:%d%m%y}-{terakhir + 1:03d}"
 
     @property
     def tujuan_negara_display(self):
@@ -177,6 +213,16 @@ class Pengajuan(models.Model):
     @property
     def is_tipe2(self):
         return self.tipe_pdln in (self.TipePdln.T2P, self.TipePdln.T2L)
+
+    @property
+    def pakai_bko(self):
+        """SK Tugas Belajar diunggah Admin BKO — hanya PDLN Tipe 2 Pendidikan."""
+        return self.is_pdln and self.tipe_pdln == self.TipePdln.T2P
+
+    @property
+    def track_bko_terbuka(self):
+        """Sudah diteruskan BPSDM ke Biro PAKLN + Admin BKO."""
+        return self.pakai_bko and bool(self.status_bko)
 
     @property
     def kunci_alur(self):
@@ -400,7 +446,6 @@ class DokumenPakln(models.Model):
         PASPOR_DINAS = "paspor_dinas", "Paspor Dinas"
         EXIT_PERMIT = "exit_permit", "Exit Permit"
         VISA = "visa", "Rekomendasi Visa"
-        SK_TUBEL = "sk_tubel", "SK Tugas Belajar"
         ND_KARO_UNOR = "nd_karo_unor", "Nota Dinas Karo PAKLN ke Sekretaris Unor hal Penyampaian Dokumen PDLN"
 
     pengajuan = models.ForeignKey(Pengajuan, on_delete=models.CASCADE, related_name="dokumen_pakln")
@@ -430,7 +475,7 @@ class DokumenBpsdm(models.Model):
 
     class Jenis(models.TextChoices):
         IZIN_PRINSIP = "izin_prinsip", "Izin Prinsip Menteri"
-        IKATAN_DINAS_TTD = "ikatan_dinas_ttd", "Perjanjian Ikatan Dinas ttd full / SK Tugas Belajar"
+        IKATAN_DINAS_TTD = "ikatan_dinas_ttd", "Perjanjian Ikatan Dinas ttd full"
         ND_KABIRO_PAKLN = "nd_kabiro_pakln", "Nota Dinas Sekretaris BPSDM ke Kepala Biro PAKLN"
 
     pengajuan = models.ForeignKey(Pengajuan, on_delete=models.CASCADE, related_name="dokumen_bpsdm")
@@ -443,6 +488,32 @@ class DokumenBpsdm(models.Model):
         unique_together = ("pengajuan", "jenis")
         verbose_name = "Dokumen Administrasi BPSDM"
         verbose_name_plural = "Dokumen Administrasi BPSDM"
+
+    def __str__(self):
+        return f"{self.pengajuan.kode} — {self.get_jenis_display()}"
+
+
+def dokumen_bko_path(instance, filename):
+    return f"pengajuan/{instance.pengajuan.kode}/bko/{instance.jenis}/{filename}"
+
+
+class DokumenBko(models.Model):
+    """Dokumen administrasi Admin BKO (khusus PDLN Tipe 2 Pendidikan) —
+    status track BKO disinkronkan lewat `pengajuan.bko`."""
+
+    class Jenis(models.TextChoices):
+        SK_TUBEL = "sk_tubel", "SK Tugas Belajar"
+
+    pengajuan = models.ForeignKey(Pengajuan, on_delete=models.CASCADE, related_name="dokumen_bko")
+    jenis = models.CharField(max_length=30, choices=Jenis.choices)
+    file = models.FileField(upload_to=dokumen_bko_path)
+    tanggal_surat = models.DateField("Tanggal Surat", null=True, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("pengajuan", "jenis")
+        verbose_name = "Dokumen Administrasi BKO"
+        verbose_name_plural = "Dokumen Administrasi BKO"
 
     def __str__(self):
         return f"{self.pengajuan.kode} — {self.get_jenis_display()}"
@@ -640,7 +711,8 @@ class DokumenTemplate(models.Model):
             return False
 
         unit_ids = set(self.unit_organisasi.values_list("id", flat=True))
-        if unit_ids and user.unit_organisasi_id not in unit_ids:
+        unit = user.get_unit_organisasi()
+        if unit_ids and getattr(unit, "id", None) not in unit_ids:
             return False
 
         if self.kategori and kategori and self.kategori != kategori:
@@ -670,6 +742,12 @@ class RiwayatPengajuan(models.Model):
         DITERUSKAN_BPSDM = "diteruskan_bpsdm", "Diteruskan ke Admin BPSDM"
         DITERUSKAN_ULANG_BPSDM = "diteruskan_ulang_bpsdm", "Perbaikan diteruskan ke Admin BPSDM"
         DIKEMBALIKAN_BPSDM = "dikembalikan_bpsdm", "Dikembalikan BPSDM ke Admin Unor"
+        # Track Admin BKO (PDLN Tipe 2 Pendidikan)
+        DITERUSKAN_BKO = "diteruskan_bko", "Diteruskan ke Admin BKO"
+        SK_TUBEL_DIUNGGAH = "sk_tubel_diunggah", "SK Tugas Belajar diunggah"
+        DITUTUP_BKO = "ditutup_bko", "Pemrosesan ditutup Admin BKO"
+        DIBUKA_ULANG_BKO = "dibuka_ulang_bko", "Pemrosesan BKO dibuka kembali"
+        SELESAI_TANPA_SK_TUBEL = "selesai_tanpa_sk_tubel", "Selesai diproses tanpa SK Tugas Belajar"
         # Pelaporan PDLN
         LAPORAN_DIUNGGAH = "laporan_diunggah", "Laporan PDLN diunggah"
         LAPORAN_DIKEMBALIKAN = "laporan_dikembalikan", "Laporan PDLN dikembalikan"
@@ -721,12 +799,17 @@ class DetailPdln(models.Model):
     penyelenggara = models.CharField("Penyelenggara", max_length=200, blank=True)
     perguruan_tinggi = models.CharField("Perguruan Tinggi", max_length=200, blank=True)
     kota_tujuan = models.CharField("Kota Tujuan", max_length=150, blank=True)
+    keterangan_sumber_pembiayaan = models.TextField("Keterangan Sumber Pembiayaan", blank=True)
     tgl_mulai_kegiatan = models.DateField("Tanggal Mulai Kegiatan", null=True, blank=True)
     tgl_selesai_kegiatan = models.DateField("Tanggal Selesai Kegiatan", null=True, blank=True)
-    # Pencalonan beasiswa dari Aplikasi PINTAR (T2P/T2L) — id + snapshot
-    # nama agar tetap terbaca bila data PINTAR berubah/tidak tersedia.
-    beasiswa_pintar_id = models.CharField("ID Pencalonan PINTAR", max_length=50, blank=True)
+    # Pencalonan beasiswa dari Platform BPSDM (T2P/T2L) — id + snapshot
+    # nama agar tetap terbaca bila data Platform BPSDM berubah/tidak tersedia.
+    beasiswa_pintar_id = models.CharField("ID Pencalonan Platform BPSDM", max_length=50, blank=True)
     beasiswa_nama = models.CharField("Nama Beasiswa", max_length=255, blank=True)
+    # Snapshot Kegiatan (EVENT_IMPLEMENTATION_PLAN.MD §7.4) — bersama
+    # penyelenggara/perguruan_tinggi, kota_tujuan, dan tanggal kegiatan.
+    kegiatan_nama = models.CharField("Nama Kegiatan", max_length=255, blank=True)
+    kegiatan_tahun = models.PositiveSmallIntegerField("Tahun Kegiatan", null=True, blank=True)
     pernyataan_benar = models.BooleanField("Pernyataan kebenaran data", default=False)
 
     class Meta:
@@ -746,12 +829,21 @@ class LaporanPdln(models.Model):
     pengajuan PDLN dianggap tuntas (BISNIS_PROSES_PDLN.MD §4.4)."""
 
     class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"   # tersimpan lewat tombol "Simpan", belum dilaporkan
         MENUNGGU = "menunggu", "Menunggu Verifikasi"
         DIKEMBALIKAN = "dikembalikan", "Dikembalikan"
         DISETUJUI = "disetujui", "Disetujui"
 
     pengajuan = models.OneToOneField(Pengajuan, on_delete=models.CASCADE, related_name="laporan_pdln")
-    file = models.FileField("Berkas Laporan", upload_to=laporan_pdln_path)
+    # Isi laporan (formulir Pelaporan PDLN). Boleh kosong selama masih draft;
+    # saat "Laporkan" seluruh isian (uraian, biaya, dokumen) wajib terisi.
+    tujuan_kegiatan = models.TextField("Tujuan Kegiatan", blank=True)
+    materi_kegiatan = models.TextField("Materi Kegiatan", blank=True)
+    tindak_lanjut = models.TextField("Tindak Lanjut", blank=True)
+    dampak_rekomendasi = models.TextField("Dampak Rekomendasi", blank=True)
+    estimasi_biaya = models.DecimalField("Estimasi Biaya (Rp)", max_digits=15, decimal_places=0, null=True, blank=True)
+    realisasi_biaya = models.DecimalField("Realisasi Biaya (Rp)", max_digits=15, decimal_places=0, null=True, blank=True)
+    file = models.FileField("Dokumen Laporan Kegiatan", upload_to=laporan_pdln_path, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.MENUNGGU, db_index=True)
     # Catatan pengembalian terakhir — penanda unggah ulang wajib catatan balasan.
     catatan_pakln = models.TextField("Catatan Admin PAKLN", blank=True)

@@ -1,11 +1,14 @@
 import datetime
 
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from accounts.models import PegawaiProfile, User
 from paspor.models import KategoriPerjalanan, Negara, SumberPembiayaan, UnitOrganisasi
 from pengajuan.models import Pengajuan
+
+from ._seed_akun import beri_peran, isi_kontak
 
 # Data awal unit organisasi eselon I Kementerian PU (tabel org_units).
 ORG_UNITS = [
@@ -25,7 +28,7 @@ ORG_UNITS = [
 
 class Command(BaseCommand):
     help = (
-        "Membuat akun demo (Pegawai, Admin Unor, Admin BPSDM, Admin Biro PAKLN) beserta "
+        "Membuat akun demo (Pegawai, Admin Unor, Admin BPSDM, Admin BKO, Admin Biro PAKLN) beserta"
         "contoh data pengajuan, meniru data dummy pada mockup PASPOR "
         "Tahap 1 (alur Non-Kedinasan)."
     )
@@ -68,6 +71,8 @@ class Command(BaseCommand):
                 "sisa_cuti_tahun_berjalan": 12,
             },
         )
+        beri_peran(pegawai, User.Role.PEGAWAI)
+        isi_kontak(pegawai, email="andra.wibisono@pu.go.id", no_hp="6281100000001")
 
         # --- Admin Unor -------------------------------------------------
         admin_unor, created = User.objects.get_or_create(
@@ -81,6 +86,8 @@ class Command(BaseCommand):
         admin_unor.unit_kerja = "Sekretariat Ditjen Sumber Daya Air"
         admin_unor.unit_organisasi = djsda
         admin_unor.save()
+        beri_peran(admin_unor, User.Role.ADMIN_UNOR, djsda)
+        isi_kontak(admin_unor, email="admin.unor@pu.go.id", no_hp="6281100000011")
         if created:
             self.stdout.write(self.style.SUCCESS("User 'admin.unor' dibuat."))
 
@@ -93,6 +100,8 @@ class Command(BaseCommand):
             admin_pakln.set_password("paspor123")
             admin_pakln.save()
             self.stdout.write(self.style.SUCCESS("User 'admin.pakln' dibuat."))
+        beri_peran(admin_pakln, User.Role.ADMIN_PAKLN)
+        isi_kontak(admin_pakln, email="admin.pakln@pu.go.id", no_hp="6281100000012")
 
         # --- Admin BPSDM (PDLN Tipe 2) -----------------------------------
         bpsdm = UnitOrganisasi.objects.get(code="10")
@@ -107,6 +116,51 @@ class Command(BaseCommand):
             admin_bpsdm.set_password("paspor123")
             admin_bpsdm.save()
             self.stdout.write(self.style.SUCCESS("User 'admin.bpsdm' dibuat."))
+        beri_peran(admin_bpsdm, User.Role.ADMIN_BPSDM)
+        isi_kontak(admin_bpsdm, email="admin.bpsdm@pu.go.id", no_hp="6281100000013")
+
+        # --- Admin BKO (SK Tugas Belajar PDLN Tipe 2 Pendidikan) -----------
+        admin_bko, created = User.objects.get_or_create(
+            username="admin.bko",
+            defaults={
+                "first_name": "Admin", "last_name": "BKO", "role": User.Role.ADMIN_BKO,
+                "unit_kerja": "Biro Kepegawaian dan Organisasi",
+            },
+        )
+        if created:
+            admin_bko.set_password("paspor123")
+            admin_bko.save()
+            self.stdout.write(self.style.SUCCESS("User 'admin.bko' dibuat."))
+        beri_peran(admin_bko, User.Role.ADMIN_BKO)
+        isi_kontak(admin_bko, email="admin.bko@pu.go.id", no_hp="6281100000014")
+
+        # --- User ber-role ganda: Pegawai (DJBM) + Admin Unor (DJCK) ------
+        djbm = UnitOrganisasi.objects.get(code="06")
+        djck = UnitOrganisasi.objects.get(code="05")
+        ganda, created = User.objects.get_or_create(
+            username="bayu.ganda",
+            defaults={"first_name": "Bayu", "last_name": "Pratama", "role": User.Role.PEGAWAI,
+                      "unit_kerja": "Direktorat Preservasi Jalan", "unit_organisasi": djbm},
+        )
+        if created:
+            ganda.set_password("paspor123")
+            ganda.save()
+            self.stdout.write(self.style.SUCCESS("User ber-role ganda 'bayu.ganda' dibuat."))
+        PegawaiProfile.objects.update_or_create(
+            user=ganda,
+            defaults={
+                "nip": "198905102014021003",
+                "nama": "Bayu Pratama, S.T.",
+                "jabatan": "Kepala Subbagian Tata Usaha",
+                "pangkat_golongan": "Penata / III-c",
+                "unit_kerja": "Direktorat Preservasi Jalan",
+                "unit_organisasi": djbm,
+                "sisa_cuti_tahun_berjalan": 12,
+            },
+        )
+        beri_peran(ganda, User.Role.PEGAWAI)
+        beri_peran(ganda, User.Role.ADMIN_UNOR, djck)
+        isi_kontak(ganda, email="bayu.pratama@pu.go.id", no_hp="6281100000021")
 
         # --- Contoh riwayat pengajuan (status selesai) -------------------
         # `tujuan_negara` adalah ManyToManyField — tidak bisa masuk
@@ -174,10 +228,15 @@ class Command(BaseCommand):
         )
         pengajuan_keluarga.tujuan_negara.set([singapura])
 
+        # --- Kegiatan PDLN: 5 per tipe + usulan menunggu (seed_kegiatan) ---
+        call_command("seed_kegiatan", stdout=self.stdout)
+
         self.stdout.write(self.style.SUCCESS(
             "\nSelesai. Akun demo (password sama untuk semua: 'paspor123'):\n"
             "  - andra.wibisono   -> role Pegawai\n"
             "  - admin.unor       -> role Admin Unor\n"
             "  - admin.bpsdm      -> role Admin BPSDM\n"
+            "  - admin.bko        -> role Admin BKO\n"
             "  - admin.pakln      -> role Admin Biro PAKLN\n"
+            "  - bayu.ganda       -> role ganda Pegawai (DJBM) + Admin Unor (DJCK)\n"
         ))

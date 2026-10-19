@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login — PASPOR</title>
   <link rel="stylesheet" href="{% static 'vendors/bulma/css/versions/bulma-no-dark-mode.min.css' %}">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260911a">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20261019">
 </head>
 <body>
   <div class="login-wrap">
@@ -16,6 +16,14 @@
 
       {% if error %}
         <div class="login-error">{{ error }}</div>
+      {% endif %}
+      {% for message in messages %}
+        <div class="login-error">{{ message }}</div>
+      {% endfor %}
+
+      {% if sso_tersedia %}
+        <a href="{% url 'sso_login' %}" class="button is-primary is-fullwidth">Masuk dengan SSO</a>
+        <div class="login-divider"><span>atau</span></div>
       {% endif %}
 
       <form method="post">
@@ -37,9 +45,8 @@
             <input type="checkbox" name="remember_me"> Ingat saya
           </label>
         </div>
-        <button type="submit" class="button is-primary is-fullwidth">Masuk</button>
+        <button type="submit" class="button {% if sso_tersedia %}is-light{% else %}is-primary{% endif %} is-fullwidth">Masuk dengan Username</button>
       </form>
-      <button type="button" class="button is-fullwidth mt-3">Login dengan SSO</button>
       <p class="helptext">Akses menggunakan akun resmi Kementerian PU</p>
     </div>
   </div>

@@ -17,7 +17,7 @@
 </div>
 
 <div class="box">
-  <div class="section-title" style="font-size:14px;margin-bottom:14px;">Tambah Template Baru</div>
+  <div class="section-title is-small is-spaced">Tambah Template Baru</div>
 
   <form method="post" enctype="multipart/form-data" novalidate>
     {% csrf_token %}
@@ -40,8 +40,8 @@
     </div>
 
     <div class="field">
-      <label class="label" for="{{ form.file.id_for_label }}">Berkas (PDF atau DOCX)</label>
-      <div class="control">{{ form.file }}</div>
+      <label class="label" for="{{ form.file.id_for_label }}">Berkas (PDF atau DOCX, maks. 2 MB)</label>
+      {% include "partials/_input_berkas.html" with field=form.file %}
       {% for e in form.file.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
     </div>
 
@@ -99,7 +99,7 @@
 </div>
 
 <div class="box">
-  <div class="section-title" style="font-size:14px;">
+  <div class="section-title is-small">
     Daftar Template <span class="badge-auto" id="templateCount">{{ template_count }}</span>
   </div>
   <div class="table-wrap">

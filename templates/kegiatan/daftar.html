@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Kegiatan{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Kegiatan</h2>
+    <p class="sub">
+      {% if peran == "admin_pakln" %}
+        Kelola kegiatan PDLN yang dapat dipilih pegawai, dan putus usulan kegiatan dari Pegawai maupun Admin BPSDM.
+      {% else %}
+        Kegiatan pendidikan &amp; pelatihan. Kegiatan baru yang Anda buat perlu disetujui Admin Biro PAKLN.
+      {% endif %}
+    </p>
+  </div>
+  <a href="{{ tambah_url }}" class="button is-primary">+ Tambah Kegiatan</a>
+</div>
+
+<div class="tab-bar" role="tablist">
+  {% for kunci, label in tabs %}
+    <a href="?tab={{ kunci }}" class="button is-small {% if tab == kunci %}is-active{% endif %}" role="tab">
+      {{ label }}{% if kunci == "menunggu" and jumlah_menunggu %} ({{ jumlah_menunggu }}){% endif %}
+    </a>
+  {% endfor %}
+</div>
+
+<div class="box">
+  <div class="table-wrap">
+    <table id="kegiatanTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
+      <thead>
+        <tr><th>Kegiatan</th><th>Negara / Kota</th><th>Periode</th><th>Tahun</th><th>Kategori</th><th>Status</th><th>Peserta</th><th>Action</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
+<script>
+  $(function () {
+    function csrfToken() {
+      var match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+      return match ? decodeURIComponent(match[1]) : '';
+    }
+
+    var $table = $('#kegiatanTable').DataTable({
+      serverSide: true, processing: true, autoWidth: false,
+      ajax: { url: '{{ data_url }}', type: 'GET', cache: false, data: { tab: '{{ tab }}' } },
+      columns: [
+        { data: 0, width: '24%' },
+        { data: 1, width: '14%', orderable: false },
+        { data: 2, width: '12%' },
+        { data: 3, width: '6%' },
+        { data: 4, width: '14%', orderable: false },
+        { data: 5, width: '9%' },
+        { data: 6, width: '6%' },
+        { data: 7, width: '15%', orderable: false, searchable: false },
+      ],
+      order: [[2, 'desc']],
+      pageLength: 10, lengthMenu: [10, 25, 50, 100],
+      dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
+      language: {
+        search: '', searchPlaceholder: 'Cari kegiatan, penyelenggara, kota, negara...',
+        lengthMenu: 'Tampilkan _MENU_ kegiatan',
+        info: 'Menampilkan _START_–_END_ dari _TOTAL_ kegiatan', infoEmpty: 'Belum ada kegiatan',
+        infoFiltered: '(disaring dari _MAX_)', zeroRecords: 'Tidak ada kegiatan yang cocok.',
+        processing: 'Memuat…', paginate: { previous: '‹ Sebelumnya', next: 'Berikutnya ›' },
+      },
+    });
+
+    $('#kegiatanTable tbody').on('click', '[data-kegiatan-toggle]', function () {
+      $.ajax({
+        url: $(this).data('kegiatan-toggle'), type: 'POST', headers: { 'X-CSRFToken': csrfToken() },
+        success: function () { $table.ajax.reload(null, false); },
+      });
+    });
+
+    $('#kegiatanTable tbody').on('click', '[data-kegiatan-hapus]', function () {
+      var url = $(this).data('kegiatan-hapus');
+      pasporConfirm({ type: 'danger', title: 'Hapus Kegiatan', message: 'Hapus kegiatan ini beserta dasar kegiatannya?', confirmText: 'Hapus' }).then(function (ok) {
+        if (!ok) { return; }
+        $.ajax({
+          url: url, type: 'POST', headers: { 'X-CSRFToken': csrfToken() },
+          success: function () { $table.ajax.reload(null, false); pasporAlert({ message: 'Kegiatan berhasil dihapus.' }); },
+          error: function (xhr) {
+            var msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Gagal menghapus kegiatan.';
+            pasporAlert({ type: 'error', title: 'Gagal', message: msg });
+          },
+        });
+      });
+    });
+  });
+</script>
+{% endblock %}

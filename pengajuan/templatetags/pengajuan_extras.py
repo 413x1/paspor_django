@@ -43,3 +43,43 @@ def file_url(document):
         return document.file.url
     except ValueError:
         return None
+
+
+@register.filter
+def rupiah(value):
+    """100000000 -> 'Rp 100.000.000'; kosong -> '—'."""
+    if value is None or value == "":
+        return "—"
+    return "Rp " + f"{int(value):,}".replace(",", ".")
+
+
+@register.filter
+def format_hp(value):
+    """Nomor HP ternormalisasi -> tampilan, mis. '6281234567890' ->
+    '+62 812-3456-7890'. Nilai kosong -> ''."""
+    nomor = str(value or "").strip()
+    if not nomor:
+        return ""
+    if not nomor.startswith("62"):
+        return nomor
+    sisa = nomor[2:]
+    bagian = [sisa[:3], sisa[3:7], sisa[7:]]
+    return "+62 " + "-".join(b for b in bagian if b)
+
+
+@register.filter
+def wa_link(value):
+    """Tautan WhatsApp (AB-22): '6281234567890' -> 'https://wa.me/6281234567890'."""
+    nomor = "".join(c for c in str(value or "") if c.isdigit())
+    return f"https://wa.me/{nomor}" if nomor else ""
+
+
+@register.filter
+def label_peran(value):
+    """Kode role -> label, mis. 'admin_unor' -> 'Admin Unor'."""
+    from accounts.models import User
+
+    try:
+        return User.Role(value).label
+    except ValueError:
+        return value or ""

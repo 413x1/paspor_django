@@ -7,13 +7,21 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.utils.html import escape, format_html
 
-from paspor.models import KategoriPerjalanan, Negara, SumberPembiayaan, UnitOrganisasi
+from paspor.models import KategoriPerjalanan, Kegiatan, Negara, SumberPembiayaan, UnitOrganisasi
 
 from . import report
 from .decorators import role_required
 from .models import Pengajuan
 
-ADMIN_ROLES = ("admin_unor", "admin_bpsdm", "admin_pakln")
+ADMIN_ROLES = ("admin_unor", "admin_bpsdm", "admin_bko", "admin_pakln")
+
+
+def _opsi_tipe(role):
+    if role == "admin_bpsdm":
+        return [c for c in Pengajuan.TipePdln.choices if c[0] in ("T2P", "T2L")]
+    if role == "admin_bko":
+        return [c for c in Pengajuan.TipePdln.choices if c[0] == "T2P"]
+    return Pengajuan.TipePdln.choices
 
 
 def _konteks_filter(request):
@@ -25,14 +33,19 @@ def _konteks_filter(request):
         "query": params.urlencode(),
         "ns": request.resolver_match.namespace,
         "opsi_jenis": Pengajuan.JenisPerjalanan.choices,
-        "opsi_tipe": Pengajuan.TipePdln.choices if request.user.role != "admin_bpsdm"
-        else [c for c in Pengajuan.TipePdln.choices if c[0] in ("T2P", "T2L")],
+        "opsi_tipe": _opsi_tipe(request.user.role),
         "opsi_status": Pengajuan.Status.choices,
         "opsi_unor": UnitOrganisasi.objects.all() if request.user.role != "admin_unor" else [],
         "opsi_negara": Negara.objects.filter(is_active=True),
         "opsi_kategori": KategoriPerjalanan.objects.filter(is_active=True),
         "opsi_sumber": SumberPembiayaan.objects.filter(is_active=True),
         "opsi_kanal": Pengajuan.Kanal.choices,
+        "opsi_kegiatan": Kegiatan.objects.filter(
+            pk__in=report.queryset_untuk(request.user).exclude(kegiatan=None).values("kegiatan")
+        ).order_by("-tahun_pelaksanaan", "nama"),
+        "opsi_tahun_kegiatan": sorted(set(
+            Kegiatan.objects.filter(pengajuan_list__isnull=False).values_list("tahun_pelaksanaan", flat=True)
+        ), reverse=True),
     }
 
 

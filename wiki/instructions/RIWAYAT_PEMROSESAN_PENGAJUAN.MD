@@ -2,6 +2,11 @@
 
 > **Status:** sudah diimplementasikan.
 > **Pengguna:** Pegawai, Admin Unor, Admin Biro PAKLN.
+> **Tambahan PDLN T2P v2 (Admin BKO):** aksi `diteruskan_bko`, `sk_tubel_diunggah`,
+> `ditutup_bko`, `dibuka_ulang_bko`, `selesai_tanpa_sk_tubel`. Pengecualian visibilitas:
+> catatan `ditutup_bko`/`dibuka_ulang_bko` terlihat **semua pihak termasuk Pegawai**;
+> catatan `selesai_tanpa_sk_tubel` **hanya Admin Biro PAKLN** — lihat
+> [PDLN_TIPE_2_FLOW.MD §8](PDLN_TIPE_2_FLOW.MD#8-versi-lanjutan-v2--sk-tubel-oleh-admin-bko).
 
 ## Daftar Isi
 

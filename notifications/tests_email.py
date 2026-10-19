@@ -338,11 +338,12 @@ class FormEmailTests(TestCase):
             "password_konfirmasi": "Rahasia-12345", "unit_organisasi": unit.pk, "unit_kerja": "Biro", **kw,
         }
 
-    def test_email_opsional_dan_dinormalisasi(self):
+    def test_email_wajib_dan_dinormalisasi(self):
+        # Sejak AB-17 email & nomor HP wajib pada akun yang dibuat Admin Biro PAKLN.
         form = TambahUserForm(self._data_tambah())
-        self.assertTrue(form.is_valid(), form.errors)
-        self.assertEqual(form.save().email, "")
-        form = TambahUserForm(self._data_tambah(username="user.dua", email="  Budi.S@PU.go.id "))
+        self.assertFalse(form.is_valid())
+        self.assertIn("email", form.errors)
+        form = TambahUserForm(self._data_tambah(username="user.dua", email="  Budi.S@PU.go.id ", no_hp="0812-3456-7890"))
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(form.save().email, "budi.s@pu.go.id")
 
@@ -354,8 +355,8 @@ class FormEmailTests(TestCase):
     def test_edit_user_menyimpan_email(self):
         user = _user("edit.me", "admin_unor", "", unit_organisasi=UnitOrganisasi.objects.first())
         form = EditUserForm(
-            {"username": "edit.me", "nama": "Edit Me", "email": "Edit.Me@pu.go.id", "is_active": "on",
-             "unit_organisasi": UnitOrganisasi.objects.first().pk, "unit_kerja": "Biro"},
+            {"username": "edit.me", "nama": "Edit Me", "email": "Edit.Me@pu.go.id", "no_hp": "0812-3456-7890",
+             "is_active": "on", "unit_organisasi": UnitOrganisasi.objects.first().pk, "unit_kerja": "Biro"},
             instance=user,
         )
         self.assertTrue(form.is_valid(), form.errors)
