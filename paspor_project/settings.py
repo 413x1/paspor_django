@@ -9,6 +9,7 @@ akan menyusul pada tahap pengembangan berikutnya.
 
 import os
 from pathlib import Path
+from urllib.parse import quote
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -357,7 +358,14 @@ MAIL_QUEUE = {
 # Jangan menyalakan keduanya sekaligus pada produksi (aman karena baris dikunci, tetapi boros).
 MAIL_USE_CELERY = _env_bool("MAIL_USE_CELERY", "False")
 
-CELERY_BROKER_URL = env("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0")
+# Koneksi Redis dibangun dari REDIS_* (Docker: REDIS_HOST diisi nama service "redis" oleh docker-compose).
+# Password boleh berisi karakter khusus; di-URL-encode otomatis. CELERY_BROKER_URL (opsional) menimpa seluruhnya.
+REDIS_HOST = env("REDIS_HOST", "127.0.0.1")
+REDIS_PORT = env("REDIS_PORT", "6379")
+REDIS_DB = env("REDIS_DB", "0")
+REDIS_PASSWORD = env("REDIS_PASSWORD", "")
+_redis_auth = f":{quote(REDIS_PASSWORD, safe='')}@" if REDIS_PASSWORD else ""
+CELERY_BROKER_URL = env("CELERY_BROKER_URL") or f"redis://{_redis_auth}{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
 CELERY_TIMEZONE = TIME_ZONE                       # Asia/Jakarta: jam jadwal Beat dibaca sebagai WIB
 CELERY_TASK_IGNORE_RESULT = True                  # status dicatat di tabel sendiri (EmailLog), bukan result backend
 CELERY_TASK_ACKS_LATE = True                      # pesan dianggap selesai setelah task sukses
