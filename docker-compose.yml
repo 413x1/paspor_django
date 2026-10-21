@@ -10,6 +10,8 @@ services:
     env_file: .env
     environment:
       TZ: Asia/Jakarta
+      # Alamat Redis untuk memanggil task Celery (dipakai bila MAIL_USE_CELERY=true).
+      CELERY_BROKER_URL: redis://redis:6379/0
     ports:
       - "8000:8000"
     healthcheck:
@@ -38,3 +40,72 @@ services:
     depends_on:
       web:
         condition: service_healthy
+
+  # --- Celery + Redis (lihat wiki/instructions/CELERY_IMPLEMENTATION_PLAN.MD) -------------------------
+  # Tidak ikut menyala secara bawaan. Aktifkan dengan:
+  #   docker compose --profile celery up -d --build
+  # dan set MAIL_USE_CELERY=true di .env (lalu hentikan mail-worker agar pengirimnya tunggal).
+  # redis:alpine mengikuti rilis terbaru; untuk produksi sebaiknya dikunci (mis. redis:7-alpine).
+  redis:
+    image: redis:alpine
+    container_name: paspor-redis
+    profiles: ["celery"]
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Tanpa "ports": Redis hanya dijangkau antar-container, tidak dibuka ke luar.
+
+  # Worker Celery: meniru pola mail-worker (image sama dengan web, hanya "web" yang migrate/seed).
+  celery-worker:
+    image: paspor-django:latest
+    container_name: paspor-celery-worker
+    profiles: ["celery"]
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TZ: Asia/Jakarta
+      DJANGO_MIGRATE_ON_START: "False"
+      DJANGO_INIT_ON_START: "False"
+      CELERY_BROKER_URL: redis://redis:6379/0
+    # --concurrency 1: menjaga jeda kirim SMTP antar email (MAIL_DB_QUEUE_SEND_PACING_MS).
+    command: ["celery", "-A", "paspor_project", "worker", "-l", "info", "-Q", "default,email", "--concurrency", "1"]
+    depends_on:
+      web:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A paspor_project inspect ping -d celery@$$HOSTNAME"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 40s
+
+  # Celery Beat: penjadwal. TEPAT SATU instance (jangan di-scale). Jadwal statis di settings.py.
+  celery-beat:
+    image: paspor-django:latest
+    container_name: paspor-celery-beat
+    profiles: ["celery"]
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TZ: Asia/Jakarta
+      DJANGO_MIGRATE_ON_START: "False"
+      DJANGO_INIT_ON_START: "False"
+      CELERY_BROKER_URL: redis://redis:6379/0
+    # /tmp selalu dapat ditulis oleh user non-root "app"; jadwal statis sehingga file ini boleh hilang.
+    command: ["celery", "-A", "paspor_project", "beat", "-l", "info", "--schedule", "/tmp/celerybeat-schedule"]
+    depends_on:
+      web:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  redis-data:
