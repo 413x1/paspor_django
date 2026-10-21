@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Edit Hari Libur{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Edit Hari Libur</h2>
+    <p class="sub">{{ libur }}</p>
+  </div>
+  <a href="{% url 'pakln:kelola_kalender' %}?tahun={{ libur.tanggal.year }}" class="button is-small">← Kembali ke Setting Kalender</a>
+</div>
+
+<div class="box">
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.tanggal.id_for_label }}">{{ form.tanggal.label }}</label>
+          <div class="control">{{ form.tanggal }}</div>
+          {% for e in form.tanggal.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.jenis.id_for_label }}">{{ form.jenis.label }}</label>
+          <div class="control"><div class="select is-fullwidth">{{ form.jenis }}</div></div>
+          {% for e in form.jenis.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="{{ form.keterangan.id_for_label }}">{{ form.keterangan.label }}</label>
+      <div class="control">{{ form.keterangan }}</div>
+      {% for e in form.keterangan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div class="field">
+      <label class="checkbox" for="{{ form.is_active.id_for_label }}">
+        {{ form.is_active }} {{ form.fields.is_active.label }}
+      </label>
+    </div>
+
+    <div class="actions-bar">
+      <a href="{% url 'pakln:kelola_kalender' %}?tahun={{ libur.tanggal.year }}" class="button">Batal</a>
+      <button type="submit" class="button is-primary">Simpan Perubahan</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

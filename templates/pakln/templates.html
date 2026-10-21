@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Manajemen Template{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Manajemen Template</h2>
+    <p class="sub">Unggah template dokumen (PDF/DOCX) yang dapat diunduh Pegawai dan/atau Admin Unor.</p>
+  </div>
+  <a href="{% url 'pakln:dashboard' %}" class="button is-small">← Kembali ke Dasbor</a>
+</div>
+
+<div class="box">
+  <div class="section-title is-small is-spaced">Tambah Template Baru</div>
+
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.nama.id_for_label }}">Nama Template</label>
+          <div class="control">{{ form.nama }}</div>
+          {% for e in form.nama.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.keterangan.id_for_label }}">Keterangan</label>
+          <div class="control">{{ form.keterangan }}</div>
+          {% for e in form.keterangan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="{{ form.file.id_for_label }}">Berkas (PDF atau DOCX, maks. 2 MB)</label>
+      {% include "partials/_input_berkas.html" with field=form.file %}
+      {% for e in form.file.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div class="section-title" style="font-size:13px;margin:14px 0 10px;">Penargetan</div>
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="checkbox" for="{{ form.untuk_pegawai.id_for_label }}">
+            {{ form.untuk_pegawai }} {{ form.fields.untuk_pegawai.label }}
+          </label>
+        </div>
+        <div class="field">
+          <label class="checkbox" for="{{ form.untuk_admin_unor.id_for_label }}">
+            {{ form.untuk_admin_unor }} {{ form.fields.untuk_admin_unor.label }}
+          </label>
+        </div>
+        {% if form.untuk_admin_bpsdm %}
+        <div class="field">
+          <label class="checkbox" for="{{ form.untuk_admin_bpsdm.id_for_label }}">
+            {{ form.untuk_admin_bpsdm }} {{ form.fields.untuk_admin_bpsdm.label }}
+          </label>
+        </div>
+        <div class="field">
+          <label class="label" for="{{ form.jenis_perjalanan.id_for_label }}">{{ form.fields.jenis_perjalanan.label }}</label>
+          <div class="control"><div class="select is-fullwidth">{{ form.jenis_perjalanan }}</div></div>
+        </div>
+        {% endif %}
+        {% if form.non_field_errors %}<p class="help is-danger">{{ form.non_field_errors }}</p>{% endif %}
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.kategori.id_for_label }}">{{ form.fields.kategori.label }}</label>
+          <div class="control"><div class="select is-fullwidth">{{ form.kategori }}</div></div>
+          {% for e in form.kategori.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label">{{ form.fields.unit_organisasi.label }}</label>
+      <div class="control unit-checkbox-grid">{{ form.unit_organisasi }}</div>
+      <p class="helptext">{{ form.fields.unit_organisasi.help_text }}</p>
+      {% for e in form.unit_organisasi.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+    </div>
+
+    <div class="field">
+      <label class="checkbox" for="{{ form.aktif.id_for_label }}">
+        {{ form.aktif }} {{ form.fields.aktif.label }}
+      </label>
+    </div>
+
+    <button type="submit" class="button is-primary">Simpan Template</button>
+  </form>
+</div>
+
+<div class="box">
+  <div class="section-title is-small">
+    Daftar Template <span class="badge-auto" id="templateCount">{{ template_count }}</span>
+  </div>
+  <div class="table-wrap">
+    <table id="templateTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
+      <thead>
+        <tr><th>Nama</th><th>Target</th><th>Unit Organisasi</th><th>Kategori</th><th>Status</th><th>Aksi</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
+<script>
+  $(function () {
+    function csrfToken() {
+      var match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+      return match ? decodeURIComponent(match[1]) : '';
+    }
+
+    var $table = $('#templateTable').DataTable({
+      serverSide: true,
+      processing: true,
+      autoWidth: false,
+      ajax: { url: '{% url "pakln:templates_data" %}', type: 'GET', cache: false },
+      columns: [
+        { data: 0, width: '20%' },
+        { data: 1, width: '10%', orderable: false, searchable: false },
+        { data: 2, width: '14%', orderable: false, searchable: false },
+        { data: 3, width: '12%' },
+        { data: 4, width: '10%' },
+        { data: 5, width: '34%', orderable: false, searchable: false },
+      ],
+      order: [[0, 'asc']],
+      pageLength: 10,
+      lengthMenu: [10, 25, 50, 100],
+      dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
+      language: {
+        search: '',
+        searchPlaceholder: 'Cari template...',
+        lengthMenu: 'Tampilkan _MENU_ template',
+        info: 'Menampilkan _START_–_END_ dari _TOTAL_ template',
+        infoEmpty: 'Tidak ada template',
+        infoFiltered: '(disaring dari _MAX_ total template)',
+        zeroRecords: 'Tidak ada template yang cocok.',
+        processing: 'Memuat…',
+        paginate: { previous: '‹ Sebelumnya', next: 'Berikutnya ›' },
+      },
+    }).on('xhr.dt', function (e, settings, json) {
+      if (json) { $('#templateCount').text(json.recordsTotal); }
+    });
+
+    $('#templateTable tbody').on('click', '[data-template-toggle]', function () {
+      var url = $(this).data('template-toggle');
+      $.ajax({
+        url: url, type: 'POST', headers: { 'X-CSRFToken': csrfToken() },
+        success: function () { $table.ajax.reload(null, false); },
+      });
+    });
+
+    $('#templateTable tbody').on('click', '[data-template-hapus]', function () {
+      var url = $(this).data('template-hapus');
+      pasporConfirm({ type: 'danger', title: 'Hapus', message: 'Hapus template ini?', confirmText: 'Hapus' }).then(function (ok) {
+        if (!ok) { return; }
+        $.ajax({
+          url: url, type: 'POST', headers: { 'X-CSRFToken': csrfToken() },
+          success: function () {
+            $table.ajax.reload(null, false);
+            pasporAlert({ message: 'Template berhasil dihapus.' });
+          },
+          error: function () { pasporAlert({ type: 'error', title: 'Gagal', message: 'Gagal menghapus template.' }); },
+        });
+      });
+    });
+  });
+</script>
+{% endblock %}

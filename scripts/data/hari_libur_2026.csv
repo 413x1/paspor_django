@@ -1,0 +1,29 @@
+# Hari Libur Nasional & Cuti Bersama 2026 (SKB 3 Menteri).
+# Kolom: tanggal (YYYY-MM-DD), keterangan, jenis (libur_nasional | cuti_bersama).
+# Baris yang diawali '#' diabaikan.
+tanggal,keterangan,jenis
+2026-01-01,Tahun Baru 2026 Masehi,libur_nasional
+2026-01-16,Isra Mikraj Nabi Muhammad SAW,libur_nasional
+2026-02-16,Cuti Bersama Tahun Baru Imlek 2577 Kongzili,cuti_bersama
+2026-02-17,Tahun Baru Imlek 2577 Kongzili,libur_nasional
+2026-03-18,"Cuti Bersama Hari Suci Nyepi, Tahun Baru Saka 1948",cuti_bersama
+2026-03-19,"Hari Suci Nyepi, Tahun Baru Saka 1948",libur_nasional
+2026-03-20,Cuti Bersama Hari Raya Idulfitri 1447 H,cuti_bersama
+2026-03-21,Hari Raya Idulfitri 1447 H,libur_nasional
+2026-03-22,Hari Raya Idulfitri 1447 H,libur_nasional
+2026-03-23,Cuti Bersama Hari Raya Idulfitri 1447 H,cuti_bersama
+2026-03-24,Cuti Bersama Hari Raya Idulfitri 1447 H,cuti_bersama
+2026-04-03,Wafat Yesus Kristus,libur_nasional
+2026-04-05,Hari Kebangkitan Yesus Kristus (Paskah),libur_nasional
+2026-05-01,Hari Buruh Internasional,libur_nasional
+2026-05-14,Kenaikan Yesus Kristus,libur_nasional
+2026-05-15,Cuti Bersama Kenaikan Yesus Kristus,cuti_bersama
+2026-05-27,Hari Raya Iduladha 1447 H,libur_nasional
+2026-05-28,Cuti Bersama Hari Raya Iduladha 1447 H,cuti_bersama
+2026-05-31,Hari Raya Waisak 2570 BE,libur_nasional
+2026-06-01,Hari Lahir Pancasila,libur_nasional
+2026-06-16,1 Muharam Tahun Baru Islam 1448 H,libur_nasional
+2026-08-17,Proklamasi Kemerdekaan,libur_nasional
+2026-08-25,Maulid Nabi Muhammad SAW,libur_nasional
+2026-12-24,Cuti Bersama Kelahiran Yesus Kristus,cuti_bersama
+2026-12-25,Kelahiran Yesus Kristus,libur_nasional

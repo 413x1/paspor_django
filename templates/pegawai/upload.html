@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load pengajuan_extras %}
+{% block title %}Unggah Dokumen{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Unggah Dokumen</h2>
+    <p class="sub">{{ pengajuan.kode }} · {{ pengajuan.jenis_label }} · Kelengkapan berkas pengajuan</p>
+  </div>
+  {% if pengajuan.pernah_dikirim %}
+    <a href="{% url 'pegawai:monitor_progres' kode=pengajuan.kode %}" class="button is-small">Lihat Progres →</a>
+  {% endif %}
+</div>
+
+{% if pengajuan.catatan_unor %}
+  <div class="notification paspor-msg is-warning">
+    <strong>⚠ Dikembalikan oleh Admin Unor untuk diperbaiki:</strong> {{ pengajuan.catatan_unor }}
+  </div>
+{% endif %}
+{% if dibekukan %}
+  <div class="notification paspor-msg is-warning">{{ dibekukan }}</div>
+{% endif %}
+{% if not dapat_diubah and not dibekukan %}
+  <div class="notification paspor-msg is-info">Pengajuan sudah dikirim — dokumen hanya dapat dilihat.</div>
+{% endif %}
+
+{% if templates and dapat_diubah %}
+<div class="box is-info-soft">
+  <div class="section-title" style="font-size:14px;margin-bottom:10px;">📄 Template Dokumen Tersedia</div>
+  {% for t in templates %}
+    <div class="doc-row" style="padding:10px 14px;background:var(--white);">
+      <div class="info">
+        <h4 style="font-size:13.5px;">{{ t.nama }}</h4>
+        {% if t.keterangan %}<p>{{ t.keterangan }}</p>{% endif %}
+      </div>
+      <div class="actions">
+        <a href="{{ t.file.url }}" target="_blank" rel="noopener" class="button is-small">⬇ Unduh</a>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="box">
+  {% include "partials/_dokumen_tahap.html" with hapus_url="pegawai:hapus_dokumen" %}
+
+  {% if dapat_diubah %}
+  <form method="post">
+    {% csrf_token %}
+    {% if pengajuan.catatan_unor %}
+      <div class="field">
+        <label class="label" for="catatan_perbaikan">Catatan perbaikan untuk Admin Unor</label>
+        <div class="control">
+          <textarea class="textarea" id="catatan_perbaikan" name="catatan" rows="3" required
+            placeholder="cth. Dokumen sudah ditandatangani pimpinan dan diunggah ulang.">{{ request.POST.catatan }}</textarea>
+        </div>
+        <p class="helptext">Wajib diisi — jelaskan perbaikan yang telah dilakukan.</p>
+      </div>
+    {% endif %}
+    <div class="agree-box">
+      <input type="checkbox" id="agree" name="agree" required>
+      <label for="agree">
+        Saya menyatakan seluruh dokumen yang diunggah telah <strong>sesuai dan lengkap</strong>,
+        untuk selanjutnya dikirimkan kepada Admin Unor.
+      </label>
+    </div>
+    <button type="submit" name="kirim" class="button is-primary" {% if not lengkap or dibekukan %}disabled{% endif %}>
+      Kirim ke Admin Unor →
+    </button>
+    {% if not lengkap %}
+      <p class="helptext">Lengkapi dokumen wajib untuk melanjutkan: {{ dokumen_kurang|join:", " }}.</p>
+    {% endif %}
+  </form>
+  {% endif %}
+</div>
+
+{% if pengajuan.status == "belum" %}
+<div class="box">
+  {% include "partials/_pembatalan.html" with tarik_url_name="pegawai:tarik_pembatalan" %}
+</div>
+{% endif %}
+{% endblock %}

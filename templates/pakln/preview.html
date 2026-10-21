@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Pratinjau Pengajuan{% endblock %}
+{% block wrap_extra_class %} narrow{% endblock %}
+
+{% block content %}
+{% include "partials/_status_bko.html" %}
+{% if catatan_perbaikan %}
+  <div class="notification paspor-msg is-info">
+    <strong>↻ Perbaikan dari {% if pengajuan.is_tipe2 %}Admin BPSDM{% else %}Admin Unor{% endif %}:</strong> {{ catatan_perbaikan|linebreaksbr }}
+  </div>
+{% endif %}
+{% if pembatalan_terbuka %}
+  <div class="notification paspor-msg is-warning">
+    <strong>✕ Permohonan pembatalan sedang diproses ({{ pembatalan_terbuka.get_status_display }}).</strong>
+    {{ pembatalan_terbuka.alasan }} — <a href="{% url 'pakln:pembatalan' %}">ke antrean Pembatalan</a>
+  </div>
+{% endif %}
+
+<div class="preview-split">
+<div class="box">
+  <div class="section-title">Pratinjau Pengajuan — {{ pengajuan.kode }}</div>
+  <p class="sub is-title-sub"><span class="tag paspor-status is-{{ pengajuan.status }}"><span class="dot"></span>{{ pengajuan.get_status_display }}</span></p>
+  {% include "partials/_ringkasan_pengajuan.html" %}
+</div>
+
+<div class="box">
+  <div class="section-title">Direktori Dokumen</div>
+  {% include "partials/_direktori_dokumen.html" %}
+
+  {% if pengajuan.status == "proses_pakln" and not dibekukan %}
+    {% if pengajuan.preview_pakln_agree %}
+      <a href="{% url 'pakln:upload_dokumen' kode=pengajuan.kode %}" class="button is-primary is-fullwidth" style="margin-top:16px;">
+        Lanjut ke Administrasi Biro PAKLN →
+      </a>
+    {% else %}
+      <form method="post" style="margin-top:16px;">
+        {% csrf_token %}
+        <div class="agree-box">
+          <input type="checkbox" id="confirm" name="confirm" required>
+          <label for="confirm">
+            Dokumen dan formulir telah <strong>ditinjau dan sesuai</strong>, untuk selanjutnya diproses administrasi oleh Biro PAKLN.
+          </label>
+        </div>
+        <button type="submit" name="lanjutkan" class="button is-primary is-fullwidth">Lanjutkan ke Administrasi Biro PAKLN →</button>
+      </form>
+    {% endif %}
+  {% elif pengajuan.status == "selesai" or pengajuan.preview_pakln_agree %}
+    <a href="{% url 'pakln:upload_dokumen' kode=pengajuan.kode %}" class="button is-fullwidth" style="margin-top:16px;">Lihat Dokumen Biro PAKLN</a>
+  {% endif %}
+</div>
+</div>
+
+<div class="preview-split">
+{% if pengajuan.status == "proses_pakln" and not dibekukan %}
+<div class="box is-danger-soft">
+  <div class="section-title is-small">↩ Kembalikan ke {{ tujuan_kembali }}</div>
+  <p class="cell-muted is-title-sub">
+    Gunakan ini jika ada kekurangan atau kesalahan berkas administrasi {{ tujuan_kembali }} yang perlu diperbaiki.
+    Pengajuan akan kembali ke tahap {{ tujuan_kembali }} sampai diteruskan ulang.
+  </p>
+  <form method="post" data-confirm="Kembalikan pengajuan ini ke {{ tujuan_kembali }} beserta catatan?" data-confirm-title="Kembalikan Pengajuan" data-confirm-ok="Kembalikan">
+    {% csrf_token %}
+    <div class="field">
+      <label class="label" for="catatan_pakln">Catatan untuk {{ tujuan_kembali }}</label>
+      <div class="control">
+        <textarea class="textarea" id="catatan_pakln" name="catatan" rows="3" required
+          placeholder="cth. Nota Dinas belum sesuai format, mohon direvisi."></textarea>
+      </div>
+    </div>
+    <button type="submit" name="kembalikan" class="button is-danger is-fullwidth">↩ Kembalikan ke {{ tujuan_kembali }}</button>
+  </form>
+</div>
+{% endif %}
+
+{% include "partials/_riwayat_pengajuan.html" %}
+</div>
+
+<a href="{% url 'pakln:dashboard' %}{% if pengajuan.is_pdln %}?tab=pdln{% else %}?tab=nondinas{% endif %}" class="button is-fullwidth">← Kembali ke Dasbor</a>
+{% endblock %}

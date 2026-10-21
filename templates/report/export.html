@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Export Database{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Export Database</h2>
+    <p class="sub">Data pengajuan Dinas &amp; Non-Dinas sesuai cakupan Anda. Export memuat seluruh baris yang cocok dengan filter.</p>
+  </div>
+  <div class="buttons">
+    <a href="?{{ query }}{% if query %}&amp;{% endif %}format=xlsx" class="button is-primary">⬇ Export XLSX</a>
+    <a href="?{{ query }}{% if query %}&amp;{% endif %}format=csv" class="button">⬇ Export CSV</a>
+    <a href="{% url ns|add:':rekap' %}?{{ query }}" class="button">📊 Rekap</a>
+  </div>
+</div>
+
+{% include "partials/_filter_report.html" %}
+
+<div class="box">
+  <p class="helptext" style="margin-top:0;">XLSX berisi sheet <strong>Data</strong> (kolom umum, PDLN, pelaporan, pembatalan) dan sheet <strong>Ringkasan</strong> (rekap/pivot).</p>
+  <div class="table-wrap">
+    <table id="exportTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
+      <thead>
+        <tr><th>Kode</th><th>Jenis</th><th>Pegawai</th><th>Unit Organisasi</th><th>Kategori</th><th>Tujuan</th><th>Berangkat</th><th>Tgl Pengajuan</th><th>Status</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
+<script>
+  $(function () {
+    $('#exportTable').DataTable({
+      serverSide: true, processing: true, autoWidth: false,
+      ajax: { url: '{% url ns|add:":export_data" %}?{{ query|escapejs }}', type: 'GET', cache: false },
+      columns: [
+        { data: 0 }, { data: 1, orderable: false }, { data: 2 }, { data: 3 }, { data: 4 },
+        { data: 5, orderable: false }, { data: 6 }, { data: 7 }, { data: 8 },
+      ],
+      order: [[7, 'desc']],
+      pageLength: 10, lengthMenu: [10, 25, 50, 100],
+      dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
+      language: {
+        search: '', searchPlaceholder: 'Cari pengajuan...', lengthMenu: 'Tampilkan _MENU_ baris',
+        info: 'Menampilkan _START_–_END_ dari _TOTAL_ pengajuan', infoEmpty: 'Tidak ada data',
+        infoFiltered: '(disaring dari _MAX_)', zeroRecords: 'Tidak ada data yang cocok.', processing: 'Memuat…',
+        paginate: { previous: '‹ Sebelumnya', next: 'Berikutnya ›' },
+      },
+    });
+  });
+</script>
+{% endblock %}

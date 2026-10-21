@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Profil{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Profil</h2>
+    <p class="sub">{{ user.get_role_display }}</p>
+  </div>
+</div>
+
+<div class="box">
+  <div class="section-title is-small">Data Personal {% if profile %}<span class="badge-auto">Sinkronisasi e-HRM</span>{% endif %}</div>
+  <dl class="kv-list">
+    {% if profile %}
+      <dt>Nama</dt><dd>{{ profile.nama }}</dd>
+      <dt>NIP</dt><dd>{{ profile.nip }}</dd>
+      <dt>Jabatan</dt><dd>{{ profile.jabatan }}</dd>
+      <dt>Pangkat/Golongan</dt><dd>{{ profile.pangkat_golongan }}</dd>
+      <dt>Unit Kerja</dt><dd>{{ profile.unit_kerja }}</dd>
+      <dt>Unit Organisasi</dt><dd>{{ profile.unit_organisasi.name|default:"—" }}</dd>
+    {% else %}
+      <dt>Nama</dt><dd>{{ user.get_full_name|default:user.username }}</dd>
+      <dt>Unit Kerja</dt><dd>{{ user.unit_kerja|default:"—" }}</dd>
+      <dt>Unit Organisasi</dt><dd>{{ user.get_unit_organisasi.name|default:"—" }}</dd>
+    {% endif %}
+    <dt>Email</dt><dd>{{ user.email|default:"—" }}{% if user.email_dikunci %} <span class="badge-kunci">Dikunci</span>{% endif %}</dd>
+    <dt>No. HP (WhatsApp)</dt><dd>{% include "partials/_kontak_wa.html" with no_hp=user.no_hp %}{% if user.no_hp_dikunci %} <span class="badge-kunci">Dikunci</span>{% endif %}</dd>
+  </dl>
+  {% if forms_akun.ubah_kontak %}
+    <details class="akun-panel"{% if aksi_terbuka == "ubah_kontak" %} open{% endif %}>
+      <summary class="button is-small">✎ Ubah Email &amp; No. HP</summary>
+      {% include "akun/_form_akun.html" with form=forms_akun.ubah_kontak aksi="ubah_kontak" tombol="Simpan Kontak" %}
+    </details>
+  {% else %}
+    <p class="helptext" style="margin-top:10px;">Perubahan email dan nomor HP melalui Admin Biro PAKLN.</p>
+  {% endif %}
+  {% if profile %}
+    <p class="helptext">Terakhir sinkron e-HRM: {{ user.ehrm_sinkron_at|date:"d M Y H:i"|default:"belum pernah" }}</p>
+  {% endif %}
+</div>
+
+<div class="box">
+  <div class="section-title is-small">Akun</div>
+  <dl class="kv-list">
+    <dt>Username</dt><dd><strong>{{ user.username }}</strong></dd>
+    <dt>Metode login</dt><dd>{{ user.metode_login_display }}</dd>
+    <dt>Peran</dt>
+    <dd>
+      {% for p in peran_list %}<span class="badge-peran{% if p.role == user.role %} is-aktif{% endif %}">{{ p.get_role_display }}{% if p.unit_organisasi_id %} ({{ p.unit_organisasi.alias }}){% endif %}</span> {% empty %}{{ user.get_role_display }}{% endfor %}
+      <div class="helptext">Peran diatur oleh Admin Biro PAKLN.</div>
+    </dd>
+  </dl>
+  <details class="akun-panel"{% if aksi_terbuka == "ubah_username" %} open{% endif %}>
+    <summary class="button is-small">✎ Ubah Username</summary>
+    {% include "akun/_form_akun.html" with form=forms_akun.ubah_username aksi="ubah_username" tombol="Simpan Username" %}
+  </details>
+</div>
+
+<div class="box">
+  <div class="section-title is-small">Keamanan</div>
+  {% if forms_akun.atur_password %}
+    <p class="helptext" style="margin:0 0 10px;">Akun Anda belum memiliki password — saat ini hanya bisa masuk lewat SSO. Atur password agar dapat masuk dengan username &amp; password.</p>
+    <details class="akun-panel"{% if aksi_terbuka == "atur_password" %} open{% endif %}>
+      <summary class="button is-small is-primary">🔑 Atur Password</summary>
+      {% include "akun/_form_akun.html" with form=forms_akun.atur_password aksi="atur_password" tombol="Simpan Password" %}
+    </details>
+  {% endif %}
+  {% if forms_akun.ganti_password %}
+    <details class="akun-panel"{% if aksi_terbuka == "ganti_password" %} open{% endif %}>
+      <summary class="button is-small">🔑 Ganti Password</summary>
+      {% include "akun/_form_akun.html" with form=forms_akun.ganti_password aksi="ganti_password" tombol="Ganti Password" %}
+    </details>
+  {% endif %}
+  {% if forms_akun.hapus_password %}
+    <details class="akun-panel"{% if aksi_terbuka == "hapus_password" %} open{% endif %}>
+      <summary class="button is-small is-danger is-light">Hapus Password</summary>
+      <p class="helptext">Setelah dihapus, Anda hanya dapat masuk lewat SSO.</p>
+      {% include "akun/_form_akun.html" with form=forms_akun.hapus_password aksi="hapus_password" tombol="Hapus Password" %}
+    </details>
+  {% endif %}
+</div>
+
+<div class="box">
+  <div class="section-title is-small">{% if user.role == "pegawai" %}Dokumen Kepegawaian{% else %}Dokumen Penugasan{% endif %}</div>
+  {% for jenis, label, dok in jenis_dokumen %}
+    <div class="doc-row {% if dok %}uploaded{% endif %}">
+      <div class="info">
+        <h4>{{ label }}</h4>
+        {% if dok %}<p style="color:var(--green);">✓ Diunggah {{ dok.uploaded_at|date:"d M Y H:i" }}</p>{% else %}<p>Belum diunggah.</p>{% endif %}
+      </div>
+      <div class="actions">
+        {% if dok %}<button type="button" class="button is-small" data-doc-preview="{{ dok.file.url }}" data-doc-title="{{ label }}">👁 Lihat</button>{% endif %}
+        <form method="post" enctype="multipart/form-data" class="actions doc-upload-form" style="margin:0;">
+          {% csrf_token %}
+          <input type="hidden" name="aksi" value="unggah_dokumen">
+          <input type="hidden" name="jenis" value="{{ jenis }}">
+          <div class="file is-small"><label class="file-label"><input type="file" name="file" required accept=".pdf,application/pdf" data-pdf-only data-max-mb="2" class="file-input doc-file-input"><span class="file-cta"><span class="file-icon">{% include "partials/_ikon_unggah.html" %}</span><span class="file-label">{% if dok %}Ganti{% else %}Unggah{% endif %}</span></span></label></div>
+          <button type="submit" class="button is-small doc-upload-submit">⬆ Unggah</button>
+        </form>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+{% if user.role == "pegawai" %}
+<div class="box">
+  <div class="section-title is-small">Data Paspor</div>
+  <div class="table-wrap">
+    <table class="table data-table is-fullwidth">
+      <thead><tr><th>Nomor Paspor</th><th>Jenis</th><th>Tgl Expired</th><th></th></tr></thead>
+      <tbody>
+        {% for x in paspor_list %}
+          <tr>
+            <td><strong>{{ x.nomor }}</strong></td><td>{{ x.get_jenis_display }}</td><td>{{ x.tgl_expired|date:"d M Y" }}</td>
+            <td>
+              <form method="post" data-confirm="Hapus data paspor ini?" data-confirm-type="danger" data-confirm-title="Hapus" data-confirm-ok="Hapus" style="margin:0;">
+                {% csrf_token %}<input type="hidden" name="aksi" value="hapus_paspor"><input type="hidden" name="id" value="{{ x.pk }}">
+                <button type="submit" class="button is-small is-danger">🗑</button>
+              </form>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="cell-muted">Belum ada data paspor.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <form method="post" class="filter-bar" style="margin-top:12px;">
+    {% csrf_token %}
+    <input type="hidden" name="aksi" value="tambah_paspor">
+    <div class="field"><label class="label">Nomor Paspor</label><input class="input" name="nomor" required placeholder="cth. D 7654321"></div>
+    <div class="field"><label class="label">Jenis</label>
+      <div class="select"><select name="jenis">{% for v, l in jenis_paspor %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></div></div>
+    <div class="field"><label class="label">Tgl Expired</label><input class="input" type="date" name="tgl_expired" required></div>
+    <button type="submit" class="button is-primary">➕ Tambah Paspor</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

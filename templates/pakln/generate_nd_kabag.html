@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Generate ND Kabag{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* =====================================================================
+     "Kertas" pratinjau Nota Dinas Kepala Bagian — SENGAJA diisolasi dari
+     Bulma (tidak memakai class .button/.input/.field dst.) supaya tata
+     letak cetak (margin A4, font resmi) tidak ikut terpengaruh perubahan
+     styling framework di masa depan. Semua aturan di bawah ini dilingkup
+     dengan prefix .nd-paper agar tidak bocor ke komponen Bulma lain.
+     ===================================================================== */
+  .nd-preview-col {
+    background: #eef0f4;
+    border-radius: 14px;
+    padding: 28px 20px;
+    display: flex;
+    justify-content: center;
+  }
+  .nd-paper-shadow-wrap {
+    box-shadow: 0 14px 40px rgba(20, 30, 60, 0.18), 0 2px 8px rgba(20, 30, 60, 0.08);
+    background: #ffffff;
+  }
+  .nd-paper {
+    width: 700px;
+    max-width: 100%;
+    min-height: 990px;
+    box-sizing: border-box;
+    padding: 70px 64px;
+    background: #ffffff;
+    font-family: Arial, "Liberation Sans", Helvetica, sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+    color: #111111;
+  }
+  .nd-paper * { box-sizing: border-box; }
+  .nd-head { display: flex; align-items: flex-start; gap: 14px; }
+  .nd-head img { width: 62px; height: 62px; object-fit: contain; flex-shrink: 0; margin-top: 4px; }
+  .nd-head-text { flex: 1 1 auto; text-align: center; }
+  .nd-head-text .nd-org1 { font-size: 17px; font-weight: 700; letter-spacing: .3px; }
+  .nd-head-text .nd-org2 { font-size: 15px; font-weight: 700; margin-top: 1px; }
+  .nd-head-text .nd-addr { font-size: 10.5px; margin-top: 3px; }
+  .nd-rule { border: none; border-top: 2px solid #111111; margin: 8px 0 22px; }
+  .nd-title { text-align: center; font-weight: 700; text-decoration: underline; font-size: 14px; margin-bottom: 18px; }
+  .nd-meta { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+  .nd-meta td { padding: 1px 0; vertical-align: top; font-size: 14px; }
+  .nd-meta td.nd-meta-label { width: 78px; white-space: nowrap; }
+  .nd-meta td.nd-meta-colon { width: 12px; }
+  .nd-rule-thin { border: none; border-top: 1px solid #111111; margin: 10px 0 20px; }
+  .nd-body p { margin: 0 0 16px; text-align: justify; text-indent: 34px; }
+  .nd-sign-row { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 46px; }
+  .nd-sign-row.no-paraf { justify-content: flex-end; }
+  .nd-sign-box { width: 150px; border: 1px solid #111111; text-align: center; font-size: 11.5px; }
+  .nd-sign-box .nd-sign-box-head { border-bottom: 1px solid #111111; padding: 4px 2px; }
+  .nd-sign-box .nd-sign-box-body { height: 46px; }
+  .nd-sign-block { text-align: left; }
+  .nd-sign-block .nd-sign-name { margin-top: 56px; font-weight: 700; text-decoration: underline; }
+  .nd-sign-block > div:first-child .nd-dyn { font-weight: 400; }
+  .nd-dyn { font-weight: 700; }
+  .nd-dyn.is-placeholder { font-weight: 400; font-style: italic; color: #8a8f9a; }
+
+  /* ---------- Panel form (Bulma tetap dipakai di sini) ---------- */
+  .nd-form-col .box { position: sticky; top: 16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Generate Dokumen — ND Kabag</h2>
+    <p class="sub">Konsep Nota Dinas Kepala Bagian Kerja Sama Luar Negeri ke Kepala Biro PAKLN. Pratinjau di kiri memperbarui otomatis mengikuti isian form.</p>
+  </div>
+  <a href="{% url 'pakln:dashboard' %}" class="button is-small">← Kembali ke Dasbor</a>
+</div>
+
+<div class="columns is-variable is-5">
+  <!-- Kolom Kiri: Live Preview Dokumen -->
+  <div class="column is-7">
+    <div class="nd-preview-col">
+      <div class="nd-paper-shadow-wrap">
+        <div class="nd-paper" id="ndPaper">
+          <div class="nd-head">
+            <img src="{% static 'images/logopu.png' %}" alt="Logo Kementerian PU">
+            <div class="nd-head-text">
+              <div class="nd-org1">KEMENTERIAN PEKERJAAN UMUM</div>
+              <div class="nd-org2">SEKRETARIAT JENDERAL</div>
+              <div class="nd-addr">Jalan Pattimura Nomor 20, Kebayoran Baru, Jakarta Selatan 12110, Telepon (021)7392681, Surel: bpakln@pu.go.id</div>
+            </div>
+          </div>
+          <hr class="nd-rule">
+
+          <div class="nd-title">NOTA DINAS</div>
+
+          <table class="nd-meta">
+            <tr>
+              <td class="nd-meta-label">Yth.</td>
+              <td class="nd-meta-colon">:</td>
+              <td>Kepala Biro Perencanaan Anggaran dan Kerja Sama Luar Negeri</td>
+            </tr>
+            <tr>
+              <td class="nd-meta-label">Dari</td>
+              <td class="nd-meta-colon">:</td>
+              <td>Plt. Kepala Bagian Kerja Sama Luar Negeri</td>
+            </tr>
+            <tr>
+              <td class="nd-meta-label">Hal</td>
+              <td class="nd-meta-colon">:</td>
+              <td>
+                Penyampaian Konsep Permohonan Izin Melakukan Perjalanan Luar Negeri a.n.
+                <span id="prev-nama-1" data-field="nama" class="nd-dyn is-placeholder">[nama]</span>
+                ke
+                <span id="prev-negara-1" data-field="negara_tujuan" class="nd-dyn is-placeholder">[negara tujuan]</span>
+              </td>
+            </tr>
+            <tr>
+              <td class="nd-meta-label">Tanggal</td>
+              <td class="nd-meta-colon">:</td>
+              <td><span id="prev-tanggal" class="nd-dyn"></span></td>
+            </tr>
+          </table>
+          <hr class="nd-rule-thin">
+
+          <div class="nd-body">
+            <p>
+              Sehubungan dengan keperluan administrasi pegawai dalam melakukan perjalanan ke luar negeri
+              non-dinas, bersama ini kami sampaikan dengan hormat konsep Nota Dinas Permohonan Izin
+              Melakukan Perjalanan Luar Negeri a.n.
+              <span id="prev-nama-2" data-field="nama" class="nd-dyn is-placeholder">[nama/nama dkk]</span>
+              ke
+              <span id="prev-negara-2" data-field="negara_tujuan" class="nd-dyn is-placeholder">[negara tujuan]</span>,
+              dari Kepala Biro Perencanaan Anggaran dan Kerja Sama Luar Negeri kepada Sekretaris Jenderal,
+              untuk kami mohonkan perkenan arahan dan petunjuk lebih lanjut.
+            </p>
+            <p>
+              Demikian kami sampaikan, atas perhatian dan perkenan arahan lebih lanjut, kami ucapkan
+              terima kasih.
+            </p>
+          </div>
+
+          <div class="nd-sign-row" id="ndSignRow">
+            <div class="nd-sign-box" id="ndParafBox">
+              <div class="nd-sign-box-head">Ketua Tim AKI</div>
+              <div class="nd-sign-box-body"></div>
+            </div>
+            <div class="nd-sign-block">
+              <div><span id="prev-jabatan-ttd" class="nd-dyn is-placeholder">[jabatan]</span></div>
+              <div class="nd-sign-name"><span id="prev-nama-pejabat" data-field="nama_pejabat" class="nd-dyn is-placeholder">[Nama Pejabat]</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kolom Kanan: Form Input Data -->
+  <div class="column is-5 nd-form-col">
+    <div class="box">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;">
+        <div class="section-title" style="font-size:14px;margin-bottom:0;">Form Input Data</div>
+        <button type="submit" form="ndKabagForm" class="button is-primary is-small">⬇ Unduh PDF</button>
+      </div>
+
+      {% if kode_terpilih %}
+        <div class="notification paspor-msg is-info" style="margin-bottom:14px;">
+          <strong>{{ kode_terpilih|length }} pengajuan terpilih</strong> dari Dasbor: {{ kode_terpilih|join:", " }}.
+          Dicatat otomatis ke Histori Generate Dokumen saat PDF berhasil diunduh.
+        </div>
+      {% endif %}
+
+      <form id="ndKabagForm" method="post" action="{% url 'pakln:download_nd_kabag_pdf' %}" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="pengajuan_kodes" value="{{ kode_terpilih_csv }}">
+        <div class="field">
+          <label class="label">Nama</label>
+          <div class="control"><input type="text" name="nama" class="input" value="{{ prefill.nama|default:'' }}" placeholder="cth. Muhammad Faris Al Bassam, S.E."></div>
+        </div>
+        <div class="columns">
+          <div class="column">
+            <div class="field">
+              <label class="label">NIP</label>
+              <div class="control"><input type="text" name="nip" class="input" value="{{ prefill.nip|default:'' }}" placeholder="cth. 199605072019031006"></div>
+            </div>
+          </div>
+          <div class="column">
+            <div class="field">
+              <label class="label">Pangkat/Golongan</label>
+              <div class="control"><input type="text" name="pangkat_golongan" class="input" value="{{ prefill.pangkat_golongan|default:'' }}" placeholder="cth. III/b, Penata Muda Tk. I"></div>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label">Jabatan</label>
+          <div class="control"><input type="text" name="jabatan" class="input" value="{{ prefill.jabatan|default:'' }}" placeholder="cth. Analis Kebijakan Pertama Bagian Kerja Sama Luar Negeri"></div>
+        </div>
+        <div class="field">
+          <label class="label">Unit Kerja</label>
+          <div class="control"><input type="text" name="unit_kerja" class="input" value="{{ prefill.unit_kerja|default:'' }}" placeholder="cth. Sekretariat Jenderal"></div>
+        </div>
+        <div class="field">
+          <label class="label">Negara Tujuan</label>
+          <div class="control"><input type="text" name="negara_tujuan" class="input" value="{{ prefill.negara_tujuan|default:'' }}" placeholder="cth. Arab Saudi"></div>
+        </div>
+        <div class="field">
+          <label class="label">Maksud Perjalanan</label>
+          <div class="control"><textarea name="maksud_perjalanan" class="textarea" rows="2" placeholder="cth. Non Dinas — Ibadah Umrah">{{ prefill.maksud_perjalanan|default:'' }}</textarea></div>
+        </div>
+        <div class="field">
+          <label class="label">Sumber Pembiayaan</label>
+          <div class="control"><input type="text" name="sumber_pembiayaan" class="input" value="{{ prefill.sumber_pembiayaan|default:'' }}" placeholder="cth. Biaya Sendiri"></div>
+        </div>
+        <div class="columns">
+          <div class="column">
+            <div class="field">
+              <label class="label">Tanggal Berangkat</label>
+              <div class="control"><input type="date" name="tgl_berangkat" class="input" value="{{ prefill.tgl_berangkat|default:'' }}"></div>
+            </div>
+          </div>
+          <div class="column">
+            <div class="field">
+              <label class="label">Tanggal Kembali</label>
+              <div class="control"><input type="date" name="tgl_kembali" class="input" value="{{ prefill.tgl_kembali|default:'' }}"></div>
+            </div>
+          </div>
+        </div>
+
+        {% if kode_terpilih and not prefill %}
+          <p class="help is-danger">
+            Data pegawai/perjalanan tidak dapat dimuat otomatis dari pengajuan terpilih — isi manual di bawah.
+          </p>
+        {% endif %}
+
+        <hr>
+        <div class="section-title" style="font-size:13px;">Pejabat Penandatangan</div>
+        <div class="field">
+          <label class="label">Nama Jabatan</label>
+          <div class="control"><input type="text" name="jabatan_penandatangan" class="input" value="{{ pengaturan.jabatan_penandatangan_kabag|default:'' }}" placeholder="cth. Plt. Kepala Bagian Kerja Sama Luar Negeri"></div>
+        </div>
+        <div class="field">
+          <label class="label">Nama Pejabat</label>
+          <div class="control"><input type="text" name="nama_pejabat" class="input" value="{{ pengaturan.nama_pejabat_kabag|default:'' }}" placeholder="cth. Muhammad Faris Al Bassam, S.E."></div>
+          <p class="helptext">
+            Nilai awal diambil dari <a href="{% url 'pakln:pengaturan_dokumen' %}">Setting</a> — ubah di sini hanya
+            berlaku untuk dokumen ini saja.
+          </p>
+        </div>
+
+        <hr>
+        <div class="field">
+          <label class="label">Tanggal ND</label>
+          <div class="control"><input type="date" name="tanggal_nd" id="ndTanggalInput" class="input" value="{{ default_tanggal_nd }}"></div>
+        </div>
+        <div class="field">
+          <label class="checkbox">
+            <input type="checkbox" name="tampilkan_paraf" id="ndTampilkanParaf" value="1" checked> Tampilkan Kolom Paraf
+          </label>
+          <p class="helptext">Kotak paraf "Ketua Tim AKI" tampil secara default — matikan centang ini untuk menyembunyikannya dari dokumen.</p>
+        </div>
+
+        <p class="helptext">
+          Field NIP, Pangkat/Golongan, Jabatan, Unit Kerja, Maksud Perjalanan, Sumber Pembiayaan, dan
+          tanggal perjalanan belum tercantum pada teks ND Kabag ini — tetap ditangkap di sini untuk
+          dipakai pada dokumen lain (ND Kabiro, ILN) pada tahap berikutnya.
+        </p>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  $(function () {
+    var bulanId = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+    // Tanggal Nota Dinas mengikuti field "Tanggal ND" pada form (default
+    // hari ini, lihat value awal input, tetap bisa diubah manual).
+    function updateTanggalNd() {
+      var raw = $('#ndTanggalInput').val();
+      if (!raw) { $('#prev-tanggal').text(''); return; }
+      var parts = raw.split('-');
+      $('#prev-tanggal').text(Number(parts[2]) + ' ' + bulanId[Number(parts[1]) - 1] + ' ' + parts[0]);
+    }
+    $('#ndKabagForm').on('input change', '#ndTanggalInput', updateTanggalNd);
+    updateTanggalNd();
+
+    // Kotak paraf "Ketua Tim AKI" tampil default (checkbox tercentang) —
+    // dimatikan manual lewat checkbox "Tampilkan Kolom Paraf".
+    function updateParafBox() {
+      var tampil = $('#ndTampilkanParaf').is(':checked');
+      $('#ndParafBox').toggle(tampil);
+      $('#ndSignRow').toggleClass('no-paraf', !tampil);
+    }
+    $('#ndKabagForm').on('change', '#ndTampilkanParaf', updateParafBox);
+    updateParafBox();
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    // Pecah "Jabatan Pejabat Penandatangan" jadi 2 baris sebelum frasa
+    // "(dan) Kerja Sama Luar Negeri" — supaya blok tanda tangan tidak
+    // melebar panjang ke kiri (meniru pola judul jabatan Kementerian PU).
+    // Cerminan persis dari `_split_jabatan_dua_baris` di sisi server.
+    function splitJabatanDuaBaris(jabatan) {
+      var lower = jabatan.toLowerCase();
+      var idx = lower.indexOf('dan kerja sama luar negeri');
+      if (idx === -1) { idx = lower.indexOf('kerja sama luar negeri'); }
+      if (idx === -1) { return [jabatan, '']; }
+      return [jabatan.slice(0, idx).trim(), jabatan.slice(idx).trim()];
+    }
+
+    function updateJabatanTtd() {
+      var raw = ($('input[name="jabatan_penandatangan"]').val() || '').trim();
+      var $el = $('#prev-jabatan-ttd');
+      if (!raw) {
+        $el.text('[jabatan]').addClass('is-placeholder');
+        return;
+      }
+      var parts = splitJabatanDuaBaris(raw);
+      var html = escapeHtml(parts[0]) + (parts[1] ? '<br>' + escapeHtml(parts[1]) : '') + ',';
+      $el.html(html).removeClass('is-placeholder');
+    }
+    $('#ndKabagForm').on('input change', 'input[name="jabatan_penandatangan"]', updateJabatanTtd);
+    updateJabatanTtd();
+
+    var PLACEHOLDERS = {
+      nama: { 'prev-nama-1': '[nama]', 'prev-nama-2': '[nama/nama dkk]' },
+      negara_tujuan: { 'prev-negara-1': '[negara tujuan]', 'prev-negara-2': '[negara tujuan]' },
+      nama_pejabat: { 'prev-nama-pejabat': '[Nama Pejabat]' },
+    };
+
+    // Satu handler generik (delegasi event) untuk semua field form — setiap
+    // <span data-field="..."> di kertas pratinjau otomatis mengikuti
+    // <input>/<textarea name="..."> yang senama, real-time saat diketik.
+    function updatePreview($field) {
+      var name = $field.attr('name');
+      var value = ($field.val() || '').trim();
+      var $targets = $('#ndPaper [data-field="' + name + '"]');
+      $targets.each(function () {
+        var $span = $(this);
+        var fallback = (PLACEHOLDERS[name] && PLACEHOLDERS[name][this.id]) || ('[' + name + ']');
+        $span.text(value === '' ? fallback : value);
+        $span.toggleClass('is-placeholder', value === '');
+      });
+    }
+
+    $('#ndKabagForm').on('input change', 'input[name], textarea[name]', function () {
+      updatePreview($(this));
+    });
+
+    // Isi awal (kalau form sudah punya nilai, mis. hasil back/forward browser).
+    $('#ndKabagForm').find('input[name], textarea[name]').each(function () {
+      updatePreview($(this));
+    });
+  });
+</script>
+{% endblock %}

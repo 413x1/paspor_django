@@ -1,0 +1,40 @@
+{% load static %}<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SSO (Stub) — PASPOR</title>
+  <link rel="stylesheet" href="{% static 'vendors/bulma/css/versions/bulma-no-dark-mode.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20261019">
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <img class="logo" src="{% static 'images/logopu.png' %}" alt="Logo Kementerian PU">
+      <h2>SSO (Stub)</h2>
+      <div class="role-pill"><span class="tag">Hanya mode pengembangan</span></div>
+
+      {% for message in messages %}
+        <div class="login-error">{{ message }}</div>
+      {% endfor %}
+
+      <p class="helptext" style="margin-bottom:12px;">Pilih NIP yang dikembalikan penyedia SSO. Data kepegawaian diambil dari stub e-HRM.</p>
+      <form method="post">
+        {% csrf_token %}
+        <div class="field">
+          <label class="label" for="nip">NIP</label>
+          <div class="control">
+            <div class="select is-fullwidth">
+              <select id="nip" name="nip" required>
+                {% for nip, nama in daftar_nip %}<option value="{{ nip }}">{{ nip }} — {{ nama }}</option>{% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+        <button type="submit" class="button is-primary is-fullwidth">Masuk</button>
+      </form>
+      <p class="helptext"><a href="{% url 'login' %}">← Kembali ke halaman login</a></p>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Notifikasi{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Notifikasi</h2>
+    <p class="sub">Riwayat lengkap notifikasi pengajuan surat Anda.</p>
+  </div>
+  {% if notif_unread_count %}
+    <form method="post" action="{% url 'notifications:mark_all_read' %}">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <button type="submit" class="button is-small">Tandai Semua Dibaca</button>
+    </form>
+  {% endif %}
+</div>
+
+<div class="box notif-list-box">
+  {% for label, items in groups %}
+    <div class="notif-group">
+      <div class="notif-group-label">{{ label }}</div>
+      {% for notif in items %}
+        {% include "notifications/_item.html" with notif=notif dismissible=False %}
+      {% endfor %}
+    </div>
+  {% empty %}
+    <div class="notif-empty">Belum ada notifikasi.</div>
+  {% endfor %}
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="pagination is-small is-centered" role="navigation" aria-label="pagination">
+  {% if page_obj.has_previous %}
+    <a class="pagination-previous" href="?page={{ page_obj.previous_page_number }}">« Sebelumnya</a>
+  {% endif %}
+  {% if page_obj.has_next %}
+    <a class="pagination-next" href="?page={{ page_obj.next_page_number }}">Berikutnya »</a>
+  {% endif %}
+  <ul class="pagination-list">
+    {% for num in page_obj.paginator.page_range %}
+      <li>
+        <a href="?page={{ num }}" class="pagination-link{% if num == page_obj.number %} is-current{% endif %}" aria-label="Halaman {{ num }}">{{ num }}</a>
+      </li>
+    {% endfor %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}
