@@ -40,7 +40,7 @@ def _user(username, role, email="", **kw):
     return User.objects.create_user(username=username, password="x", role=role, email=email, **kw)
 
 
-@override_settings(MAIL_ALLOW_SEND=True, MAIL_QUEUE=_antrean(), SITE_BASE_URL="http://situs.test")
+@override_settings(MAIL_ALLOW_SEND=True, MAIL_DEV_REDIRECT_TO="", MAIL_QUEUE=_antrean(), SITE_BASE_URL="http://situs.test")
 class AntreTests(TestCase):
     def setUp(self):
         self.unor = _user("unor1", "admin_unor", "unor1@pu.go.id")
@@ -112,7 +112,7 @@ class AntreTests(TestCase):
         self.assertEqual(Notification.objects.count(), 1)
 
 
-@override_settings(MAIL_ALLOW_SEND=True, MAIL_QUEUE=_antrean(RETRY_DELAY=30, MAX_ATTEMPTS=3, LOCK_TTL=60))
+@override_settings(MAIL_ALLOW_SEND=True, MAIL_DEV_REDIRECT_TO="", MAIL_QUEUE=_antrean(RETRY_DELAY=30, MAX_ATTEMPTS=3, LOCK_TTL=60))
 class WorkerTests(TestCase):
     def setUp(self):
         self.unor = _user("unor1", "admin_unor", "unor1@pu.go.id")
@@ -250,7 +250,7 @@ class CommandTests(TestCase):
             call_command("bersihkan_email_log", hari=0, stdout=out)
 
 
-@override_settings(MAIL_ALLOW_SEND=True)
+@override_settings(MAIL_ALLOW_SEND=True, MAIL_DEV_REDIRECT_TO="")
 class MonitoringTests(TestCase):
     def setUp(self):
         self.pakln = _user("adm.pakln", "admin_pakln", "pakln@pu.go.id")
