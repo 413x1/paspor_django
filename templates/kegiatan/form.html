@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}{{ judul }}{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>{{ judul }}</h2>
+    <p class="sub">
+      {% if kegiatan %}
+        {{ kegiatan.nama }} ·
+        {% if kegiatan.status == "disetujui" and not kegiatan.is_active %}<span class="tag kegiatan-status is-nonaktif">Nonaktif</span>
+        {% else %}<span class="tag kegiatan-status is-{{ kegiatan.status }}">{{ kegiatan.get_status_display }}</span>{% endif %}
+        · {{ kegiatan.get_sumber_data_display }}
+      {% else %}
+        Lengkapi data kegiatan beserta dasar kegiatannya.
+      {% endif %}
+    </p>
+  </div>
+  <a href="{{ kembali_url }}" class="button is-small">← {{ kembali_label }}</a>
+</div>
+
+{% if info %}<div class="notification paspor-msg is-info">{{ info }}</div>{% endif %}
+
+{% if kegiatan.diusulkan_oleh %}
+  <div class="notification paspor-msg {% if kegiatan.status == 'ditolak' %}is-danger{% elif kegiatan.status == 'menunggu' %}is-warning{% else %}is-info{% endif %}">
+    <strong>Diusulkan oleh {{ kegiatan.diusulkan_oleh.get_role_display }} {{ kegiatan.diusulkan_oleh.profile.nama|default:kegiatan.diusulkan_oleh.get_full_name|default:kegiatan.diusulkan_oleh.username }}</strong>
+    pada {{ kegiatan.created_at|date:"d M Y H:i" }}.
+    {% if kegiatan.status == "ditolak" %}<br><strong>✕ Ditolak:</strong> {{ kegiatan.catatan_keputusan }}
+    {% elif kegiatan.status == "disetujui" and kegiatan.tgl_diputus %}<br><strong>✓ Disetujui</strong> {{ kegiatan.tgl_diputus|date:"d M Y" }}{% if kegiatan.catatan_keputusan %} — {{ kegiatan.catatan_keputusan }}{% endif %}
+    {% endif %}
+  </div>
+{% endif %}
+
+{% if mirip %}
+  <div class="box is-warning-soft">
+    <div class="section-title is-small">⚠ Kegiatan serupa sudah ada</div>
+    <p class="cell-muted is-title-sub">Pastikan bukan duplikat sebelum {% if peran == "admin_pakln" %}menyetujui{% else %}mengirim{% endif %}.</p>
+    <ul>
+      {% for m in mirip %}<li><strong>{{ m.nama }}</strong> — {{ m.penyelenggara }}, {{ m.kota }} ({{ m.tgl_mulai|date:"d M Y" }} – {{ m.tgl_selesai|date:"d M Y" }}) · {{ m.get_status_display }}</li>{% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data" novalidate>
+  {% csrf_token %}
+  {% if tipe %}<input type="hidden" name="tipe" value="{{ tipe }}">{% endif %}
+  <fieldset {% if readonly %}disabled{% endif %}>
+  <div class="box">
+    <div class="section-title is-small is-spaced">Data Kegiatan</div>
+    {% if form.non_field_errors %}<div class="notification paspor-msg is-danger">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+    {% include "kegiatan/_field.html" with field=form.nama wajib=1 %}
+    {% include "kegiatan/_field.html" with field=form.deskripsi %}
+    <div class="columns">
+      <div class="column">{% include "kegiatan/_field.html" with field=form.kategori wajib=1 %}
+        <p class="helptext">Boleh lebih dari satu kategori, kecuali kegiatan pendidikan (Master/Doctoral) — tepat satu.</p></div>
+      <div class="column">{% include "kegiatan/_field.html" with field=form.skema_pendanaan wajib=1 %}</div>
+    </div>
+    <div class="columns">
+      <div class="column">{% include "kegiatan/_field.html" with field=form.penyelenggara label="Penyelenggara / Universitas" wajib=1 %}
+        <p class="helptext">Untuk kegiatan pendidikan, isi nama universitas.</p></div>
+      <div class="column">{% include "kegiatan/_field.html" with field=form.negara wajib=1 %}</div>
+    </div>
+    <div class="columns">
+      <div class="column">{% include "kegiatan/_field.html" with field=form.kota wajib=1 %}</div>
+      <div class="column">{% include "kegiatan/_field.html" with field=form.tahun_pelaksanaan %}</div>
+    </div>
+    <div class="columns">
+      <div class="column">{% include "kegiatan/_field.html" with field=form.tgl_mulai wajib=1 %}</div>
+      <div class="column">{% include "kegiatan/_field.html" with field=form.tgl_selesai wajib=1 %}</div>
+    </div>
+    <p class="helptext">Periode kegiatan berbeda dari periode perjalanan; periode perjalanan pegawai wajib mencakup periode kegiatan.</p>
+    {% if form.kode_pintar %}{% include "kegiatan/_field.html" with field=form.kode_pintar label="Kode Platform BPSDM" %}{% endif %}
+  </div>
+
+  <div class="box">
+    <div class="section-title is-small">Dasar Kegiatan <span class="badge-auto">Wajib</span></div>
+    <p class="cell-muted is-title-sub">Rujukan resmi keberadaan kegiatan: nomor surat (undangan/penugasan/LoA), tautan resmi, {% if peran != 'pegawai' %}data Platform BPSDM, {% endif %}atau lainnya. Minimal satu.</p>
+    {% if readonly %}
+      <ul class="dasar-list">
+        {% for d in kegiatan.dasar_list.all %}
+          <li>
+            <span><strong>{{ d.get_jenis_display }}</strong> —
+              {% if d.jenis == "tautan" %}<a href="{{ d.tautan }}" target="_blank" rel="noopener">{{ d.tautan }}</a>{% else %}{{ d.ringkas }}{% endif %}</span>
+            {% if d.berkas %}<button type="button" class="button is-small" data-doc-preview="{{ d.berkas.url }}" data-doc-title="Dasar Kegiatan">👁 Lihat</button>{% endif %}
+          </li>
+        {% empty %}<li class="cell-muted">Belum ada dasar kegiatan.</li>{% endfor %}
+      </ul>
+    {% else %}
+      {{ formset.management_form }}
+      {% for e in formset.non_form_errors %}<div class="notification paspor-msg is-danger">{{ e }}</div>{% endfor %}
+      <div id="dasarRows">
+        {% for f in formset %}{% include "kegiatan/_dasar_row.html" with f=f nomor=forloop.counter %}{% endfor %}
+      </div>
+      <template id="dasarTemplate">{% include "kegiatan/_dasar_row.html" with f=formset.empty_form nomor="__nomor__" %}</template>
+      <button type="button" class="button is-small" id="dasarTambah">+ Tambah Dasar</button>
+    {% endif %}
+  </div>
+  </fieldset>
+
+  {% if not readonly %}
+  <div class="actions-bar">
+    <a href="{{ kembali_url }}" class="button">Batal</a>
+    <button type="submit" class="button is-primary">{{ tombol_simpan }}</button>
+  </div>
+  {% endif %}
+</form>
+
+{% if keputusan_url %}
+<div class="box is-warning-soft" style="margin-top:20px;">
+  <div class="section-title is-small">Putuskan Usulan</div>
+  <p class="cell-muted is-title-sub">Simpan perubahan isian lebih dulu bila Anda menyuntingnya. Setelah disetujui, kegiatan dapat dipilih pegawai.</p>
+  <form method="post" action="{{ keputusan_url }}">
+    {% csrf_token %}
+    <div class="field">
+      <label class="label" for="catatanKeputusan">Catatan untuk pengusul <span class="cell-muted">(wajib bila ditolak)</span></label>
+      <div class="control"><textarea id="catatanKeputusan" name="catatan" class="textarea" rows="3" placeholder="cth. Gunakan kegiatan X yang sudah ada"></textarea></div>
+    </div>
+    <div class="buttons">
+      <button type="submit" name="keputusan" value="tolak" class="button is-danger is-light"
+              data-confirm="Tolak usulan kegiatan ini? Catatan akan dikirim ke pengusul." data-confirm-title="Tolak Usulan" data-confirm-ok="Tolak" data-confirm-type="danger">✕ Tolak</button>
+      <button type="submit" name="keputusan" value="setujui" class="button is-success"
+              data-confirm="Setujui usulan kegiatan ini? Kegiatan langsung dapat dipilih pegawai." data-confirm-title="Setujui Usulan" data-confirm-ok="Setujui">✓ Setujui</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+{% if kegiatan and peserta is not None %}
+<div class="box" style="margin-top:20px;">
+  <div class="section-title is-small">Peserta <span class="badge-auto">{{ peserta|length }}</span></div>
+  {% if peserta %}
+  <div class="table-wrap">
+    <table class="table data-table is-fullwidth is-hoverable">
+      <thead><tr><th>Pegawai</th><th>Unit Organisasi</th><th>Kode</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for p in peserta %}
+          <tr>
+            <td><strong>{{ p.pegawai.profile.nama|default:p.pegawai.username }}</strong><br><span class="cell-muted">{{ p.pegawai.profile.nip }}</span></td>
+            <td>{{ p.unit_organisasi.alias|default:"—" }}</td>
+            <td>{{ p.kode }}</td>
+            <td><span class="tag paspor-status is-{{ p.status }}"><span class="dot"></span>{{ p.get_status_display }}</span></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<p class="cell-muted">Belum ada pengajuan yang memilih kegiatan ini.</p>{% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  $(function () {
+    // Field dasar yang tampil mengikuti jenis (surat/tautan/pintar/lainnya).
+    function syncJenis($row) {
+      var jenis = $row.find('[data-dasar-jenis]').val();
+      $row.find('[data-dasar-untuk]').each(function () { $(this).toggle($(this).data('dasar-untuk') === jenis); });
+    }
+    function nomori() {
+      $('#dasarRows [data-dasar-row]').each(function (i) { $(this).find('[data-dasar-nomor]').text(i + 1); });
+    }
+    $('#dasarRows [data-dasar-row]').each(function () { syncJenis($(this)); });
+    $(document).on('change', '[data-dasar-jenis]', function () { syncJenis($(this).closest('[data-dasar-row]')); });
+
+    $('#dasarTambah').on('click', function () {
+      var $total = $('#id_dasar-TOTAL_FORMS');
+      var i = parseInt($total.val(), 10);
+      var html = $('#dasarTemplate').html().replace(/__prefix__/g, i);
+      var $row = $(html).appendTo('#dasarRows');
+      $total.val(i + 1);
+      syncJenis($row);
+      nomori();
+    });
+
+    $(document).on('click', '[data-dasar-hapus]', function () {
+      var $row = $(this).closest('[data-dasar-row]');
+      var $cb = $row.find('input[type=checkbox][name$="-DELETE"]');
+      var hapus = !$cb.prop('checked');
+      $cb.prop('checked', hapus);
+      $row.toggleClass('is-deleted', hapus);
+      $(this).text(hapus ? '↻ Batal Hapus' : '🗑 Hapus');
+    });
+  });
+</script>
+{% endblock %}

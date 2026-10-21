@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Dasbor Admin BKO{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Dasbor Admin BKO</h2>
+    <p class="sub">SK Tugas Belajar PDLN Tipe 2 Pendidikan dari seluruh unit organisasi.</p>
+  </div>
+  <a href="{% url 'bko:rekap' %}" class="button is-small">Rekap</a>
+</div>
+
+<div class="section-title">Ringkasan</div>
+<div class="summary-grid is-wide">
+  <div class="summary-card"><div class="num">{{ summary.total }}</div><div class="label">Total Pengajuan Masuk</div></div>
+  <div class="summary-card{% if summary.menunggu %} active{% endif %}"><div class="num">{{ summary.menunggu }}</div><div class="label">Menunggu SK Tubel</div></div>
+  <div class="summary-card"><div class="num">{{ summary.diunggah }}</div><div class="label">SK Tubel Diunggah (berjalan)</div></div>
+  <div class="summary-card"><div class="num">{{ summary.ditutup }}</div><div class="label">Ditutup Admin BKO (berjalan)</div></div>
+  <div class="summary-card{% if summary.selesai > 0 %} is-done{% endif %}"><div class="num">{{ summary.selesai }}</div><div class="label">Pengajuan Selesai</div></div>
+</div>
+
+<div class="box">
+  <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+    <span>Antrean SK Tugas Belajar</span>
+    <div class="select is-small">
+      <select id="filterStatusBko" aria-label="Filter status BKO">
+        <option value="">Semua status BKO</option>
+        {% for nilai, label in opsi_status_bko %}<option value="{{ nilai }}"{% if nilai == "menunggu" %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table id="dashboardTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
+      <thead>
+        <tr><th>Pegawai</th><th>Unor</th><th>Perguruan Tinggi</th><th>Berangkat</th><th>Tgl Masuk BKO</th><th>Status Pengajuan</th><th>Status BKO</th><th>Action</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
+<script>
+  $(function () {
+    var tabel = $('#dashboardTable').DataTable({
+      serverSide: true, processing: true, autoWidth: false,
+      ajax: {
+        url: '{% url "bko:dashboard_data" %}', type: 'GET', cache: false,
+        data: function (d) { d.status_bko = $('#filterStatusBko').val(); },
+      },
+      columns: [
+        { data: 0 }, { data: 1 },
+        { data: 2, orderable: false, searchable: false },
+        { data: 3 }, { data: 4 }, { data: 5 }, { data: 6 },
+        { data: 7, orderable: false, searchable: false },
+      ],
+      order: [[4, 'desc']],
+      pageLength: 10, lengthMenu: [10, 25, 50, 100],
+      dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
+      language: {
+        search: '', searchPlaceholder: 'Cari pengajuan...', lengthMenu: 'Tampilkan _MENU_ pengajuan',
+        info: 'Menampilkan _START_–_END_ dari _TOTAL_ pengajuan', infoEmpty: 'Belum ada pengajuan',
+        infoFiltered: '(disaring dari _MAX_)', zeroRecords: 'Tidak ada pengajuan yang cocok.', processing: 'Memuat…',
+        paginate: { previous: '‹ Sebelumnya', next: 'Berikutnya ›' },
+      },
+    });
+    $('#filterStatusBko').on('change', function () { tabel.ajax.reload(); });
+  });
+</script>
+{% endblock %}

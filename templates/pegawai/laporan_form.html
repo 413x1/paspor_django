@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Pelaporan PDLN{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/pelaporan.css' %}?v=20261013c">
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Pelaporan PDLN</h2>
+    <p class="sub">{{ pengajuan.kode }} · {{ pengajuan.jenis_label }}</p>
+  </div>
+  <a href="{% url 'pegawai:pelaporan' %}" class="button is-small">← Kembali ke Daftar Pelaporan</a>
+</div>
+
+{% if laporan.status == "dikembalikan" %}
+  <div class="notification paspor-msg is-warning">
+    <strong>⚠ Laporan dikembalikan Biro PAKLN:</strong> {{ laporan.catatan_pakln }}
+    <br>Perbaiki isian di bawah, lalu tekan <strong>Laporkan</strong> dengan catatan perbaikan.
+  </div>
+{% elif laporan.status == "draft" %}
+  <div class="notification paspor-msg is-info">Draft laporan tersimpan. Lengkapi isian, lalu tekan <strong>Laporkan</strong> untuk menyampaikannya ke Biro PAKLN.</div>
+{% elif laporan.status == "menunggu" %}
+  <div class="notification paspor-msg is-info">Laporan sudah dilaporkan dan <strong>menunggu verifikasi Biro PAKLN</strong>. Isian tidak dapat diubah.</div>
+{% elif laporan.status == "disetujui" %}
+  <div class="notification paspor-msg is-success">Laporan telah <strong>disetujui</strong> Admin Biro PAKLN. Pengajuan dinyatakan tuntas.</div>
+{% endif %}
+{% if dibekukan %}<div class="notification paspor-msg is-warning">{{ dibekukan }}</div>{% endif %}
+{% if form.non_field_errors %}<div class="notification paspor-msg is-danger">{{ form.non_field_errors }}</div>{% endif %}
+
+<form method="post" enctype="multipart/form-data" id="laporanForm" class="laporan-form" novalidate>
+  {% csrf_token %}
+
+  {# ===== Bagian A: data pengajuan (hanya baca) — layout horizontal Bulma ===== #}
+  <div class="box">
+    <div class="section-title is-small">A. Data Pengajuan</div>
+
+    <div class="field is-horizontal">
+      <div class="field-label is-normal"><label class="label">No.Register Yang Dilaporkan</label></div>
+      <div class="field-body">
+        <div class="field has-addons">
+          <div class="control is-expanded">
+            <a class="input laporan-kode-link" href="{% url 'pegawai:monitor_progres' kode=pengajuan.kode %}" target="_blank" rel="noopener" title="Buka detail pengajuan di tab baru">{{ pengajuan.kode }}</a>
+          </div>
+          <div class="control">
+            <a class="button is-info is-light" href="{% url 'pegawai:monitor_progres' kode=pengajuan.kode %}" target="_blank" rel="noopener">Lihat Detail</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field is-horizontal">
+      <div class="field-label is-normal"><label class="label">Nama Kegiatan</label></div>
+      <div class="field-body"><div class="field"><div class="control">
+        <input class="input" type="text" readonly
+          value="{% if pengajuan.detail.kegiatan_nama %}{{ pengajuan.detail.kegiatan_nama }}{% else %}{{ pengajuan.kategori.nama_kategori|default:pengajuan.jenis_label }}{% endif %}{% if pengajuan.detail.penyelenggara %} — {{ pengajuan.detail.penyelenggara }}{% elif pengajuan.detail.perguruan_tinggi %} — {{ pengajuan.detail.perguruan_tinggi }}{% elif pengajuan.maksud %} — {{ pengajuan.maksud }}{% endif %}">
+      </div></div></div>
+    </div>
+
+    <div class="field is-horizontal">
+      <div class="field-label is-normal"><label class="label">Tempat</label></div>
+      <div class="field-body"><div class="field"><div class="control">
+        <input class="input" type="text" value="{{ negara_tujuan }}" readonly>
+      </div></div></div>
+    </div>
+
+    <div class="field is-horizontal">
+      <div class="field-label is-normal"><label class="label">Waktu Pelaksanaan</label></div>
+      <div class="field-body"><div class="field"><div class="control">
+        <input class="input" type="text" value="{{ tanggal_pelaksanaan }}" readonly>
+      </div></div></div>
+    </div>
+  </div>
+
+  {# ===== Bagian B: uraian ===== #}
+  <div class="box">
+    <div class="section-title is-small">B. Uraian Laporan</div>
+    {% for field in form.visible_fields %}
+      {% if field.name == "tujuan_kegiatan" or field.name == "materi_kegiatan" or field.name == "tindak_lanjut" or field.name == "dampak_rekomendasi" %}
+      <div class="field is-horizontal">
+        <div class="field-label is-normal">
+          <label class="label" for="{{ field.id_for_label }}">{{ field.label }} <span class="wajib">*</span></label>
+        </div>
+        <div class="field-body"><div class="field">
+          <div class="control">{{ field }}</div>
+          {% for e in field.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div></div>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  {# ===== Bagian C: biaya dan dokumen ===== #}
+  <div class="box">
+    <div class="section-title is-small">C. Biaya dan Dokumen</div>
+
+    <div class="columns">
+      <div class="column is-4">
+        <div class="field">
+          <label class="label" for="namaPeserta">Nama Peserta</label>
+          {# Otomatis dari akun pemilik laporan; tanpa atribut name sehingga tidak ikut terkirim dan tidak dapat diubah. #}
+          <div class="control"><input class="input" id="namaPeserta" type="text" readonly value="{{ pengajuan.pegawai.profile.nama|default:pengajuan.pegawai.get_full_name }}"></div>
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.estimasi_biaya.id_for_label }}">Estimasi Biaya (Rp) <span class="wajib">*</span></label>
+          <div class="control">{{ form.estimasi_biaya }}</div>
+          {% for e in form.estimasi_biaya.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ form.realisasi_biaya.id_for_label }}">Realisasi Biaya (Rp) <span class="wajib">*</span></label>
+          <div class="control">{{ form.realisasi_biaya }}</div>
+          {% for e in form.realisasi_biaya.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label" for="{{ form.dokumen_laporan.id_for_label }}">Dokumen Laporan Kegiatan <span class="wajib">*</span> <span class="cell-muted">(PDF, maks. 10 MB)</span></label>
+      <div class="file has-name is-fullwidth">
+        <label class="file-label">
+          {{ form.dokumen_laporan }}
+          <span class="file-cta"><span class="file-icon">{% include "partials/_ikon_unggah.html" %}</span><span class="file-label">Pilih berkas</span></span>
+          <span class="file-name" id="namaBerkas" data-file-name>{% if laporan.file %}{{ nama_berkas }} (tersimpan){% else %}Belum ada berkas dipilih{% endif %}</span>
+        </label>
+      </div>
+      {% for e in form.dokumen_laporan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+      {% if laporan.file %}
+        <p class="helptext">
+          <button type="button" class="button is-small" data-doc-preview="{{ laporan.file.url }}" data-doc-title="Laporan {{ pengajuan.kode }}">👁 Lihat dokumen tersimpan</button>
+          {% if dapat_diubah %}Memilih berkas baru akan menggantikan dokumen tersimpan.{% endif %}
+        </p>
+      {% endif %}
+    </div>
+
+    {% if form.catatan_perbaikan %}
+    <div class="field">
+      <label class="label" for="{{ form.catatan_perbaikan.id_for_label }}">{{ form.catatan_perbaikan.label }} <span class="wajib">*</span></label>
+      <div class="control">{{ form.catatan_perbaikan }}</div>
+      {% for e in form.catatan_perbaikan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+      <p class="helptext">Wajib diisi saat melaporkan ulang — jelaskan perbaikan yang dilakukan.</p>
+    </div>
+    {% endif %}
+
+    {% if dapat_diubah %}
+    <div class="buttons is-right" style="margin-top:20px;">
+      <button type="submit" name="action" value="draft" class="button is-info">Simpan</button>
+      <button type="submit" name="action" value="submit" class="button is-danger"
+        data-confirm="Laporan akan disampaikan ke Biro PAKLN untuk diverifikasi dan tidak dapat diubah selama proses verifikasi. Lanjutkan?"
+        data-confirm-type="warning" data-confirm-title="Laporkan" data-confirm-ok="Ya, Laporkan">Laporkan</button>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if dapat_diubah %}
+  <div class="info-laporan">
+    <strong>INFO</strong>
+    <ul>
+      <li>Tekan <strong>Simpan</strong> untuk menyimpan sebagai draft (isian boleh belum lengkap).</li>
+      <li>Tekan <strong>Laporkan</strong> untuk menyampaikan laporan ke Biro PAKLN. Seluruh isian bertanda <span class="wajib">*</span> (uraian, biaya, dan dokumen PDF) wajib terisi.</li>
+    </ul>
+  </div>
+  {% endif %}
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  $(function () {
+    // Format Rupiah: 1000000 -> 1.000.000 saat mengetik (kursor tetap pada posisi angka yang sama).
+    function titikRibuan(teks) {
+      return teks.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+    $('.input-rupiah').each(function () { this.value = titikRibuan(this.value); });
+    $('.input-rupiah').on('input', function () {
+      var el = this;
+      var angkaDiKiri = el.value.slice(0, el.selectionStart).replace(/\D/g, '').length;
+      el.value = titikRibuan(el.value);
+      var posisi = 0, hitung = 0;
+      while (posisi < el.value.length && hitung < angkaDiKiri) {
+        if (/\d/.test(el.value.charAt(posisi))) { hitung += 1; }
+        posisi += 1;
+      }
+      el.setSelectionRange(posisi, posisi);
+    });
+
+  });
+</script>
+{% endblock %}

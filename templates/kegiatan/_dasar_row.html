@@ -1,0 +1,34 @@
+{# Satu baris formset Dasar Kegiatan (B15). Context: f (DasarKegiatanForm), nomor #}
+<div class="dasar-row" data-dasar-row>
+  {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+  <div class="dasar-row-head">
+    <strong>Dasar <span data-dasar-nomor>{{ nomor }}</span></strong>
+    {% if f.DELETE %}
+      <label class="checkbox"><span hidden>{{ f.DELETE }}</span>
+        <button type="button" class="button is-small is-danger is-light" data-dasar-hapus>🗑 Hapus</button>
+      </label>
+    {% endif %}
+  </div>
+  {% for e in f.non_field_errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+  <div class="columns">
+    <div class="column is-4">{% include "kegiatan/_field.html" with field=f.jenis label="Jenis Dasar" wajib=1 select=1 %}</div>
+    <div class="column" data-dasar-untuk="surat">
+      <div class="columns">
+        <div class="column">{% include "kegiatan/_field.html" with field=f.nomor_surat wajib=1 %}</div>
+        <div class="column">{% include "kegiatan/_field.html" with field=f.tgl_surat %}</div>
+      </div>
+    </div>
+    <div class="column" data-dasar-untuk="tautan">{% include "kegiatan/_field.html" with field=f.tautan wajib=1 %}</div>
+    {% if f.kode_pintar %}<div class="column" data-dasar-untuk="pintar">{% include "kegiatan/_field.html" with field=f.kode_pintar wajib=1 %}</div>{% endif %}
+    <div class="column" data-dasar-untuk="lainnya">{% include "kegiatan/_field.html" with field=f.keterangan wajib=1 %}</div>
+  </div>
+  <div class="field">
+    <label class="label">Berkas PDF (opsional, maks. 2 MB)</label>
+    {% include "partials/_input_berkas.html" with field=f.berkas %}
+    {% if f.instance.berkas %}
+      <p class="helptext">Berkas saat ini:
+        <a href="#" data-doc-preview="{{ f.instance.berkas.url }}" data-doc-title="Dasar Kegiatan">👁 Lihat</a> — pilih berkas baru untuk mengganti.</p>
+    {% endif %}
+    {% for e in f.berkas.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+  </div>
+</div>

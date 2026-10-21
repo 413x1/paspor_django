@@ -1,0 +1,12 @@
+{# Input berkas bergaya PASPOR (komponen .file Bulma + ikon unggah) untuk field form Django. #}
+{# Context: field (BoundField; widget wajib ber-class "file-input"), kosong (opsional: teks saat belum ada berkas). #}
+<div class="file has-name is-fullwidth">
+  <label class="file-label">
+    {{ field }}
+    <span class="file-cta">
+      <span class="file-icon">{% include "partials/_ikon_unggah.html" %}</span>
+      <span class="file-label">Pilih berkas</span>
+    </span>
+    <span class="file-name" data-file-name>{{ kosong|default:"Belum ada berkas dipilih" }}</span>
+  </label>
+</div>
