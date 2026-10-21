@@ -1,0 +1,48 @@
+/* Halaman Pelaporan PDLN. Warna tombol memakai varian global style.css
+   (.is-info, .is-success, .is-danger, .is-light) — lihat
+   wiki/instructions/PASPOR_DESIGN_GUIDE.MD §8. */
+
+/* ---------- Modal Verifikasi Laporan (Admin PAKLN: Pelaporan PDLN) ---------- */
+.modal.paspor-modal.modal-verifikasi .modal-card { max-width: 640px; }
+.modal-verifikasi .modal-card-body { max-height: 92vh; overflow-y: auto; }
+.modal-verifikasi .verif-label {
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--slate-400); margin-bottom: 4px;
+}
+.modal-verifikasi .verif-isi {
+  max-height: 38vh; overflow-y: auto; padding: 2px 16px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--bg);
+}
+.modal-verifikasi .verif-item { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.modal-verifikasi .verif-item:last-child { border-bottom: 0; }
+.modal-verifikasi .verif-teks { font-size: 14px; line-height: 1.55; color: var(--slate-900); white-space: pre-line; }
+.modal-verifikasi .verif-biaya { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+.modal-verifikasi .verif-kotak { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--white); }
+.modal-verifikasi .verif-nilai { font-size: 16px; font-weight: 800; color: var(--navy-900); }
+.modal-verifikasi .verif-dokumen {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 18px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px;
+}
+.modal-verifikasi .verif-aksi { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+@media (max-width: 520px) {
+  .modal-verifikasi .verif-biaya { grid-template-columns: 1fr; }
+  .modal-verifikasi .verif-dokumen { flex-direction: column; align-items: flex-start; }
+}
+
+/* ---------- Aksi Admin PAKLN: Lihat / Verifikasi / Request Perbaikan ---------- */
+.aksi-pelaporan { display: flex; flex-wrap: wrap; gap: 6px; }
+.modal-verifikasi .modal-card { position: relative; }
+.modal-verifikasi .delete { position: absolute; top: 16px; right: 16px; }
+.modal.paspor-modal.modal-revisi .modal-card { max-width: 520px; }
+
+/* ---------- Formulir Laporan PDLN (pegawai/laporan_form.html) ---------- */
+/* Isian bagian A hanya-baca: abu-abu, tidak bisa diubah. */
+.laporan-form .input[readonly] { background: var(--bg); color: var(--slate-600); cursor: default; }
+/* Kode pengajuan sebagai tautan biru di dalam kotak isian. */
+.laporan-form a.input.laporan-kode-link { background: var(--bg); color: var(--teal); font-weight: 700; text-decoration: none; }
+.laporan-form a.input.laporan-kode-link:hover { text-decoration: underline; }
+.laporan-form .field-label.is-normal { text-align: left; }
+@media screen and (min-width: 769px) { .laporan-form .field.is-horizontal > .field-label { flex: 0 0 200px; } }
+.laporan-form .wajib { color: var(--red); font-weight: 700; }
+.laporan-form .info-laporan { font-size: 13px; color: var(--slate-600); }
+.laporan-form .info-laporan ul { margin: 4px 0 0 18px; list-style: disc; }

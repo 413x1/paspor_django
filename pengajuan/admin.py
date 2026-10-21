@@ -2,6 +2,7 @@ from django.contrib import admin
 
 from .models import (
     DetailPdln,
+    DokumenBko,
     DokumenBpsdm,
     DokumenGenerateLog,
     DokumenPakln,
@@ -39,6 +40,11 @@ class DetailPdlnInline(admin.StackedInline):
 
 class DokumenBpsdmInline(admin.TabularInline):
     model = DokumenBpsdm
+    extra = 0
+
+
+class DokumenBkoInline(admin.TabularInline):
+    model = DokumenBko
     extra = 0
 
 
@@ -82,15 +88,15 @@ class RiwayatPengajuanInline(_ReadOnlyMixin, admin.TabularInline):
 class PengajuanAdmin(admin.ModelAdmin):
     list_display = (
         "kode", "pegawai", "jenis_perjalanan", "tipe_pdln", "kategori", "tujuan_negara_display", "kanal",
-        "status", "tgl_pengajuan",
+        "status", "status_bko", "tgl_pengajuan",
     )
-    list_filter = ("jenis_perjalanan", "tipe_pdln", "status", "kanal", "unit_organisasi", "kategori")
+    list_filter = ("jenis_perjalanan", "tipe_pdln", "status", "status_bko", "kanal", "unit_organisasi", "kategori")
     search_fields = ("kode", "pegawai__username", "pegawai__profile__nama", "pegawai__profile__nip")
     readonly_fields = ("kode", "created_at", "updated_at")
     filter_horizontal = ("tujuan_negara",)
     inlines = [
         DetailPdlnInline, DokumenPegawaiInline, DokumenUnorInline, DokumenUnorPendukungInline,
-        DokumenBpsdmInline, DokumenPaklnInline, DokumenPaklnPendukungInline, LaporanPdlnInline,
+        DokumenBpsdmInline, DokumenBkoInline, DokumenPaklnInline, DokumenPaklnPendukungInline, LaporanPdlnInline,
         RiwayatPengajuanInline,
     ]
 

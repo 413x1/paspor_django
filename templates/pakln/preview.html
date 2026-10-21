@@ -3,6 +3,7 @@
 {% block wrap_extra_class %} narrow{% endblock %}
 
 {% block content %}
+{% include "partials/_status_bko.html" %}
 {% if catatan_perbaikan %}
   <div class="notification paspor-msg is-info">
     <strong>↻ Perbaikan dari {% if pengajuan.is_tipe2 %}Admin BPSDM{% else %}Admin Unor{% endif %}:</strong> {{ catatan_perbaikan|linebreaksbr }}
@@ -18,7 +19,7 @@
 <div class="preview-split">
 <div class="box">
   <div class="section-title">Pratinjau Pengajuan — {{ pengajuan.kode }}</div>
-  <p class="sub" style="margin:-10px 0 12px;"><span class="tag paspor-status is-{{ pengajuan.status }}"><span class="dot"></span>{{ pengajuan.get_status_display }}</span></p>
+  <p class="sub is-title-sub"><span class="tag paspor-status is-{{ pengajuan.status }}"><span class="dot"></span>{{ pengajuan.get_status_display }}</span></p>
   {% include "partials/_ringkasan_pengajuan.html" %}
 </div>
 
@@ -52,8 +53,8 @@
 <div class="preview-split">
 {% if pengajuan.status == "proses_pakln" and not dibekukan %}
 <div class="box is-danger-soft">
-  <div class="section-title" style="font-size:14px;">↩ Kembalikan ke {{ tujuan_kembali }}</div>
-  <p class="cell-muted" style="margin:-8px 0 14px;">
+  <div class="section-title is-small">↩ Kembalikan ke {{ tujuan_kembali }}</div>
+  <p class="cell-muted is-title-sub">
     Gunakan ini jika ada kekurangan atau kesalahan berkas administrasi {{ tujuan_kembali }} yang perlu diperbaiki.
     Pengajuan akan kembali ke tahap {{ tujuan_kembali }} sampai diteruskan ulang.
   </p>

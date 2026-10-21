@@ -124,9 +124,11 @@ def _aktivitas_riwayat():
         "dikirim": A.KIRIM_PENGAJUAN, "dikirim_ulang": A.KIRIM_PENGAJUAN,
         "diteruskan_pakln": A.TERUSKAN_PENGAJUAN, "diteruskan_ulang": A.TERUSKAN_PENGAJUAN,
         "diteruskan_bpsdm": A.TERUSKAN_PENGAJUAN, "diteruskan_ulang_bpsdm": A.TERUSKAN_PENGAJUAN,
+        "diteruskan_bko": A.TERUSKAN_PENGAJUAN, "sk_tubel_diunggah": A.UNGGAH_DOKUMEN,
         "dikembalikan_unor": A.KEMBALIKAN_PENGAJUAN, "dikembalikan_pakln": A.KEMBALIKAN_PENGAJUAN,
         "dikembalikan_bpsdm": A.KEMBALIKAN_PENGAJUAN, "laporan_dikembalikan": A.KEMBALIKAN_PENGAJUAN,
         "selesai": A.SELESAI_PENGAJUAN, "laporan_disetujui": A.SELESAI_PENGAJUAN,
+        "selesai_tanpa_sk_tubel": A.SELESAI_PENGAJUAN,
         "laporan_diunggah": A.UNGGAH_DOKUMEN,
     }
 

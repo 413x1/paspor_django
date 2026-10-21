@@ -11,11 +11,14 @@ urlpatterns = [
     path("", account_views.role_redirect, name="home"),
     path("login/", account_views.login_view, name="login"),
     path("logout/", account_views.logout_view, name="logout"),
+    path("login/sso/", account_views.sso_login, name="sso_login"),
+    path("akun/peran/", account_views.ganti_peran, name="ganti_peran"),
 
     # Role-based sections (namespaced, sesuai 3 role pada mockup)
     path("pegawai/", include(("pengajuan.urls_pegawai", "pegawai"), namespace="pegawai")),
     path("admin-unor/", include(("pengajuan.urls_unor", "unor"), namespace="unor")),
     path("admin-bpsdm/", include(("pengajuan.urls_bpsdm", "bpsdm"), namespace="bpsdm")),
+    path("admin-bko/", include(("pengajuan.urls_bko", "bko"), namespace="bko")),
     path("admin-biropakln/", include(("pengajuan.urls_pakln", "pakln"), namespace="pakln")),
     path("profil/", views_pegawai.profil, name="profil"),
     path("notifikasi/", include(("notifications.urls", "notifications"), namespace="notifications")),

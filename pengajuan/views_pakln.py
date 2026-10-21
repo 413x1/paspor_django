@@ -5,19 +5,22 @@ from django.contrib import messages
 from django.contrib.staticfiles import finders
 from django.core.files.base import ContentFile
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.html import escape, format_html
+from django.utils.html import escape, format_html, format_html_join
 from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_POST
 
-from accounts.forms import EditUserForm, TambahUserForm
-from accounts.models import User
+from accounts.ehrm_sync import buat_user_dari_ehrm, sinkron_profil
+from accounts.forms import EditUserForm, KelolaPeranForm, PraDaftarForm, TambahUserForm
+from accounts.models import URUTAN_PERAN, PeranUser, User
+from paspor.integrasi import ehrm
 from logs.models import ActivityLog
+from paspor.validators import periksa_pdf
 from logs.utils import catat_riwayat, log_aktivitas, record_activity
 from notifications import services as notif
 from notifications.services import notify_complete_pkln, notify_reject_pakln_to_unor
@@ -25,8 +28,8 @@ from paspor.impor_libur import ImporError, baca_berkas, buat_template_xlsx, simp
 from paspor.kalender import AKHIR_PEKAN, hitung_hari_kalender
 from paspor.models import HariLibur, KategoriPerjalanan, Negara, SumberPembiayaan
 
-from . import alur, pembatalan, persyaratan, report, riwayat, tahap
-from .decorators import role_required
+from . import alur, bko, pembatalan, persyaratan, report, riwayat, tahap
+from .decorators import role_required, tolak_pengajuan_sendiri
 from .forms import (
     DokumenTemplateForm, HariLiburForm, ImporHariLiburForm, KategoriPerjalananForm,
     NegaraForm, PengaturanDokumenForm, SumberPembiayaanForm, TambahHariLiburForm,
@@ -546,25 +549,56 @@ def dashboard_data(request):
 
 
 @role_required("admin_pakln")
-@log_aktivitas("master.ubah", "Menambah user", target_type="user", sukses_redirect=True)
 def kelola_user(request):
-    """Manajemen User — Admin Biro PAKLN membuat akun baru untuk
-    Pegawai atau Admin Unor."""
-    if request.method == "POST":
+    """Manajemen User — Admin Biro PAKLN membuat AKUN LOKAL (Admin Biro PAKLN
+    dan akun admin darurat), atau mendaftarkan pegawai lebih dulu lewat NIP
+    (data e-HRM) agar dapat diberi role admin sebelum login SSO pertama."""
+    form = TambahUserForm()
+    pra_form = PraDaftarForm()
+    pratinjau = None
+    aksi = request.POST.get("aksi", "tambah") if request.method == "POST" else ""
+
+    if aksi == "tambah":
         form = TambahUserForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            messages.success(
-                request,
-                f"User {user.username} ({user.get_role_display()}) berhasil dibuat.",
+            user = form.save(diberikan_oleh=request.user)
+            record_activity(
+                request, ActivityLog.Aktivitas.UBAH_MASTER,
+                f"Menambah user lokal {user.username} ({user.get_role_display()})",
+                target_type="user", target_id=user.pk,
             )
+            messages.success(request, f"User {user.username} ({user.get_role_display()}) berhasil dibuat.")
             return redirect("pakln:kelola_user")
         messages.error(request, "Periksa kembali isian formulir.")
-    else:
-        form = TambahUserForm()
+    elif aksi in ("pra_daftar_cek", "pra_daftar_simpan"):
+        pra_form = PraDaftarForm(request.POST)
+        if pra_form.is_valid():
+            nip = pra_form.cleaned_data["nip"]
+            try:
+                data = ehrm.ambil_pegawai(nip)
+            except ehrm.EhrmTidakTersedia:
+                data = None
+                messages.error(request, "e-HRM tidak dapat dihubungi. Coba lagi nanti.")
+            else:
+                if data is None:
+                    messages.error(request, f"NIP {nip} tidak ditemukan di e-HRM.")
+            if data is not None and aksi == "pra_daftar_simpan":
+                user = buat_user_dari_ehrm(data)
+                record_activity(
+                    request, ActivityLog.Aktivitas.PRA_DAFTAR, f"Pra-daftar pegawai {data.nama} ({nip})",
+                    target_type="user", target_id=user.pk,
+                )
+                messages.success(request, f"Pegawai {data.nama} terdaftar. Tambahkan peran admin bila perlu.")
+                return redirect("pakln:edit_user", user_id=user.pk)
+            pratinjau = data
 
-    users_count = User.objects.filter(role__in=[User.Role.PEGAWAI, User.Role.ADMIN_UNOR, User.Role.ADMIN_BPSDM]).count()
-    return render(request, "pakln/users.html", {"form": form, "users_count": users_count})
+    return render(request, "pakln/users.html", {
+        "form": form,
+        "pra_form": pra_form,
+        "pratinjau": pratinjau,
+        "users_count": User.objects.count(),
+        "role_choices": User.Role.choices,
+    })
 
 
 # Kolom tabel "Daftar User" (index sesuai urutan kolom pada users.html) ->
@@ -574,20 +608,40 @@ _USERS_DATA_ORDER_FIELDS = {
     "1": "profile__nama",
     "2": "role",
     "3": "profile__nip",
-    "4": "unit_organisasi__name",
-    "5": "is_active",
+    "4": "no_hp",
+    "5": "unit_organisasi__name",
+    "6": "sumber_akun",
+    "7": "is_active",
 }
+
+
+def _badge_peran(u):
+    peran = sorted(u.peran_aktif_list, key=lambda p: URUTAN_PERAN.index(p.role))
+    return format_html_join(
+        " ", '<span class="badge-peran">{}</span>',
+        ((User.Role(p.role).label + (f" ({p.unit_organisasi.alias})" if p.unit_organisasi_id else ""),)
+         for p in peran),
+    ) or "—"
 
 
 @role_required("admin_pakln")
 def users_data(request):
     """Endpoint JSON server-side untuk tabel "Daftar User" (protokol
-    DataTables: draw/start/length/search/order pada GET)."""
-    qs = (
-        User.objects.filter(role__in=[User.Role.PEGAWAI, User.Role.ADMIN_UNOR, User.Role.ADMIN_BPSDM])
-        .select_related("profile", "unit_organisasi", "profile__unit_organisasi")
+    DataTables: draw/start/length/search/order pada GET). Filter tambahan:
+    `?role=<role>` (via PeranUser) dan `?tanpa_hp=1` (AB-19)."""
+    qs = User.objects.select_related("profile", "unit_organisasi", "profile__unit_organisasi").prefetch_related(
+        Prefetch(
+            "peran_list", queryset=PeranUser.objects.filter(is_active=True).select_related("unit_organisasi"),
+            to_attr="peran_aktif_list",
+        )
     )
     records_total = qs.count()
+
+    role = request.GET.get("role", "")
+    if role in User.Role.values:
+        qs = qs.filter(peran_list__role=role, peran_list__is_active=True).distinct()
+    if request.GET.get("tanpa_hp") == "1":
+        qs = qs.filter(no_hp="")
 
     search_value = request.GET.get("search[value]", "").strip()
     if search_value:
@@ -595,6 +649,8 @@ def users_data(request):
             Q(username__icontains=search_value)
             | Q(first_name__icontains=search_value)
             | Q(last_name__icontains=search_value)
+            | Q(email__icontains=search_value)
+            | Q(no_hp__icontains=search_value)
             | Q(profile__nama__icontains=search_value)
             | Q(profile__nip__icontains=search_value)
             | Q(unit_organisasi__name__icontains=search_value)
@@ -620,7 +676,7 @@ def users_data(request):
         profile = getattr(u, "profile", None)
         nama = (profile.nama if profile else None) or u.get_full_name() or "—"
         nip = (profile.nip if profile else "") or "—"
-        unit = u.unit_organisasi or (profile.unit_organisasi if profile else None)
+        unit = (profile.unit_organisasi if profile else None) or u.unit_organisasi
         if u.is_active:
             status_html = mark_safe(
                 '<span class="tag paspor-status is-selesai"><span class="dot"></span>Aktif</span>'
@@ -635,10 +691,15 @@ def users_data(request):
         )
         data.append([
             format_html("<strong>{}</strong>", u.username),
-            escape(nama),
-            u.get_role_display(),
+            format_html(
+                '{}<br><span class="cell-muted">{}</span>', nama, u.email or "email belum diisi",
+            ),
+            _badge_peran(u),
             escape(nip),
+            render_to_string("partials/_kontak_wa.html", {"no_hp": u.no_hp}),
             escape(unit.name if unit else "—"),
+            format_html('{}<br><small class="cell-muted">{}</small>', u.get_sumber_akun_display(),
+                        u.metode_login_display()),
             status_html,
             aksi_html,
         ])
@@ -651,32 +712,118 @@ def users_data(request):
     })
 
 
-@role_required("admin_pakln")
-@log_aktivitas("master.ubah", "Mengubah user", target_type="user", target_kwarg="user_id", sukses_redirect=True)
-def edit_user(request, user_id):
-    """Sunting user (Pegawai / Admin Unor) yang sudah ada."""
-    user_obj = get_object_or_404(
-        User.objects.select_related("profile", "unit_organisasi"),
-        pk=user_id,
-        role__in=[User.Role.PEGAWAI, User.Role.ADMIN_UNOR, User.Role.ADMIN_BPSDM],
-    )
-    profile = getattr(user_obj, "profile", None)
+def _ringkas_perubahan(perubahan):
+    return "; ".join(f"{f}: {lama or '—'} → {baru or '—'}" for f, (lama, baru) in perubahan.items())
 
-    if request.method == "POST":
+
+def _sinkron_ehrm(request, user_obj, buka_kunci=()):
+    """Sinkron ulang data user dari e-HRM (opsional membuka kunci field kontak
+    lebih dulu — "Kembalikan ke data e-HRM")."""
+    profile = getattr(user_obj, "profile", None)
+    if profile is None:
+        messages.error(request, "User ini tidak memiliki data kepegawaian e-HRM.")
+        return
+    try:
+        data = ehrm.ambil_pegawai(profile.nip)
+    except ehrm.EhrmTidakTersedia:
+        record_activity(
+            request, ActivityLog.Aktivitas.SINKRON_EHRM_GAGAL, f"Sinkron e-HRM {user_obj.username} gagal",
+            status=ActivityLog.Status.GAGAL, target_type="user", target_id=user_obj.pk,
+        )
+        messages.error(request, "e-HRM tidak dapat dihubungi. Coba lagi nanti.")
+        return
+    if data is None:
+        messages.error(request, f"NIP {profile.nip} tidak ditemukan di e-HRM.")
+        return
+    for field in buka_kunci:
+        setattr(user_obj, f"{field}_dikunci", False)
+    if buka_kunci:
+        user_obj.save(update_fields=[f"{f}_dikunci" for f in buka_kunci])
+        record_activity(
+            request, ActivityLog.Aktivitas.BUKA_KUNCI_KONTAK,
+            f"Kembalikan {', '.join(buka_kunci)} {user_obj.username} ke data e-HRM",
+            target_type="user", target_id=user_obj.pk,
+        )
+    berubah = sinkron_profil(user_obj, data)
+    record_activity(
+        request, ActivityLog.Aktivitas.SINKRON_EHRM, f"Sinkron e-HRM {user_obj.username}",
+        target_type="user", target_id=user_obj.pk, detail=", ".join(berubah),
+    )
+    if berubah:
+        messages.success(request, f"Data {user_obj.username} disinkronkan dari e-HRM: {', '.join(berubah)}.")
+    else:
+        messages.success(request, f"Data {user_obj.username} sudah sesuai dengan e-HRM.")
+
+
+@role_required("admin_pakln")
+def edit_user(request, user_id):
+    """Sunting user: data akun & kontak (AB-17/AB-18), peran (AB-09), dan
+    sinkronisasi e-HRM. Tiap bagian dikirim sebagai `aksi` terpisah."""
+    user_obj = get_object_or_404(User.objects.select_related("profile", "unit_organisasi"), pk=user_id)
+    profile = getattr(user_obj, "profile", None)
+    form = peran_form = None
+    aksi = request.POST.get("aksi", "simpan") if request.method == "POST" else ""
+
+    if aksi == "simpan":
         form = EditUserForm(request.POST, instance=user_obj)
         if form.is_valid():
-            form.save()
+            perubahan, kunci_dibuka = form.save()
+            record_activity(
+                request, ActivityLog.Aktivitas.UBAH_MASTER, f"Mengubah user {user_obj.username}",
+                target_type="user", target_id=user_obj.pk,
+            )
+            if perubahan:
+                record_activity(
+                    request, ActivityLog.Aktivitas.UBAH_KONTAK, f"Mengubah kontak {user_obj.username}",
+                    target_type="user", target_id=user_obj.pk, detail=_ringkas_perubahan(perubahan),
+                )
+            if kunci_dibuka:
+                record_activity(
+                    request, ActivityLog.Aktivitas.BUKA_KUNCI_KONTAK,
+                    f"Membuka kunci {', '.join(kunci_dibuka)} {user_obj.username}",
+                    target_type="user", target_id=user_obj.pk,
+                )
             messages.success(request, f"User {user_obj.username} berhasil diperbarui.")
-            return redirect("pakln:kelola_user")
+            return redirect("pakln:edit_user", user_id=user_obj.pk)
         messages.error(request, "Periksa kembali isian formulir.")
-    else:
+    elif aksi == "simpan_peran":
+        peran_form = KelolaPeranForm(request.POST, instance=user_obj, oleh=request.user)
+        if peran_form.is_valid():
+            diberikan, dicabut = peran_form.save()
+            for label in diberikan:
+                record_activity(
+                    request, ActivityLog.Aktivitas.PERAN_DIBERIKAN,
+                    f"Memberikan peran {label} ke {user_obj.username}",
+                    target_type="user", target_id=user_obj.pk,
+                )
+            for label in dicabut:
+                record_activity(
+                    request, ActivityLog.Aktivitas.PERAN_DICABUT,
+                    f"Mencabut peran {label} dari {user_obj.username}",
+                    target_type="user", target_id=user_obj.pk,
+                )
+            messages.success(request, "Peran diperbarui." if diberikan or dicabut else "Tidak ada perubahan peran.")
+            return redirect("pakln:edit_user", user_id=user_obj.pk)
+        messages.error(request, "Periksa kembali isian peran.")
+    elif aksi == "sinkron_ehrm":
+        _sinkron_ehrm(request, user_obj)
+        return redirect("pakln:edit_user", user_id=user_obj.pk)
+    elif aksi == "kembalikan_ehrm":
+        field = request.POST.get("field", "")
+        if field in ("email", "no_hp"):
+            _sinkron_ehrm(request, user_obj, buka_kunci=[field])
+        return redirect("pakln:edit_user", user_id=user_obj.pk)
+
+    if form is None:
         nama = (profile.nama if profile else user_obj.get_full_name()) or user_obj.username
         initial = {
             "username": user_obj.username,
             "nama": nama,
             "is_active": user_obj.is_active,
-            "unit_organisasi": user_obj.unit_organisasi_id,
-            "unit_kerja": user_obj.unit_kerja,
+            "unit_organisasi": (profile.unit_organisasi_id if profile else None) or user_obj.unit_organisasi_id,
+            "unit_kerja": (profile.unit_kerja if profile else "") or user_obj.unit_kerja,
+            "email": user_obj.email,
+            "no_hp": user_obj.no_hp,
         }
         if profile:
             initial.update({
@@ -686,8 +833,15 @@ def edit_user(request, user_id):
                 "sisa_cuti_tahun_berjalan": profile.sisa_cuti_tahun_berjalan,
             })
         form = EditUserForm(instance=user_obj, initial=initial)
+    if peran_form is None:
+        peran_form = KelolaPeranForm(None, instance=user_obj, oleh=request.user)
 
-    return render(request, "pakln/edit_user.html", {"form": form, "user_obj": user_obj})
+    return render(request, "pakln/edit_user.html", {
+        "form": form,
+        "peran_form": peran_form,
+        "user_obj": user_obj,
+        "profile": profile,
+    })
 
 
 @role_required("admin_pakln")
@@ -1594,6 +1748,8 @@ def preview(request, kode):
     """Pratinjau pengajuan (read-only) — dapat dibuka sejak diteruskan ke
     Biro PAKLN; tindak lanjut hanya saat status proses_pakln."""
     pengajuan = get_object_or_404(report.queryset_untuk(request.user), kode=kode)
+    if request.method == "POST":
+        tolak_pengajuan_sendiri(request, pengajuan)  # AB-12
 
     if request.method == "POST":
         pesan = alur.alasan_dibekukan(pengajuan)
@@ -1652,6 +1808,8 @@ def upload_dokumen(request, kode):
     (visa wajib bila negara tujuan memerlukan visa), lalu menyelesaikan
     proses (fungsi selesaikanProses pada mockup)."""
     pengajuan = get_object_or_404(Pengajuan, kode=kode)
+    if request.method == "POST":
+        tolak_pengajuan_sendiri(request, pengajuan)  # AB-12
     if not pengajuan.preview_pakln_agree:
         return redirect("pakln:preview", kode=kode)
 
@@ -1668,10 +1826,34 @@ def upload_dokumen(request, kode):
             hasil = _selesaikan(request, pengajuan)
             if hasil:
                 return hasil
+        elif "selesaikan_tanpa_sk_tubel" in request.POST:
+            hasil = _selesaikan(request, pengajuan, tanpa_sk_tubel=True)
+            if hasil:
+                return hasil
+        elif "buka_kembali_bko" in request.POST:
+            try:
+                p = bko.buka_kembali(pengajuan, request.user, request.POST.get("catatan", ""))
+            except bko.BkoError as exc:
+                messages.error(request, str(exc))
+            else:
+                catat_riwayat(request, p, RiwayatPengajuan.Aksi.DIBUKA_ULANG_BKO)
+                messages.success(request, f"Pemrosesan SK Tugas Belajar {p.kode} dibuka kembali untuk Admin BKO.")
+                return redirect("pakln:upload_dokumen", kode=kode)
+        elif "hentikan" in request.POST:
+            try:
+                pembatalan.hentikan_oleh_pakln(pengajuan, request.user, request.POST.get("alasan", ""))
+            except pembatalan.PembatalanError as exc:
+                messages.error(request, str(exc))
+            else:
+                catat_riwayat(request, pengajuan, RiwayatPengajuan.Aksi.DIBATALKAN)
+                messages.success(request, f"Pengajuan {pengajuan.kode} dihentikan (dibatalkan).")
+                return redirect("pakln:dashboard")
         elif "pendukung_upload" in request.POST and pendukung:
             file_obj = request.FILES.get("file")
             if not file_obj:
                 messages.error(request, "Pilih berkas dokumen pendukung terlebih dahulu.")
+            elif (galat := periksa_pdf(request, file_obj)):
+                messages.error(request, galat)
             else:
                 pendukung.file = file_obj
                 pendukung.uploaded_at = timezone.now()
@@ -1714,15 +1896,35 @@ def upload_dokumen(request, kode):
         "dapat_diubah": dapat_diubah,
         "readonly": not dapat_diubah,
         "dibekukan": alur.alasan_dibekukan(pengajuan),
+        "sk_tubel": pengajuan.dokumen_bko.first() if pengajuan.pakai_bko else None,
+        "alasan_selesai_bko": bko.alasan_tidak_bisa_selesai(pengajuan),
         **riwayat.konteks(pengajuan, request.user),
     }
     return render(request, "pakln/upload.html", context)
 
 
-def _selesaikan(request, pengajuan):
+def _cek_bko_selesai(p, tanpa_sk_tubel):
+    """Pesan bila track Admin BKO (T2P) belum mengizinkan Selesai, atau ''."""
+    if tanpa_sk_tubel:
+        if not p.pakai_bko or p.status_bko != Pengajuan.StatusBko.DITUTUP:
+            return "Lanjutkan tanpa SK Tugas Belajar hanya tersedia bila pemrosesan BKO ditutup."
+        return ""
+    return bko.alasan_tidak_bisa_selesai(p)
+
+
+def _selesaikan(request, pengajuan, tanpa_sk_tubel=False):
     kurang = tahap.konteks_dokumen(pengajuan, "pakln")["dokumen_kurang"]
     if kurang:
         messages.error(request, "Lengkapi dokumen wajib sebelum menyelesaikan proses: " + ", ".join(kurang) + ".")
+        return None
+    pesan_bko = _cek_bko_selesai(pengajuan, tanpa_sk_tubel)
+    if pesan_bko:
+        messages.error(request, pesan_bko)
+        return None
+    # Catatan "Lanjutkan tanpa SK Tubel" wajib — hanya terlihat Admin PAKLN.
+    catatan = request.POST.get("catatan", "").strip() if tanpa_sk_tubel else ""
+    if tanpa_sk_tubel and not catatan:
+        messages.error(request, "Isi catatan untuk melanjutkan tanpa SK Tugas Belajar.")
         return None
     if not request.POST.get("agree"):
         messages.error(request, "Centang pernyataan kelengkapan dokumen terlebih dahulu.")
@@ -1737,6 +1939,11 @@ def _selesaikan(request, pengajuan):
             if pesan:
                 messages.error(request, pesan)
             return redirect("pakln:dashboard")
+        # Periksa ulang di dalam lock — Admin BKO bisa mengubah track bersamaan.
+        pesan_bko = _cek_bko_selesai(p, tanpa_sk_tubel)
+        if pesan_bko:
+            messages.error(request, pesan_bko)
+            return redirect("pakln:upload_dokumen", kode=p.kode)
         if not p.is_pdln:
             # Cuti hanya terpakai untuk perjalanan Non-Kedinasan; PDLN adalah
             # penugasan dinas. Hari kerja = snapshot saat pengajuan dikirim.
@@ -1749,8 +1956,9 @@ def _selesaikan(request, pengajuan):
         p.status = Pengajuan.Status.SELESAI
         p.tgl_selesai = timezone.now().date()
         p.save()
-        riwayat.catat(p, RiwayatPengajuan.Aksi.SELESAI, request.user, status_dari)
-        catat_riwayat(request, p, RiwayatPengajuan.Aksi.SELESAI)
+        aksi = RiwayatPengajuan.Aksi.SELESAI_TANPA_SK_TUBEL if tanpa_sk_tubel else RiwayatPengajuan.Aksi.SELESAI
+        riwayat.catat(p, aksi, request.user, status_dari, catatan=catatan)
+        catat_riwayat(request, p, aksi)
 
     notify_complete_pkln(p)
     if p.is_pdln:
@@ -1767,6 +1975,7 @@ def _selesaikan(request, pengajuan):
 def hapus_dokumen(request, kode, jenis):
     """Hapus salah satu dokumen administrasi Biro PAKLN yang sudah diunggah."""
     pengajuan = get_object_or_404(Pengajuan, kode=kode)
+    tolak_pengajuan_sendiri(request, pengajuan)  # AB-12
     if pengajuan.status == Pengajuan.Status.PROSES_PAKLN:
         tahap.hapus(request, pengajuan, "pakln", jenis)
     return redirect("pakln:upload_dokumen", kode=pengajuan.kode)
@@ -1791,8 +2000,11 @@ def pelaporan(request):
 @require_POST
 def verifikasi_laporan(request, kode):
     pengajuan = get_object_or_404(Pengajuan, kode=kode, jenis_perjalanan=Pengajuan.JenisPerjalanan.PDLN)
+    if request.method == "POST":
+        tolak_pengajuan_sendiri(request, pengajuan)  # AB-12
     keputusan = request.POST.get("keputusan")
-    catatan = request.POST.get("catatan", "").strip()
+    # `catatan_pakln` = nama kolom pada modal "Request Perbaikan"; `catatan` dipertahankan agar kompatibel.
+    catatan = (request.POST.get("catatan_pakln") or request.POST.get("catatan") or "").strip()
     if keputusan not in ("setujui", "kembalikan"):
         messages.error(request, "Keputusan tidak valid.")
         return redirect("pakln:pelaporan")

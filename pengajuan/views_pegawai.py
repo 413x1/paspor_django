@@ -2,6 +2,7 @@ import os
 from datetime import date
 
 from django.contrib import messages
+from django.contrib.auth import update_session_auth_hash
 from django.db import transaction
 from django.db.models import Q
 from django.http import FileResponse, Http404, JsonResponse
@@ -11,28 +12,34 @@ from django.utils import timezone
 from django.utils.html import escape, format_html
 from django.views.decorators.http import require_POST
 
-from accounts.models import DokumenKepegawaian, PasporPegawai
+from accounts.forms import (
+    AturPasswordForm, GantiPasswordForm, HapusPasswordForm, KontakForm, UbahUsernameForm,
+)
+from accounts.models import URUTAN_PERAN, DokumenKepegawaian, PasporPegawai, User
 from logs.models import ActivityLog
+from paspor.validators import KODE_BUKAN_PDF, periksa_pdf, tandai_ditolak
 from logs.utils import catat_riwayat, record_activity
 from notifications import services as notif
 from notifications.services import notify_resubmit_unor, notify_submit_unor
-from paspor.integrasi import pintar
 from paspor.kalender import rincian_hari
 
-from . import alur, pembatalan, riwayat, tahap
+from . import alur, kegiatan, pembatalan, riwayat, tahap
+from . import views_kegiatan
 from .decorators import role_required
-from .forms import PdlnForm, PengajuanForm
-from .models import DokumenPakln, LaporanPdln, Pengajuan, PermohonanPembatalan, RiwayatPengajuan
+from .forms import LaporanPdlnForm, PdlnForm, PengajuanForm
+from .models import DokumenBko, DokumenPakln, LaporanPdln, Pengajuan, PermohonanPembatalan, RiwayatPengajuan
 
 S = Pengajuan.Status
 JP = Pengajuan.JenisPerjalanan
 
-# Dokumen hasil tahap PAKLN yang boleh diunduh pegawai saat PDLN selesai
-# (BISNIS_PROSES_PDLN.MD §14 pertanyaan terbuka #3 — default).
+# Dokumen hasil PDLN yang boleh diunduh pegawai saat PDLN selesai
+# (BISNIS_PROSES_PDLN.MD §14 pertanyaan terbuka #3 — default): dari tahap
+# Biro PAKLN, ditambah SK Tugas Belajar dari Admin BKO (T2P).
 _UNDUH_HASIL_PDLN = {
     DokumenPakln.Jenis.SP_SETNEG, DokumenPakln.Jenis.EXIT_PERMIT, DokumenPakln.Jenis.VISA,
-    DokumenPakln.Jenis.SK_TUBEL, DokumenPakln.Jenis.ND_KARO_UNOR,
+    DokumenPakln.Jenis.ND_KARO_UNOR,
 }
+_UNDUH_HASIL_BKO = {DokumenBko.Jenis.SK_TUBEL}
 
 
 def _active_pengajuan(user):
@@ -58,6 +65,7 @@ def beranda(request):
         "profile": getattr(request.user, "profile", None),
         "tab": request.GET.get("tab", "pdln"),
         "tipe_choices": Pengajuan.TipePdln.choices,
+        "usulan_kegiatan": views_kegiatan.usulan_pegawai(request.user)[:10],
     }
     return render(request, "pegawai/beranda.html", context)
 
@@ -121,6 +129,11 @@ def riwayat_data(request):
                 reverse("pegawai:formulir_pengajuan"),
             )
         laporan = p.laporan if p.is_pdln else None
+        if p.is_pdln and p.status == S.SELESAI and not p.tuntas:
+            aksi_html = format_html(
+                '{} <a href="{}" class="button is-small is-info btn-pelaporan-info">Pelaporan PDLN</a>',
+                aksi_html, reverse("pegawai:laporan_form", args=[p.kode]),
+            )
         if not p.is_pdln:
             laporan_html = "—"
         elif p.status != S.SELESAI:
@@ -206,15 +219,9 @@ def formulir_pengajuan(request):
 
 
 def _formulir_pdln(request, aktif, tipe, profile):
-    pencalonan = []
-    if tipe in (Pengajuan.TipePdln.T2P, Pengajuan.TipePdln.T2L):
-        nip = profile.nip if profile else ""
-        jenis_beasiswa = pintar.JENIS_PENDIDIKAN if tipe == Pengajuan.TipePdln.T2P else pintar.JENIS_PELATIHAN
-        pencalonan = pintar.daftar_pencalonan_selesai(nip, jenis_beasiswa)
-
     instance = aktif or Pengajuan(pegawai=request.user, jenis_perjalanan=JP.PDLN, tipe_pdln=tipe)
     if request.method == "POST":
-        form = PdlnForm(request.POST, instance=instance, tipe=tipe, pencalonan=pencalonan)
+        form = PdlnForm(request.POST, instance=instance, tipe=tipe)
         if form.is_valid():
             with transaction.atomic():
                 if alur.pengajuan_belum_tuntas(request.user) not in (None, aktif):
@@ -233,14 +240,20 @@ def _formulir_pdln(request, aktif, tipe, profile):
                 request, ActivityLog.Aktivitas.SIMPAN_FORMULIR, f"Menyimpan formulir pengajuan {pengajuan.kode}",
                 target_type="pengajuan", target_id=pengajuan.kode,
             )
-            messages.success(request, "Formulir pengajuan berhasil disimpan.")
+            if pengajuan.kegiatan_id:
+                messages.success(request, "Formulir pengajuan berhasil disimpan.")
+            else:
+                messages.warning(request, (
+                    "Formulir disimpan tanpa kegiatan. Pilih kegiatan (setelah usulan Anda disetujui Admin "
+                    "Biro PAKLN) sebelum mengirim pengajuan ke Admin Unor."
+                ))
             return redirect("pegawai:upload_dokumen", kode=pengajuan.kode)
         record_activity(
             request, ActivityLog.Aktivitas.SIMPAN_FORMULIR, "Menyimpan formulir pengajuan",
             status=ActivityLog.Status.GAGAL, detail="Validasi gagal: " + ", ".join(form.errors),  # nama field saja
         )
     else:
-        form = PdlnForm(instance=instance, tipe=tipe, pencalonan=pencalonan)
+        form = PdlnForm(instance=instance, tipe=tipe)
 
     return render(request, "pegawai/formulir_pdln.html", {
         "form": form,
@@ -248,7 +261,8 @@ def _formulir_pdln(request, aktif, tipe, profile):
         "pengajuan": instance,
         "tipe": tipe,
         "tipe_label": dict(Pengajuan.TipePdln.choices).get(tipe, ""),
-        "pintar_stub": pintar.memakai_stub() and "beasiswa" in form.fields,
+        "opsi_kegiatan": form.opsi_kegiatan(),
+        "usulan_menunggu": views_kegiatan.usulan_pegawai(request.user).filter(status="menunggu"),
     })
 
 
@@ -260,7 +274,7 @@ _MAKS_RENTANG_HITUNG_HARI = 366
 _MAKS_RENTANG_HITUNG_HARI_PDLN = 366 * 6
 
 
-@role_required("pegawai", "admin_unor", "admin_bpsdm", "admin_pakln")
+@role_required("pegawai", "admin_unor", "admin_bpsdm", "admin_bko", "admin_pakln")
 def hitung_hari(request):
     """Endpoint JSON untuk mengisi otomatis Jumlah Hari Kalender & Jumlah
     Hari Kerja begitu tanggal berangkat/kembali diubah (lihat
@@ -320,6 +334,9 @@ def _kirim(request, pengajuan):
     is_resubmit = bool(pengajuan.catatan_unor)
     catatan = request.POST.get("catatan", "").strip() if is_resubmit else ""
     kurang = tahap.konteks_dokumen(pengajuan, "pegawai")["dokumen_kurang"]
+    if pengajuan.is_pdln and not pengajuan.kegiatan_id:  # B1
+        messages.error(request, "Pilih kegiatan pada formulir pengajuan sebelum mengirim ke Admin Unor.")
+        return None
     if kurang:
         messages.error(request, "Lengkapi dokumen wajib sebelum mengirim: " + ", ".join(kurang) + ".")
         return None
@@ -345,6 +362,8 @@ def _kirim(request, pengajuan):
         if profile and profile.unit_organisasi_id:
             p.unit_organisasi_id = profile.unit_organisasi_id
         p.save()
+        if p.is_pdln:
+            kegiatan.snapshot(p)  # B13: data kegiatan dibekukan sejak dikirim
         riwayat.catat(
             p,
             RiwayatPengajuan.Aksi.DIKIRIM_ULANG if is_resubmit else RiwayatPengajuan.Aksi.DIKIRIM,
@@ -392,6 +411,7 @@ def monitor_progres(request, kode):
     hasil_pdln = []
     if pengajuan.is_pdln and pengajuan.status == S.SELESAI:
         hasil_pdln = [d for d in pengajuan.dokumen_pakln.all() if d.jenis in _UNDUH_HASIL_PDLN]
+        hasil_pdln += [d for d in pengajuan.dokumen_bko.all() if d.jenis in _UNDUH_HASIL_BKO]
 
     return render(request, "pegawai/monitor.html", {
         "pengajuan": pengajuan,
@@ -439,11 +459,17 @@ def download_iln(request, kode):
 @role_required("pegawai")
 def unduh_hasil(request, kode, jenis):
     """Unduh dokumen hasil PDLN dari tahap Biro PAKLN (SP Setneg, Exit
-    Permit, Rekomendasi Visa, SK Tubel, ND Karo) setelah pengajuan selesai."""
+    Permit, Rekomendasi Visa, ND Karo) atau Admin BKO (SK Tubel) setelah
+    pengajuan selesai."""
     pengajuan = get_object_or_404(Pengajuan, kode=kode, pegawai=request.user)
-    if not pengajuan.is_pdln or pengajuan.status != S.SELESAI or jenis not in _UNDUH_HASIL_PDLN:
+    if not pengajuan.is_pdln or pengajuan.status != S.SELESAI:
         raise Http404
-    dok = get_object_or_404(DokumenPakln, pengajuan=pengajuan, jenis=jenis)
+    if jenis in _UNDUH_HASIL_PDLN:
+        dok = get_object_or_404(DokumenPakln, pengajuan=pengajuan, jenis=jenis)
+    elif jenis in _UNDUH_HASIL_BKO:
+        dok = get_object_or_404(DokumenBko, pengajuan=pengajuan, jenis=jenis)
+    else:
+        raise Http404
     respons = _kirim_berkas(dok, f"{jenis}_{pengajuan.kode}")
     if respons is None:
         messages.error(request, "Berkas tidak ditemukan di penyimpanan.")
@@ -467,49 +493,134 @@ def pelaporan(request):
     return render(request, "pegawai/pelaporan.html", {"daftar": daftar})
 
 
-@role_required("pegawai")
-@require_POST
-def unggah_laporan(request, kode):
-    pengajuan = get_object_or_404(Pengajuan, kode=kode, pegawai=request.user, jenis_perjalanan=JP.PDLN)
-    berkas = request.FILES.get("file")
-    catatan = request.POST.get("catatan", "").strip()
+def _laporan_dapat_diubah(laporan):
+    """Laporan masih bisa diisi/diubah pegawai: belum ada, masih draft, atau dikembalikan."""
+    return laporan is None or laporan.status in (LaporanPdln.Status.DRAFT, LaporanPdln.Status.DIKEMBALIKAN)
 
+
+def _tanggal_pelaksanaan(pengajuan):
+    """Tanggal kegiatan (bila ada pada detail PDLN), selain itu tanggal berangkat s.d. kembali."""
+    detail = pengajuan.detail
+    mulai = (detail.tgl_mulai_kegiatan if detail else None) or pengajuan.tgl_berangkat
+    selesai = (detail.tgl_selesai_kegiatan if detail else None) or pengajuan.tgl_kembali
+    if not mulai:
+        return "—"
+    return f"{mulai:%d/%m/%Y} s/d {(selesai or mulai):%d/%m/%Y}"
+
+
+@role_required("pegawai")
+def laporan_form(request, kode):
+    """Formulir Pelaporan PDLN (Bagian A: data pengajuan, B: uraian, C: biaya dan dokumen).
+
+    "Simpan" menyimpan draft (isian boleh belum lengkap); "Laporkan" mengirim laporan ke Biro
+    PAKLN untuk diverifikasi. Laporan yang sedang menunggu verifikasi atau sudah disetujui hanya
+    dapat dilihat."""
+    pengajuan = get_object_or_404(
+        Pengajuan.objects.select_related("detail_pdln", "laporan_pdln").prefetch_related("tujuan_negara"),
+        kode=kode, pegawai=request.user, jenis_perjalanan=JP.PDLN,
+    )
+    if pengajuan.status != S.SELESAI:
+        messages.error(request, "Laporan PDLN hanya dapat diisi setelah pengajuan selesai diproses Biro PAKLN.")
+        return redirect("pegawai:pelaporan")
+
+    laporan = pengajuan.laporan
+    dibekukan = alur.alasan_dibekukan(pengajuan)
+    dapat_diubah = _laporan_dapat_diubah(laporan) and not dibekukan
+    perlu_catatan = laporan is not None and laporan.status == LaporanPdln.Status.DIKEMBALIKAN
+
+    if request.method == "POST":
+        aksi = request.POST.get("action")
+        if not dapat_diubah:
+            messages.error(request, dibekukan or "Laporan ini sedang diverifikasi atau sudah disetujui, tidak dapat diubah.")
+            return redirect("pegawai:laporan_form", kode=kode)
+        if aksi not in ("draft", "submit"):
+            messages.error(request, "Aksi tidak valid.")
+            return redirect("pegawai:laporan_form", kode=kode)
+
+        kirim = aksi == "submit"
+        form = LaporanPdlnForm(
+            request.POST, request.FILES, instance=laporan or LaporanPdln(pengajuan=pengajuan),
+            kirim=kirim, perlu_catatan=perlu_catatan,
+        )
+        if form.is_valid():
+            hasil = _simpan_laporan(request, pengajuan, form, kirim)
+            if hasil:
+                return hasil
+        else:
+            if any(e.code == KODE_BUKAN_PDF for e in form.errors.as_data().get("dokumen_laporan", [])):
+                tandai_ditolak(request)  # response menjadi 400 (UnggahDitolakMiddleware)
+            messages.error(request, "Periksa kembali isian formulir.")
+    else:
+        form = LaporanPdlnForm(instance=laporan or LaporanPdln(pengajuan=pengajuan), perlu_catatan=perlu_catatan)
+
+    if not dapat_diubah:
+        for field in form.fields.values():
+            field.disabled = True
+
+    return render(request, "pegawai/laporan_form.html", {
+        "pengajuan": pengajuan,
+        "laporan": laporan,
+        "form": form,
+        "dapat_diubah": dapat_diubah,
+        "dibekukan": dibekukan,
+        "tanggal_pelaksanaan": _tanggal_pelaksanaan(pengajuan),
+        "negara_tujuan": " — ".join(
+            bagian for bagian in (pengajuan.tujuan_negara_display, getattr(pengajuan.detail, "kota_tujuan", "")) if bagian
+        ) or "—",
+        "nama_berkas": os.path.basename(laporan.file.name) if laporan and laporan.file else "",
+    })
+
+
+def _simpan_laporan(request, pengajuan, form, kirim):
+    """Simpan draft atau kirim laporan (atomik). Mengembalikan redirect, atau None bila ditolak
+    (pesan error sudah ditambahkan)."""
+    ulang = False
     with transaction.atomic():
         p = alur.kunci(pengajuan)
-        laporan = p.laporan
+        terkini = LaporanPdln.objects.select_for_update().filter(pengajuan=p).first()
         pesan = ""
         if p.status != S.SELESAI:
-            pesan = "Laporan PDLN hanya dapat diunggah setelah pengajuan selesai diproses Biro PAKLN."
+            pesan = "Laporan PDLN hanya dapat diisi setelah pengajuan selesai diproses Biro PAKLN."
         elif alur.alasan_dibekukan(p):
             pesan = alur.alasan_dibekukan(p)
-        elif laporan and laporan.status == LaporanPdln.Status.DISETUJUI:
-            pesan = "Laporan PDLN sudah disetujui dan tidak dapat diubah."
-        elif laporan and laporan.status == LaporanPdln.Status.MENUNGGU:
-            pesan = "Laporan sedang menunggu verifikasi Biro PAKLN."
-        elif not berkas:
-            pesan = "Pilih berkas laporan terlebih dahulu."
-        elif laporan and laporan.status == LaporanPdln.Status.DIKEMBALIKAN and not catatan:
-            pesan = "Isi catatan perbaikan untuk Biro PAKLN sebelum mengunggah ulang."
+        elif not _laporan_dapat_diubah(terkini):
+            pesan = "Laporan ini sedang diverifikasi atau sudah disetujui, tidak dapat diubah."
+        elif terkini is not None and form.instance.pk != terkini.pk:
+            pesan = "Laporan sudah dibuat dari tab lain. Muat ulang halaman ini."
         if pesan:
             messages.error(request, pesan)
-            return redirect("pegawai:pelaporan")
+            return redirect("pegawai:laporan_form", kode=p.kode)
 
-        ulang = laporan is not None
-        if laporan is None:
-            laporan = LaporanPdln(pengajuan=p)
-        elif laporan.file:
-            laporan.file.delete(save=False)
-        laporan.file = berkas
-        laporan.status = LaporanPdln.Status.MENUNGGU
+        ulang = terkini is not None and terkini.status == LaporanPdln.Status.DIKEMBALIKAN
+        catatan = (form.cleaned_data.get("catatan_perbaikan") or "").strip() if ulang else ""
+
+        laporan = form.save(commit=False)
         laporan.diunggah_oleh = request.user
-        laporan.uploaded_at = timezone.now()
+        if kirim:
+            laporan.status = LaporanPdln.Status.MENUNGGU
+            laporan.uploaded_at = timezone.now()
+        elif not ulang:
+            laporan.status = LaporanPdln.Status.DRAFT
+        # Draft dari laporan yang dikembalikan tetap berstatus "dikembalikan" (catatan Biro PAKLN
+        # masih berlaku sampai pegawai melaporkan ulang).
         laporan.save()
-        riwayat.catat(p, RiwayatPengajuan.Aksi.LAPORAN_DIUNGGAH, request.user, p.status, catatan=catatan if ulang else "")
-        catat_riwayat(request, p, RiwayatPengajuan.Aksi.LAPORAN_DIUNGGAH)
+        form.bersihkan_berkas_lama(laporan)
 
-    notif.notify_laporan_diunggah(p, catatan if ulang else "")
-    messages.success(request, f"Laporan PDLN {p.kode} berhasil dikirim untuk diverifikasi Biro PAKLN.")
-    return redirect("pegawai:pelaporan")
+        if kirim:
+            riwayat.catat(p, RiwayatPengajuan.Aksi.LAPORAN_DIUNGGAH, request.user, p.status, catatan=catatan)
+            catat_riwayat(request, p, RiwayatPengajuan.Aksi.LAPORAN_DIUNGGAH)
+        else:
+            record_activity(
+                request, ActivityLog.Aktivitas.SIMPAN_LAPORAN, f"Menyimpan draft laporan PDLN — {p.kode}",
+                target_type="pengajuan", target_id=p.kode,
+            )
+
+    if kirim:
+        notif.notify_laporan_diunggah(p, catatan)
+        messages.success(request, f"Laporan PDLN {p.kode} berhasil dikirim untuk diverifikasi Biro PAKLN.")
+        return redirect("pegawai:pelaporan")
+    messages.success(request, "Draft laporan disimpan. Anda dapat melanjutkannya nanti, lalu tekan Laporkan.")
+    return redirect("pegawai:laporan_form", kode=p.kode)
 
 
 # ---------------------------------------------------------------------------
@@ -561,17 +672,131 @@ def tarik_pembatalan(request, pk):
 # Profil (BISNIS_PROSES_PDLN.MD §9.1)
 # ---------------------------------------------------------------------------
 
-@role_required("pegawai", "admin_unor", "admin_bpsdm", "admin_pakln")
+def _jenis_dokumen_profil(user):
+    if user.role == "pegawai":
+        return [c for c in DokumenKepegawaian.Jenis.choices if c[0] != DokumenKepegawaian.Jenis.SK_PENUGASAN]
+    return [(DokumenKepegawaian.Jenis.SK_PENUGASAN, DokumenKepegawaian.Jenis.SK_PENUGASAN.label)]
+
+
+def _aksi_akun_tersedia(user):
+    """Whitelist aksi akun per kondisi akun & peran aktif (AB-07, AB-16,
+    AB-21). Aksi di luar daftar ini ditolak, sekalipun HTML dimanipulasi."""
+    tersedia = {"ubah_username"}
+    if user.has_usable_password():
+        tersedia.add("ganti_password")
+        if user.punya_sso():
+            tersedia.add("hapus_password")
+    else:
+        tersedia.add("atur_password")
+    if user.role == User.Role.ADMIN_PAKLN:
+        tersedia.add("ubah_kontak")
+    return tersedia
+
+
+def _form_akun(aksi, user, data=None):
+    """Form untuk `aksi` akun — hanya field yang diizinkan yang dibaca."""
+    if aksi == "ubah_username":
+        return UbahUsernameForm(data, instance=user)
+    if aksi == "atur_password":
+        return AturPasswordForm(user, data)
+    if aksi == "ganti_password":
+        return GantiPasswordForm(user, data)
+    if aksi == "hapus_password":
+        return HapusPasswordForm(user, data)
+    if aksi == "ubah_kontak":
+        return KontakForm(data, instance=user)
+    return None
+
+
+_PESAN_AKUN = {
+    "ubah_username": "Username berhasil diubah.",
+    "atur_password": "Password berhasil diatur. Anda kini dapat masuk dengan username & password.",
+    "ganti_password": "Password berhasil diganti.",
+    "hapus_password": "Password dihapus. Selanjutnya masuk dengan SSO.",
+    "ubah_kontak": "Email & nomor HP berhasil diubah.",
+}
+
+
+def _proses_aksi_akun(request, aksi):
+    """Proses satu aksi akun. Mengembalikan form berisi error (untuk dirender
+    ulang) atau None bila berhasil/ditolak (pemanggil melakukan redirect)."""
+    user = request.user
+    if aksi not in _aksi_akun_tersedia(user):
+        messages.error(request, "Aksi tidak tersedia untuk akun Anda.")
+        return None
+    # Salinan terpisah agar error validasi tidak mengubah `request.user` (mis.
+    # username di header) sebelum tersimpan.
+    akun = User.objects.get(pk=user.pk)
+    akun._role_db = akun.role
+    akun.role = user.role
+    form = _form_akun(aksi, akun, request.POST)
+    if not form.is_valid():
+        return form
+
+    A = ActivityLog.Aktivitas
+    if aksi == "ubah_username":
+        lama = user.username
+        form.save()
+        record_activity(request, A.UBAH_USERNAME, f"Ubah username: {lama} → {akun.username}",
+                        target_type="user", target_id=user.pk)
+    elif aksi in ("atur_password", "ganti_password"):
+        form.save()
+        update_session_auth_hash(request, akun)
+        record_activity(request, A.ATUR_PASSWORD if aksi == "atur_password" else A.GANTI_PASSWORD,
+                        "Mengatur password" if aksi == "atur_password" else "Mengganti password",
+                        target_type="user", target_id=user.pk)
+    elif aksi == "hapus_password":
+        form.save()
+        update_session_auth_hash(request, akun)
+        record_activity(request, A.HAPUS_PASSWORD, "Menghapus password (SSO saja)",
+                        target_type="user", target_id=user.pk)
+    elif aksi == "ubah_kontak":
+        berubah = form.save(kunci=akun.tersinkron_ehrm())
+        if berubah:
+            record_activity(
+                request, A.UBAH_KONTAK, "Mengubah kontak sendiri", target_type="user", target_id=user.pk,
+                detail="; ".join(f"{f}: {lama or '—'} → {baru or '—'}" for f, (lama, baru) in berubah.items()),
+            )
+    messages.success(request, _PESAN_AKUN[aksi])
+    return None
+
+
+def _context_profil(request, form_akun=None, aksi_terbuka=""):
+    user = request.user
+    jenis_dokumen = _jenis_dokumen_profil(user)
+    dokumen = {d.jenis: d for d in DokumenKepegawaian.objects.filter(user=user)}
+    tersedia = _aksi_akun_tersedia(user)
+    forms_akun = {aksi: _form_akun(aksi, user) for aksi in tersedia}
+    if form_akun is not None:
+        forms_akun[aksi_terbuka] = form_akun
+    peran = (
+        user.peran_list.filter(is_active=True).select_related("unit_organisasi")
+        if user.pk else []
+    )
+    return {
+        "profile": getattr(user, "profile", None),
+        "paspor_list": PasporPegawai.objects.filter(pegawai=user),
+        "jenis_paspor": PasporPegawai.Jenis.choices,
+        "jenis_dokumen": [(k, label, dokumen.get(k)) for k, label in jenis_dokumen],
+        "forms_akun": forms_akun,
+        "aksi_terbuka": aksi_terbuka,
+        "peran_list": sorted(peran, key=lambda p: URUTAN_PERAN.index(p.role)),
+    }
+
+
+@role_required("pegawai", "admin_unor", "admin_bpsdm", "admin_bko", "admin_pakln")
 def profil(request):
     user = request.user
-    jenis_dokumen = (
-        [c for c in DokumenKepegawaian.Jenis.choices if c[0] != DokumenKepegawaian.Jenis.SK_PENUGASAN]
-        if user.role == "pegawai" else [(DokumenKepegawaian.Jenis.SK_PENUGASAN, DokumenKepegawaian.Jenis.SK_PENUGASAN.label)]
-    )
+    jenis_dokumen = _jenis_dokumen_profil(user)
 
     if request.method == "POST":
         aksi = request.POST.get("aksi")
-        if aksi == "tambah_paspor" and user.role == "pegawai":
+        if aksi in _PESAN_AKUN:
+            form = _proses_aksi_akun(request, aksi)
+            if form is not None:
+                messages.error(request, "Periksa kembali isian formulir.")
+                return render(request, "akun/profil.html", _context_profil(request, form, aksi))
+        elif aksi == "tambah_paspor" and user.role == "pegawai":
             nomor = request.POST.get("nomor", "").strip()
             jenis = request.POST.get("jenis", "")
             try:
@@ -591,6 +816,8 @@ def profil(request):
             berkas = request.FILES.get("file")
             if jenis not in dict(jenis_dokumen) or not berkas:
                 messages.error(request, "Pilih jenis dokumen dan berkasnya.")
+            elif (galat := periksa_pdf(request, berkas)):
+                messages.error(request, galat)
             else:
                 dok = DokumenKepegawaian.objects.filter(user=user, jenis=jenis).first()
                 if dok:
@@ -602,10 +829,4 @@ def profil(request):
                 messages.success(request, "Dokumen berhasil diunggah.")
         return redirect("profil")
 
-    dokumen = {d.jenis: d for d in DokumenKepegawaian.objects.filter(user=user)}
-    return render(request, "akun/profil.html", {
-        "profile": getattr(user, "profile", None),
-        "paspor_list": PasporPegawai.objects.filter(pegawai=user),
-        "jenis_paspor": PasporPegawai.Jenis.choices,
-        "jenis_dokumen": [(k, label, dokumen.get(k)) for k, label in jenis_dokumen],
-    })
+    return render(request, "akun/profil.html", _context_profil(request))

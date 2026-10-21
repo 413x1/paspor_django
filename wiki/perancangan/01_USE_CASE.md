@@ -13,7 +13,7 @@ flowchart dengan konvensi: **kotak bersudut tumpul** = aktor,
 | Admin Unor | Primer | Verifikator tahap 1, per unit organisasi |
 | Admin BPSDM | Primer | Verifikator khusus PDLN Tipe 2 (lintas unor) |
 | Admin Biro PAKLN | Primer | Verifikator akhir, pengelola master data |
-| Aplikasi PINTAR | Sistem eksternal | Sumber data pencalonan beasiswa (T2P/T2L) |
+| Platform BPSDM | Sistem eksternal | Sumber data pencalonan beasiswa (T2P/T2L) |
 | Penjadwal (scheduler) | Sistem | Pengingat batas pelaporan |
 
 ## 1.2 Diagram use case — gambaran umum
@@ -24,7 +24,7 @@ flowchart LR
     UNOR(["💻 Admin Unor"])
     BPSDM(["💻 Admin BPSDM"])
     PAKLN(["💻 Admin Biro PAKLN"])
-    PINTAR(["🔗 Aplikasi PINTAR"])
+    PINTAR(["🔗 Platform BPSDM"])
 
     subgraph SYS["PASPOR"]
         direction TB

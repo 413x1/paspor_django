@@ -15,10 +15,8 @@
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     <div class="field">
-      <label class="label" for="{{ form.file.id_for_label }}">Berkas PDF (maks. 10MB)</label>
-      <div class="control">
-        {{ form.file }}
-      </div>
+      <label class="label" for="{{ form.file.id_for_label }}">Berkas PDF (maks. 2 MB)</label>
+      {% include "partials/_input_berkas.html" with field=form.file %}
       {% if form.file.errors %}
         <p class="helptext" style="color:var(--red, #d33);">{{ form.file.errors.0 }}</p>
       {% endif %}

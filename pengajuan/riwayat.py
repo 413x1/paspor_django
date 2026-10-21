@@ -7,11 +7,14 @@ Catatan berjalan dua arah pada beberapa jalur:
   - Pegawai <-> Admin Unor          : dikembalikan_unor, dikirim_ulang
   - Admin Unor <-> Admin BPSDM      : dikembalikan_bpsdm, diteruskan_ulang_bpsdm
   - Admin Unor/BPSDM <-> Biro PAKLN : dikembalikan_pakln, diteruskan_ulang
+  - Track Admin BKO (T2P)           : ditutup_bko, dibuka_ulang_bko
 
 Aturan visibilitas pesan:
-  - Pegawai : pesan jalur Pegawai <-> Admin Unor, serta pesan pelaporan
-              PDLN & pembatalan (menyangkut perjalanannya sendiri).
-  - Admin   : seluruh pesan (Unor, BPSDM, PAKLN).
+  - Pegawai : pesan jalur Pegawai <-> Admin Unor, pesan pelaporan PDLN &
+              pembatalan, serta penutupan/pembukaan kembali track BKO.
+  - Admin   : seluruh pesan (Unor, BPSDM, BKO, PAKLN), kecuali catatan
+              `selesai_tanpa_sk_tubel` yang hanya untuk Admin Biro PAKLN
+              (PDLN_TIPE_2_FLOW.MD §8.9 #11).
 
 Penyaringan dilakukan di sini (server), sehingga pesan yang tidak berhak
 tidak pernah sampai ke template.
@@ -29,6 +32,7 @@ _LABEL_PERAN = {
     User.Role.ADMIN_UNOR: "Admin Unor",
     User.Role.ADMIN_BPSDM: "Admin BPSDM",
     User.Role.ADMIN_PAKLN: "Biro PAKLN",
+    User.Role.ADMIN_BKO: "Admin BKO",
 }
 
 # Aksi yang pesannya berada pada jalur Pegawai <-> Admin Unor.
@@ -39,15 +43,22 @@ _TERBUKA_SEMUA = {
     Aksi.LAPORAN_DIUNGGAH, Aksi.LAPORAN_DIKEMBALIKAN, Aksi.LAPORAN_DISETUJUI,
     Aksi.PEMBATALAN_DIAJUKAN, Aksi.PEMBATALAN_DITARIK, Aksi.PEMBATALAN_DISETUJUI_UNOR,
     Aksi.PEMBATALAN_DITOLAK_UNOR, Aksi.PEMBATALAN_DITOLAK_PAKLN, Aksi.DIBATALKAN,
+    Aksi.DITUTUP_BKO, Aksi.DIBUKA_ULANG_BKO,
 }
 
-_ROLE_ADMIN = {User.Role.ADMIN_UNOR, User.Role.ADMIN_BPSDM, User.Role.ADMIN_PAKLN}
+# Aksi yang pesannya hanya boleh dibaca Admin Biro PAKLN.
+_HANYA_PAKLN = {Aksi.SELESAI_TANPA_SK_TUBEL}
+
+_ROLE_ADMIN = {User.Role.ADMIN_UNOR, User.Role.ADMIN_BPSDM, User.Role.ADMIN_PAKLN, User.Role.ADMIN_BKO}
 
 _TONE = {
     Aksi.DIKEMBALIKAN_UNOR: "warning",
     Aksi.DIKEMBALIKAN_BPSDM: "warning",
     Aksi.DIKEMBALIKAN_PAKLN: "warning",
     Aksi.SELESAI: "success",
+    Aksi.SK_TUBEL_DIUNGGAH: "success",
+    Aksi.DITUTUP_BKO: "warning",
+    Aksi.SELESAI_TANPA_SK_TUBEL: "success",
     Aksi.LAPORAN_DIKEMBALIKAN: "warning",
     Aksi.LAPORAN_DISETUJUI: "success",
     Aksi.PEMBATALAN_DIAJUKAN: "warning",
@@ -66,6 +77,11 @@ _IKON = {
     Aksi.DITERUSKAN_ULANG: "↻",
     Aksi.DITERUSKAN_ULANG_BPSDM: "↻",
     Aksi.SELESAI: "✓",
+    Aksi.DITERUSKAN_BKO: "→",
+    Aksi.SK_TUBEL_DIUNGGAH: "↑",
+    Aksi.DITUTUP_BKO: "■",
+    Aksi.DIBUKA_ULANG_BKO: "↻",
+    Aksi.SELESAI_TANPA_SK_TUBEL: "✓",
     Aksi.LAPORAN_DIUNGGAH: "↑",
     Aksi.LAPORAN_DIKEMBALIKAN: "↩",
     Aksi.LAPORAN_DISETUJUI: "✓",
@@ -102,6 +118,8 @@ def catat(pengajuan, aksi, aktor, status_dari, catatan=""):
 
 
 def boleh_lihat_pesan(user, riwayat):
+    if riwayat.aksi in _HANYA_PAKLN:
+        return user.role == User.Role.ADMIN_PAKLN
     if riwayat.aksi in _TERBUKA_SEMUA:
         return True
     if user.role == User.Role.PEGAWAI:
@@ -139,6 +157,8 @@ def _label_aksi(user, r):
         return "Dikembalikan ke Admin Unor untuk perbaikan"
     if r.aksi == Aksi.DITERUSKAN_PAKLN and r.aktor_role == User.Role.ADMIN_BPSDM:
         return "Diteruskan BPSDM ke Biro PAKLN"
+    if r.aksi == Aksi.DIBUKA_ULANG_BKO:
+        return f"Pemrosesan BKO dibuka kembali oleh {_LABEL_PERAN.get(r.aktor_role, r.aktor_role)}"
     return r.get_aksi_display()
 
 

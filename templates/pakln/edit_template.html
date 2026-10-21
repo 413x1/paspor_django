@@ -33,9 +33,9 @@
     </div>
 
     <div class="field">
-      <label class="label" for="{{ form.file.id_for_label }}">Berkas (PDF atau DOCX)</label>
+      <label class="label" for="{{ form.file.id_for_label }}">Berkas (PDF atau DOCX, maks. 2 MB)</label>
       <p class="helptext">Berkas saat ini: <a href="{{ template.file.url }}" target="_blank" rel="noopener">{{ template.file.name }}</a>. Kosongkan untuk mempertahankan berkas ini.</p>
-      <div class="control">{{ form.file }}</div>
+      {% include "partials/_input_berkas.html" with field=form.file kosong="Tidak diganti" %}
       {% for e in form.file.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
     </div>
 

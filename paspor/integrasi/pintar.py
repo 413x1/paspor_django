@@ -1,5 +1,5 @@
 """
-Integrasi Aplikasi PINTAR — sumber pencalonan beasiswa yang berstatus
+Integrasi Platform BPSDM — sumber pencalonan beasiswa yang berstatus
 Selesai (mendapat rekomendasi Admin BPSDM & Admin Biro PAKLN), dipakai
 droplist "Nama Beasiswa" pada formulir PDLN Tipe 2. Lihat
 wiki/instructions/BISNIS_PROSES_PDLN.MD §12.
@@ -7,7 +7,7 @@ wiki/instructions/BISNIS_PROSES_PDLN.MD §12.
 PASPOR hanya membaca. Selama `settings.PINTAR_API_URL` kosong, dipakai data
 stub lokal (contoh dari mockup Tahap 2) di balik antarmuka yang sama.
 
-Kontrak API yang diasumsikan (sesuaikan saat spesifikasi PINTAR tersedia):
+Kontrak API yang diasumsikan (sesuaikan saat spesifikasi Platform BPSDM tersedia):
     GET {PINTAR_API_URL}/pencalonan?nip=<nip>&jenis=<pendidikan|pelatihan>&status=selesai
     -> [{"id": "...", "nama_beasiswa": "...", "institusi": "...", "tgl_rekomendasi": "YYYY-MM-DD"}, ...]
 """
@@ -74,7 +74,7 @@ def daftar_pencalonan_selesai(nip, jenis):
         with urllib.request.urlopen(request, timeout=settings.PINTAR_API_TIMEOUT) as resp:
             data = json.loads(resp.read().decode("utf-8"))
     except Exception:  # noqa: BLE001 — layanan eksternal, jangan gagalkan halaman
-        logger.exception("Gagal mengambil pencalonan dari Aplikasi PINTAR")
+        logger.exception("Gagal mengambil pencalonan dari Platform BPSDM")
         return []
     return [
         Pencalonan(

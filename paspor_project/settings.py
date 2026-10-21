@@ -91,7 +91,9 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "accounts.middleware.PeranAktifMiddleware",  # peran aktif user ber-role ganda
     "django.contrib.messages.middleware.MessageMiddleware",
+    "paspor.middleware.UnggahDitolakMiddleware",  # unggahan bukan-PDF -> status 400
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
@@ -115,6 +117,7 @@ TEMPLATES = [
                 "notifications.context_processors.notifications",
                 "pengajuan.context_processors.badge_sidebar",
                 "pengajuan.context_processors.breadcrumbs",
+                "accounts.context_processors.status_profil",
             ],
         },
     },
@@ -230,11 +233,32 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Integrasi Aplikasi PINTAR (pencalonan beasiswa, PDLN Tipe 2) — kosong = pakai
+# Integrasi Platform BPSDM (pencalonan beasiswa, PDLN Tipe 2) — kosong = pakai
 # data stub lokal (paspor/integrasi/pintar.py). Lihat BISNIS_PROSES_PDLN.MD §12.
 PINTAR_API_URL = env("PINTAR_API_URL", "")
 PINTAR_API_TOKEN = env("PINTAR_API_TOKEN", "")
 PINTAR_API_TIMEOUT = int(env("PINTAR_API_TIMEOUT", "5"))
+
+# Integrasi e-HRM (data kepegawaian, email & nomor HP) — kosong = pakai data
+# stub lokal (paspor/integrasi/ehrm.py). Lihat IMPROVEMENT_PLAN_19102026.MD §9.2.
+EHRM_API_URL = env("EHRM_API_URL", "")
+EHRM_API_TOKEN = env("EHRM_API_TOKEN", "")
+EHRM_TIMEOUT = int(env("EHRM_TIMEOUT", "5"))
+
+# Login SSO (IMPROVEMENT_PLAN_19102026.MD §9.1). Adaptor protokol menunggu Q1;
+# selama SSO_ENABLED=False dan DEBUG=True tersedia stub pilih-NIP di /login/sso/.
+SSO_ENABLED = env("SSO_ENABLED", "False") == "True"
+SSO_PROTOCOL = env("SSO_PROTOCOL", "oidc")
+SSO_ISSUER_URL = env("SSO_ISSUER_URL", "")
+SSO_CLIENT_ID = env("SSO_CLIENT_ID", "")
+SSO_CLIENT_SECRET = env("SSO_CLIENT_SECRET", "")
+SSO_NIP_CLAIM = env("SSO_NIP_CLAIM", "nip")
+SSO_SCOPES = env("SSO_SCOPES", "openid profile email")
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "accounts.sso.SsoBackend",  # sesi user yang masuk lewat SSO
+]
 
 
 # ---------------------------------------------------------------------------
@@ -276,6 +300,51 @@ LOGGING = {
     "loggers": {
         "logs": {"handlers": list(_LOG_HANDLERS), "level": "INFO", "propagate": False},
         "pengajuan": {"handlers": list(_LOG_HANDLERS), "level": "INFO", "propagate": False},
+        "notifications": {"handlers": list(_LOG_HANDLERS), "level": "INFO", "propagate": False},
         "django.request": {"handlers": list(_LOG_HANDLERS), "level": "WARNING", "propagate": False},
     },
+}
+
+
+# ---------------------------------------------------------------------------
+# Email notifikasi (lihat wiki/instructions/EMAIL_NOTIF_IMPLEMENTATION_PLAN.MD)
+# ---------------------------------------------------------------------------
+def _env_bool(key, default="False"):
+    return str(env(key, default)).strip().lower() in ("1", "true", "yes", "on")
+
+
+# SALKLAR PENGAMAN: bila False (bawaan), email tetap dicatat di EmailLog dengan
+# status "skipped" tetapi TIDAK dikirim via SMTP. Aktifkan hanya di .env produksi.
+MAIL_ALLOW_SEND = _env_bool("MAIL_ALLOW_SEND", "False")
+
+EMAIL_BACKEND = {
+    "smtp": "django.core.mail.backends.smtp.EmailBackend",
+    "console": "django.core.mail.backends.console.EmailBackend",
+}.get(str(env("MAIL_DRIVER", "smtp")).strip().lower(), "django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = env("MAIL_HOST", "localhost")
+EMAIL_PORT = int(env("MAIL_PORT", "587"))
+EMAIL_HOST_USER = env("MAIL_USERNAME", "")
+EMAIL_HOST_PASSWORD = env("MAIL_PASSWORD", "")
+_MAIL_ENCRYPTION = str(env("MAIL_ENCRYPTION", "tls")).strip().lower()
+EMAIL_USE_TLS = _MAIL_ENCRYPTION == "tls"      # STARTTLS (port 587)
+EMAIL_USE_SSL = _MAIL_ENCRYPTION == "ssl"      # SSL langsung (port 465)
+EMAIL_TIMEOUT = int(env("MAIL_TIMEOUT_MS", "15000")) / 1000   # Django memakai detik
+DEFAULT_FROM_EMAIL = f'"{env("MAIL_FROM_NAME", "PASPOR PU")}" <{env("MAIL_FROM_EMAIL", "noreply@example.com")}>'
+
+MAIL_SITE_NAME = env("MAIL_SITE_NAME", "PASPOR PU")
+# Alamat dasar untuk tautan absolut di email (mis. http://10.101.21.55:8000).
+SITE_BASE_URL = str(env("SITE_BASE_URL", "http://127.0.0.1:8000")).rstrip("/")
+# Opsional: bila diisi, SEMUA email dialihkan ke alamat ini (untuk pengujian).
+MAIL_DEV_REDIRECT_TO = env("MAIL_DEV_REDIRECT_TO", "").strip()
+
+# Antrean email berbasis database (notifications.EmailLog).
+MAIL_QUEUE = {
+    "ENABLE_WORKER": _env_bool("MAIL_DB_QUEUE_ENABLE_WORKER", "False"),
+    "INTERVAL": int(env("MAIL_DB_QUEUE_WORKER_INTERVAL_MS", "15000")) / 1000,
+    "BATCH_SIZE": int(env("MAIL_DB_QUEUE_WORKER_BATCH_SIZE", "20")),
+    "MAX_ATTEMPTS": int(env("MAIL_DB_QUEUE_MAX_ATTEMPTS", "5")),
+    "RETRY_DELAY": int(env("MAIL_DB_QUEUE_RETRY_DELAY_MS", "30000")) / 1000,
+    "LOCK_TTL": int(env("MAIL_DB_QUEUE_LOCK_TTL_MS", "60000")) / 1000,
+    # Jeda antar email dalam satu putaran (detik); menjaga batas kecepatan SMTP.
+    "SEND_PACING": int(env("MAIL_DB_QUEUE_SEND_PACING_MS", "2000")) / 1000,
 }

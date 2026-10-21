@@ -3,19 +3,22 @@ Registri persyaratan dokumen per (jenis/tipe, tahap) — satu sumber
 kebenaran untuk halaman unggah, pratinjau, dan validasi tombol
 Kirim/Teruskan/Selesai. Lihat wiki/instructions/BISNIS_PROSES_PDLN.MD §6.
 
-Tahap: "pegawai", "unor", "bpsdm", "pakln". Kunci tipe: "nondinas" atau
-kode tipe PDLN ("T1", "T2P", "T2L", "T3").
+Tahap: "pegawai", "unor", "bpsdm", "bko", "pakln". Kunci tipe: "nondinas"
+atau kode tipe PDLN ("T1", "T2P", "T2L", "T3"). Tahap "bko" (SK Tugas
+Belajar, khusus T2P) berjalan paralel dengan "pakln" — lihat
+wiki/instructions/PDLN_TIPE_2_FLOW.MD §8.
 """
 
 from dataclasses import dataclass, field
 from typing import Callable, Union
 
-from .models import DokumenBpsdm, DokumenPakln, DokumenPegawai, DokumenUnor
+from .models import DokumenBko, DokumenBpsdm, DokumenPakln, DokumenPegawai, DokumenUnor
 
 TAHAP_MODEL = {
     "pegawai": DokumenPegawai,
     "unor": DokumenUnor,
     "bpsdm": DokumenBpsdm,
+    "bko": DokumenBko,
     "pakln": DokumenPakln,
 }
 
@@ -23,6 +26,7 @@ TAHAP_RELATED = {
     "pegawai": "dokumen_pegawai",
     "unor": "dokumen_unor",
     "bpsdm": "dokumen_bpsdm",
+    "bko": "dokumen_bko",
     "pakln": "dokumen_pakln",
 }
 
@@ -30,6 +34,7 @@ TAHAP_LABEL = {
     "pegawai": "Pegawai",
     "unor": "Admin Unor",
     "bpsdm": "Admin BPSDM",
+    "bko": "Admin BKO",
     "pakln": "Admin Biro PAKLN",
 }
 
@@ -125,10 +130,10 @@ PERSYARATAN = {
         Syarat("ikatan_dinas_ttd", aksi="generate"),
         Syarat("nd_kabiro_pakln", tanggal_surat=True, aksi="format"),
     ],
-    ("T2P", "pakln"): _PAKLN_PDLN[:4] + [
-        Syarat("sk_tubel", aksi="generate"),
-        _PAKLN_PDLN[4],
+    ("T2P", "bko"): [
+        Syarat("sk_tubel", tanggal_surat=True),
     ],
+    ("T2P", "pakln"): _PAKLN_PDLN,
 
     # --- PDLN Tipe 2 — Pelatihan ----------------------------------------
     ("T2L", "pegawai"): [
@@ -203,16 +208,21 @@ def jenis_perlu_tanggal_surat(pengajuan, tahap, jenis):
 
 
 def tahap_untuk_role(role):
-    return {"pegawai": "pegawai", "admin_unor": "unor", "admin_bpsdm": "bpsdm", "admin_pakln": "pakln"}[role]
+    return {
+        "pegawai": "pegawai", "admin_unor": "unor", "admin_bpsdm": "bpsdm",
+        "admin_bko": "bko", "admin_pakln": "pakln",
+    }[role]
 
 
 def direktori(pengajuan, sampai_tahap):
     """Dokumen yang sudah diunggah tahap-tahap sebelum `sampai_tahap`
     (untuk halaman Pratinjau), dikelompokkan per tahap."""
-    urutan = ["pegawai", "unor", "bpsdm", "pakln"]
+    urutan = ["pegawai", "unor", "bpsdm", "bko", "pakln"]
     hasil = []
     for tahap in urutan[:urutan.index(sampai_tahap)]:
         if tahap == "bpsdm" and not pengajuan.is_tipe2:
+            continue
+        if tahap == "bko" and not pengajuan.pakai_bko:
             continue
         model = TAHAP_MODEL[tahap]
         labels = dict(model.Jenis.choices)

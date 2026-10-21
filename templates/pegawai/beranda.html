@@ -5,6 +5,7 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
+<link rel="stylesheet" href="{% static 'css/pelaporan.css' %}?v=20261013c">
 {% endblock %}
 
 {% block content %}
@@ -38,7 +39,7 @@
 {% endif %}
 
 {% if aktif %}
-<div class="section-title" style="font-size:14px;">Pengajuan Aktif</div>
+<div class="section-title is-small">Pengajuan Aktif</div>
 <div class="table-wrap" style="margin-bottom:20px;">
   <table class="table data-table is-fullwidth is-hoverable">
     <thead>
@@ -59,12 +60,31 @@
           {% elif aktif.status == "belum" %}
             <a href="{% url 'pegawai:upload_dokumen' kode=aktif.kode %}" class="button is-small">Lanjutkan Unggah</a>
           {% elif aktif.status == "selesai" and aktif.is_pdln %}
-            <a href="{% url 'pegawai:pelaporan' %}" class="button is-small is-primary">Laporan PDLN</a>
+            <a href="{% url 'pegawai:laporan_form' kode=aktif.kode %}" class="button is-small is-info">Pelaporan PDLN</a>
           {% else %}
             <a href="{% url 'pegawai:monitor_progres' kode=aktif.kode %}" class="button is-small">Lihat Progres</a>
           {% endif %}
         </td>
       </tr>
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if usulan_kegiatan %}
+<div class="section-title is-small">Usulan Kegiatan Saya</div>
+<div class="table-wrap" style="margin-bottom:20px;">
+  <table class="table data-table is-fullwidth is-hoverable">
+    <thead><tr><th>Kegiatan</th><th>Tgl Usul</th><th>Status</th><th>Catatan Admin Biro PAKLN</th></tr></thead>
+    <tbody>
+      {% for u in usulan_kegiatan %}
+        <tr>
+          <td><strong>{{ u.nama }}</strong><br><span class="cell-muted">{{ u.penyelenggara }} · {{ u.tahun_pelaksanaan }}</span></td>
+          <td>{{ u.created_at|date:"d M Y" }}</td>
+          <td><span class="tag kegiatan-status is-{{ u.status }}">{{ u.get_status_display }}</span></td>
+          <td>{{ u.catatan_keputusan|default:"—" }}</td>
+        </tr>
+      {% endfor %}
     </tbody>
   </table>
 </div>

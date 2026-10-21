@@ -1,12 +1,17 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}Pelaporan PDLN{% endblock %}
 {% block wrap_extra_class %} medium{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/pelaporan.css' %}?v=20261013c">
+{% endblock %}
 
 {% block content %}
 <div class="page-head">
   <div>
     <h2>Pelaporan PDLN</h2>
-    <p class="sub">Unggah laporan perjalanan dinas. Pengajuan PDLN baru dinyatakan tuntas setelah laporan disetujui Admin Biro PAKLN.</p>
+    <p class="sub">Isi dan sampaikan laporan perjalanan dinas. Pengajuan PDLN baru dinyatakan tuntas setelah laporan disetujui Admin Biro PAKLN.</p>
   </div>
 </div>
 
@@ -37,14 +42,14 @@
               {% else %}Belum melapor{% endif %}
             </td>
             <td>
-              {% if p.laporan %}
+              {% if p.laporan.file %}
                 <button type="button" class="button is-small" data-doc-preview="{{ p.laporan.file.url }}" data-doc-title="Laporan {{ p.kode }}">👁 Lihat</button>
               {% endif %}
               {% if p.status == "selesai" and not p.pembatalan_terbuka %}
-                {% if not p.laporan or p.laporan.status == "dikembalikan" %}
-                  <button type="button" class="button is-small is-primary" data-modal-open="laporanModal-{{ p.pk }}">
-                    ⬆ {% if p.laporan %}Unggah Ulang{% else %}Unggah Laporan{% endif %}
-                  </button>
+                {% if not p.laporan or p.laporan.status == "draft" or p.laporan.status == "dikembalikan" %}
+                  <a href="{% url 'pegawai:laporan_form' kode=p.kode %}" class="button is-small is-info">Pelaporan PDLN</a>
+                {% else %}
+                  <a href="{% url 'pegawai:laporan_form' kode=p.kode %}" class="button is-small">Lihat Laporan</a>
                 {% endif %}
               {% elif p.status != "selesai" %}
                 <span class="cell-muted">Selesaikan PDLN dahulu</span>
@@ -59,34 +64,4 @@
   </div>
 </div>
 
-{% for p in daftar %}
-  {% if p.status == "selesai" %}
-  <div id="laporanModal-{{ p.pk }}" class="modal paspor-modal">
-    <div class="modal-background"></div>
-    <div class="modal-card">
-      <div class="modal-card-body">
-        <h3>{% if p.laporan %}Unggah Ulang{% else %}Unggah{% endif %} Laporan PDLN</h3>
-        <p class="modal-intro">{{ p.kode }} · {{ p.jenis_label }} · {{ p.tujuan_negara_display }}</p>
-        <form method="post" action="{% url 'pegawai:unggah_laporan' kode=p.kode %}" enctype="multipart/form-data">
-          {% csrf_token %}
-          <div class="field">
-            <label class="label">Berkas laporan</label>
-            <div class="control"><input type="file" name="file" required class="input"></div>
-          </div>
-          {% if p.laporan.status == "dikembalikan" %}
-            <div class="field">
-              <label class="label">Catatan perbaikan untuk Biro PAKLN <span style="color:#c0392b;">*</span></label>
-              <div class="control"><textarea class="textarea" name="catatan" rows="3" required></textarea></div>
-            </div>
-          {% endif %}
-          <div style="display:flex; gap:8px; justify-content:flex-end;">
-            <button type="button" class="button" data-modal-close>Batal</button>
-            <button type="submit" class="button is-primary">Kirim Laporan</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-  {% endif %}
-{% endfor %}
 {% endblock %}

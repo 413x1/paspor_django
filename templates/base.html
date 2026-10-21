@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}PASPOR{% endblock %} — Kementerian PU</title>
   <link rel="stylesheet" href="{% static 'vendors/bulma/css/versions/bulma-no-dark-mode.min.css' %}">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20261007c">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20261019">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -19,6 +19,15 @@
 
 <main class="page-wrap{% block wrap_extra_class %}{% endblock %}">
   {% block breadcrumb %}{% include "partials/_breadcrumb.html" %}{% endblock %}
+  {% if no_hp_kosong %}
+    <div class="notification paspor-msg is-warning banner-no-hp">
+      {% if user.role == "admin_pakln" %}
+        Nomor HP Anda belum tercatat. <a href="{% url 'profil' %}">Lengkapi di menu Profil →</a>
+      {% else %}
+        Nomor HP belum tercatat — hubungi Admin Biro PAKLN.
+      {% endif %}
+    </div>
+  {% endif %}
   {% if messages %}
     {% for message in messages %}
       <div class="notification paspor-msg {% if message.tags == 'error' %}is-danger{% elif message.tags == 'success' %}is-success{% elif message.tags == 'warning' %}is-warning{% else %}is-info{% endif %}"{% if message.tags == 'success' %} data-flash-success{% endif %}>{{ message }}</div>
@@ -311,14 +320,72 @@
       // menyertakan field yang disabled ke body POST, sehingga upload
       // gagal validasi (field "file" kosong).
       $form.find('.doc-upload-submit').text('Mengunggah…').prop('disabled', true);
+      $form.find('.file-cta .file-label').text('Mengunggah…');
       $fileInput.prop('readonly', true);
       $form.trigger('submit');
     }
+
+    // Unggahan hanya PDF: periksa ekstensi dan tipe berkas SEBELUM apa pun diproses. Berkas
+    // yang salah dibatalkan (input dikosongkan) disertai pemberitahuan. Server tetap
+    // memvalidasi ulang (ekstensi, MIME type, dan isi berkas) — ini hanya kenyamanan.
+    // Batas ukuran dibaca dari atribut data-max-mb pada input (2 MB; Laporan PDLN 10 MB).
+    function berkasUkuranValid(input) {
+      var f = input.files && input.files[0];
+      var maksMb = parseFloat(input.getAttribute('data-max-mb'));
+      if (!f || !maksMb || f.size <= maksMb * 1024 * 1024) { return true; }
+      $(input).val('');
+      window.pasporAlert({
+        type: 'error', title: 'Berkas terlalu besar',
+        message: 'Ukuran berkas maksimal ' + maksMb + ' MB. Berkas "' + f.name + '" berukuran '
+          + (f.size / 1024 / 1024).toFixed(1).replace('.', ',') + ' MB.',
+      });
+      return false;
+    }
+
+    function berkasPdfValid(input) {
+      var f = input.files && input.files[0];
+      if (!f) { return true; }
+      var ekstensiOk = /\.pdf$/i.test(f.name);
+      var tipeOk = !f.type || f.type === 'application/pdf';  // tipe kosong: biarkan server memeriksa
+      if (ekstensiOk && tipeOk) { return berkasUkuranValid(input); }
+      $(input).val('');
+      window.pasporAlert({
+        type: 'error', title: 'Berkas ditolak',
+        message: 'Hanya berkas PDF (.pdf) yang dapat diunggah. Berkas "' + f.name + '" bukan PDF.',
+      });
+      return false;
+    }
+
+    // Input unggah yang tidak memakai alur .doc-file-input (mis. laporan PDLN).
+    $(document).on('change', 'input[type="file"][data-pdf-only]:not(.doc-file-input)', function () {
+      berkasPdfValid(this);
+    });
+    // Berkas non-PDF (Template Dokumen, impor kalender) — cek ukuran saja.
+    $(document).on('change', 'input[type="file"][data-max-mb]:not([data-pdf-only])', function () {
+      berkasUkuranValid(this);
+    });
+    $(document).on('submit', 'form', function (e) {
+      var valid = true;
+      $(this).find('input[type="file"][data-pdf-only]').each(function () {
+        if (!berkasPdfValid(this)) { valid = false; }
+      });
+      $(this).find('input[type="file"][data-max-mb]:not([data-pdf-only])').each(function () {
+        if (!berkasUkuranValid(this)) { valid = false; }
+      });
+      if (!valid) { e.preventDefault(); }
+    });
+
+    // Nama berkas terpilih pada komponen .file (partials/_input_berkas.html).
+    $(document).on('change', '.file .file-input', function () {
+      var nama = this.files && this.files.length ? this.files[0].name : '';
+      if (nama) { $(this).closest('.file').find('[data-file-name]').text(nama); }
+    });
 
     $(document).on('change', '.doc-file-input', function () {
       var $input = $(this);
       var $form = $input.closest('form');
       if (!this.files || !this.files.length) { return; }
+      if (!berkasPdfValid(this)) { return; }
 
       var jenis = $form.find('input[name="jenis"]').val();
       // Registri persyaratan menandai baris yang butuh Tanggal Surat lewat
@@ -465,6 +532,21 @@
     }
     $('select[data-multiselect]').each(function () { initMultiselect($(this)); });
     $(document).on('click', function () { $('.multiselect-panel.is-active').removeClass('is-active'); });
+
+    // Penanda wajib: tambahkan "*" merah pada label setiap isian ber-atribut
+    // `required` (Django memasangnya otomatis untuk field wajib) atau
+    // `data-wajib` (wajib secara bisnis tetapi boleh kosong saat draft). Label yang
+    // sudah punya penanda (.text-danger) dilewati; badge "Otomatis" tetap di
+    // belakang tanda bintang.
+    $('input[required], select[required], textarea[required], [data-wajib]').each(function () {
+      if (this.type === 'hidden') { return; }
+      var $label = this.id ? $('label[for="' + this.id + '"]').first() : $();
+      if (!$label.length) { $label = $(this).closest('.field').find('label.label').first(); }
+      if (!$label.length || $label.find('.text-danger').length) { return; }
+      var $tanda = $('<span class="text-danger" aria-hidden="true"> *</span>');
+      var $badge = $label.children('.badge-auto').first();
+      if ($badge.length) { $badge.before($tanda); } else { $label.append($tanda); }
+    });
 
     // Toast pop-up: muncul bertahap lalu hilang otomatis setelah beberapa detik.
     $('[data-notif-toast]').each(function (i) {

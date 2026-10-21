@@ -8,12 +8,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import escape, format_html
+from django.utils.safestring import mark_safe
 
 from logs.utils import catat_riwayat
-from notifications.services import notify_approve_unor, notify_reject_bpsdm
+from notifications.services import notify_approve_unor, notify_forward_bko, notify_info_bko, notify_reject_bpsdm
 
-from . import alur, persyaratan, report, riwayat, tahap
-from .decorators import role_required
+from . import alur, bko, persyaratan, report, riwayat, tahap
+from .decorators import role_required, tolak_pengajuan_sendiri
 from .models import Pengajuan, PermohonanPembatalan, RiwayatPengajuan
 from .views_unor import status_html
 
@@ -51,7 +52,7 @@ def dashboard_data(request):
             url = reverse("bpsdm:upload_dokumen" if p.preview_bpsdm_agree else "bpsdm:preview", args=[p.kode])
             aksi = format_html('<a href="{}" class="button is-warning is-small">TL →</a>', url)
         elif p.status in (S.PROSES, S.BELUM):
-            aksi = format_html('<span class="cell-muted">Menunggu Admin Unor</span>')
+            aksi = mark_safe('<span class="cell-muted">Menunggu Admin Unor</span>')
         else:
             aksi = format_html('<a href="{}" class="button is-small">Lihat</a>', reverse("bpsdm:preview", args=[p.kode]))
         detail = p.detail
@@ -74,6 +75,8 @@ def dashboard_data(request):
 @role_required("admin_bpsdm")
 def preview(request, kode):
     pengajuan = get_object_or_404(_scoped(request), kode=kode)
+    if request.method == "POST":
+        tolak_pengajuan_sendiri(request, pengajuan)  # AB-12
 
     if request.method == "POST":
         pesan = alur.alasan_dibekukan(pengajuan)
@@ -121,6 +124,8 @@ def preview(request, kode):
 @role_required("admin_bpsdm")
 def upload_dokumen(request, kode):
     pengajuan = get_object_or_404(_scoped(request), kode=kode)
+    if request.method == "POST":
+        tolak_pengajuan_sendiri(request, pengajuan)  # AB-12
     if not pengajuan.preview_bpsdm_agree or pengajuan.status != S.PROSES_BPSDM:
         return redirect("bpsdm:preview", kode=kode)
 
@@ -169,15 +174,25 @@ def _teruskan(request, pengajuan):
         p.save()
         riwayat.catat(p, Aksi.DITERUSKAN_ULANG if is_ulang else Aksi.DITERUSKAN_PAKLN, request.user, status_dari, catatan=catatan)
         catat_riwayat(request, p, Aksi.DITERUSKAN_ULANG if is_ulang else Aksi.DITERUSKAN_PAKLN)
+        # T2P: track SK Tugas Belajar Admin BKO dibuka paralel (sekali saja).
+        track_baru = bko.buka_track(p, request.user)
+        if track_baru:
+            catat_riwayat(request, p, Aksi.DITERUSKAN_BKO)
 
     notify_approve_unor(p, catatan, dari_bpsdm=True)
-    messages.success(request, f"Pengajuan {p.kode} diteruskan ke Admin Biro PAKLN.")
+    if track_baru:
+        notify_forward_bko(p)
+    elif p.track_bko_terbuka:
+        notify_info_bko(p)
+    tujuan = "Admin Biro PAKLN dan Admin BKO" if p.track_bko_terbuka else "Admin Biro PAKLN"
+    messages.success(request, f"Pengajuan {p.kode} diteruskan ke {tujuan}.")
     return redirect("bpsdm:dashboard")
 
 
 @role_required("admin_bpsdm")
 def hapus_dokumen(request, kode, jenis):
     pengajuan = get_object_or_404(_scoped(request), kode=kode)
+    tolak_pengajuan_sendiri(request, pengajuan)  # AB-12
     if pengajuan.status == S.PROSES_BPSDM:
         tahap.hapus(request, pengajuan, "bpsdm", jenis)
     return redirect("bpsdm:upload_dokumen", kode=kode)

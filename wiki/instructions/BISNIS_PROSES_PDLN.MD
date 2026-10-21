@@ -3,7 +3,10 @@
 > **Status:** diimplementasikan — fase 1–5, 2b, 7, 8 (lihat [§16](#16-status-implementasi--peta-kode)).
 > Fase 6 (generate dokumen PDLN) belum: menunggu format resmi.
 > **Sumber:** mockup `20261005_PASPOR — Tahap 2_ PDLN Tipe 1–3 + PINTAR.html`.
-> **Pengguna:** Pegawai, Admin Unor, Admin BPSDM (baru), Admin Biro PAKLN.
+> **Pengguna:** Pegawai, Admin Unor, Admin BPSDM (baru), Admin Biro PAKLN, Admin BKO (v2 T2P).
+> **PDLN Tipe 2 Pendidikan (T2P) v2:** SK Tugas Belajar diunggah **Admin BKO** pada
+> track paralel dengan Biro PAKLN — aktor, dokumen, catatan, dan notifikasi T2P di
+> dokumen ini diperbarui oleh [PDLN_TIPE_2_FLOW.MD §8](PDLN_TIPE_2_FLOW.MD#8-versi-lanjutan-v2--sk-tubel-oleh-admin-bko).
 > **Terkait:** [RIWAYAT_PEMROSESAN_PENGAJUAN.MD](RIWAYAT_PEMROSESAN_PENGAJUAN.MD),
 > [SKENARIO_NOTIFIKASI_SURAT.md](SKENARIO_NOTIFIKASI_SURAT.md),
 > [MANAJEMEN_TEMPLATE.MD](MANAJEMEN_TEMPLATE.MD),
@@ -24,7 +27,7 @@
 9. [Halaman & Navigasi](#9-halaman--navigasi)
 10. [Halaman Report (Dinas & Non-Dinas)](#10-halaman-report-dinas--non-dinas)
 11. [Notifikasi](#11-notifikasi)
-12. [Integrasi Eksternal (Aplikasi PINTAR)](#12-integrasi-eksternal-aplikasi-pintar)
+12. [Integrasi Eksternal (Platform BPSDM)](#12-integrasi-eksternal-aplikasi-pintar)
 13. [Tahapan Implementasi](#13-tahapan-implementasi)
 14. [Keputusan & Pertanyaan Terbuka](#14-keputusan--pertanyaan-terbuka)
 15. [Bahan Pertimbangan untuk Diskusi Lanjutan](#15-bahan-pertimbangan-untuk-diskusi-lanjutan)
@@ -64,11 +67,11 @@ Pelaporan PDLN). Prinsip integrasinya:
 
 | Jenis | Tipe | Kode tipe | Contoh kegiatan | Melibatkan BPSDM | Prefiks kode pengajuan |
 |---|---|---|---|---|---|
-| Non-Dinas | — | — | Ibadah, wisata, keperluan pribadi | Tidak | `PSP-<tahun>-NNNN` (tetap) |
-| PDLN | Tipe 1 | `T1` | Pertemuan bilateral/regional/multilateral, pameran/expo, advis teknis, pendampingan | Tidak | `PDLN-<tahun>-T1-NNNN` |
-| PDLN | Tipe 2 — Pendidikan | `T2P` | Tugas belajar Master/Doctoral | **Ya** | `PDLN-<tahun>-T2P-NNNN` |
-| PDLN | Tipe 2 — Pelatihan | `T2L` | Short course, seminar/lokakarya, workshop, simposium/konferensi | **Ya** | `PDLN-<tahun>-T2L-NNNN` |
-| PDLN | Tipe 3 — Penugasan Khusus | `T3` | Penugasan atas disposisi Menteri | Tidak | `PDLN-<tahun>-T3-NNNN` |
+| Non-Dinas | — | — | Ibadah, wisata, keperluan pribadi | Tidak | `PLN[Kode Unor]-ddmmyy-NNN` |
+| PDLN | Tipe 1 | `T1` | Pertemuan bilateral/regional/multilateral, pameran/expo, advis teknis, pendampingan | Tidak | `PDLN[Kode Unor]-1-ddmmyy-NNN` |
+| PDLN | Tipe 2 — Pendidikan | `T2P` | Tugas belajar Master/Doctoral | **Ya** | `PDLN[Kode Unor]-2A-ddmmyy-NNN` |
+| PDLN | Tipe 2 — Pelatihan | `T2L` | Short course, seminar/lokakarya, workshop, simposium/konferensi | **Ya** | `PDLN[Kode Unor]-2B-ddmmyy-NNN` |
+| PDLN | Tipe 3 — Penugasan Khusus | `T3` | Penugasan atas disposisi Menteri | Tidak | `PDLN[Kode Unor]-3-ddmmyy-NNN` |
 
 - Nomor urut `NNNN` dihitung **per prefiks per tahun** (perluasan
   `Pengajuan._generate_kode`).
@@ -300,13 +303,14 @@ Data pegawai (Nama, NIP, Jabatan, Pangkat, Unit Kerja, Unit Organisasi)
 |---|---|---|---|---|---|
 | Kategori perjalanan | Ibadah, Keperluan Pribadi, Wisata, Lainnya | Pertemuan Bilateral/Regional/Multilateral, Pameran/Expo, Pemberian Advis Teknis, Pendampingan | Master, Doctoral | Short Course-Training, Seminar/Lokakarya, Workshop, Simposium/Konferensi Internasional | `Pengajuan.kategori` (FK master) |
 | Maksud perjalanan | ✅ | — | — | — | `Pengajuan.maksud` |
-| Nama beasiswa (Aplikasi PINTAR) | — | — | ✅ droplist | ✅ droplist | `DetailPdln.beasiswa_*` |
-| Penyelenggara | — | ✅ | — | ✅ | `DetailPdln.penyelenggara` |
-| Perguruan tinggi | — | — | ✅ | — | `DetailPdln.perguruan_tinggi` |
+| **Kegiatan** ([EVENT_IMPLEMENTATION_PLAN.MD](EVENT_IMPLEMENTATION_PLAN.MD)) | — | ✅ | ✅ | ✅ | `Pengajuan.kegiatan` (FK `paspor.Kegiatan`) + snapshot `DetailPdln.kegiatan_nama/kegiatan_tahun` |
+| Penyelenggara | — | otomatis dari kegiatan | — | otomatis dari kegiatan | `DetailPdln.penyelenggara` (snapshot) |
+| Perguruan tinggi | — | — | otomatis dari kegiatan (universitas) | — | `DetailPdln.perguruan_tinggi` (snapshot) |
+| Nama beasiswa (Platform BPSDM) | — | — | diganti Kegiatan (data lama saja) | diganti Kegiatan (data lama saja) | `DetailPdln.beasiswa_*` |
 | Negara tujuan | ✅ (M2M) | ✅ | ✅ | ✅ | `Pengajuan.tujuan_negara` |
-| Kota tujuan | — | ✅ | ✅ | ✅ | `DetailPdln.kota_tujuan` |
+| Kota tujuan | — | otomatis dari kegiatan | otomatis | otomatis | `DetailPdln.kota_tujuan` (snapshot) |
 | Tgl keberangkatan / kepulangan | ✅ | ✅ | ✅ | ✅ | `Pengajuan.tgl_berangkat/tgl_kembali` |
-| Tgl mulai / selesai kegiatan | — | Agenda (sesuai undangan) | Perkuliahan | Pelatihan | `DetailPdln.tgl_mulai_kegiatan/tgl_selesai_kegiatan` |
+| Tgl mulai / selesai kegiatan | — | Agenda — otomatis dari kegiatan | Perkuliahan — otomatis | Pelatihan — otomatis | `DetailPdln.tgl_mulai_kegiatan/tgl_selesai_kegiatan` (snapshot) |
 | Sumber pembiayaan | Pribadi, Sponsor/Pihak Ketiga, Lainnya | DIPA Kementerian PU, DIPA K/L Lain, Donor Penyelenggara | DIPA Kementerian PU, DIPA K/L Lain, Beasiswa LPDP, Beasiswa/Donor LN, Beasiswa Lainnya | DIPA Kementerian PU, DIPA K/L Lain, Beasiswa/Donor LN, Beasiswa Lainnya | `Pengajuan.sumber_pembiayaan` (FK master) |
 | Jumlah hari kerja / kalender | ✅ otomatis | otomatis (informasi, untuk report) | otomatis | otomatis | `Pengajuan.jumlah_hari_kerja` |
 | Cek sisa cuti | ✅ (tolak bila melebihi) | — (dinas, bukan cuti) | — | — | — |
@@ -318,7 +322,10 @@ Validasi tambahan (server-side):
 - Periode kegiatan **berada di dalam** periode perjalanan
   (`tgl_berangkat ≤ tgl_mulai_kegiatan` dan `tgl_selesai_kegiatan ≤ tgl_kembali`).
 - Pilihan kategori & sumber pembiayaan difilter sesuai tipe ([§8.4](#84-master-data)).
-- Beasiswa wajib untuk T2P **dan** T2L (mockup hanya memvalidasi T2L — lihat [§14](#14-keputusan--pertanyaan-terbuka)).
+- Kegiatan wajib dipilih sebelum pengajuan dikirim ke Admin Unor (draft boleh tanpa kegiatan); kategori,
+  sumber pembiayaan, dan negara tujuan divalidasi terhadap kegiatan — aturan lengkap di
+  [EVENT_IMPLEMENTATION_PLAN.MD §4](EVENT_IMPLEMENTATION_PLAN.MD#4-aturan-bisnis). Droplist beasiswa Platform BPSDM
+  diganti Kegiatan.
 
 ---
 
@@ -487,7 +494,7 @@ ke semua tipe:
 | `preview_bpsdm_agree` *(baru)* | `BooleanField` | Pola sama dengan `preview_unor_agree`. |
 | `catatan_bpsdm` *(baru)* | `TextField`, blank | Penanda pengembalian BPSDM → Unor ([§7](#7-pengembalian--catatan-dua-arah)). |
 | `tgl_masuk_bpsdm` *(baru)* | `DateField`, null | Tanggal diteruskan ke BPSDM. |
-| `kode` | — | Generator mengikuti prefiks per tipe ([§2](#2-jenis-perjalanan--tipe-pdln)); panjang 20 cukup (`PDLN-2026-T2P-0001` = 18). |
+| `kode` | `max_length` 20 → 25 | Generator mengikuti prefiks per tipe ([§2](#2-jenis-perjalanan--tipe-pdln)); nomor urut berotasi tahunan — aturan lengkap di [PENGKODEAN_AJUAN.MD](PENGKODEAN_AJUAN.MD). |
 
 Index yang disarankan: `(jenis_perjalanan, tipe_pdln, status)`,
 `(unit_organisasi, status)`, `(status, tgl_pengajuan)`.
@@ -600,6 +607,7 @@ luar cakupan dokumen ini.
 |---|---|
 | `KategoriPerjalanan` | Sudah punya `jenis_perjalanan` (PDLN/Non-Dinas). Tambah `tipe_pdln` — `JSONField(list)` berisi kode tipe yang berlaku (`["T1","T3"]`, `["T2P"]`, `["T2L"]`); kosong = semua tipe PDLN. |
 | `SumberPembiayaan` | Sudah punya `tipe_perjalanan`. Tambah `tipe_pdln` (`JSONField(list)`), aturan sama — mis. *DIPA Kementerian PU* berlaku untuk semua, *Beasiswa LPDP* hanya `["T2P"]`. |
+| `Kegiatan` + `DasarKegiatan` (baru) | Kegiatan PDLN dikelola Admin Biro PAKLN, diusulkan Pegawai/Admin BPSDM — [EVENT_IMPLEMENTATION_PLAN.MD §7](EVENT_IMPLEMENTATION_PLAN.MD#7-perancangan-data). Seed contoh: `python manage.py seed_kegiatan` (dipanggil `seed_demo_data`). |
 | `Negara` | Tambah `perlu_visa` (bool, default `False`) — penentu wajib/opsionalnya Rekomendasi Visa ([§6.4](#64-tahap-admin-biro-pakln)); dapat diubah di Manajemen Negara. |
 | Seed | Data migration untuk kategori & sumber pembiayaan PDLN sesuai [§5](#5-formulir-pengajuan-per-tipe). |
 
@@ -645,7 +653,7 @@ User (role) ─1:1─ PegawaiProfile ── UnitOrganisasi
 
 | Halaman | Perubahan |
 |---|---|
-| Beranda | Dua tab: **Riwayat PDLN** (tipe, tujuan, tgl, status, status laporan) dan **Riwayat Non-Dinas** (yang sekarang). Tombol "Tambah Usulan Baru" membuka modal dua langkah ([§2](#2-jenis-perjalanan--tipe-pdln)); **nonaktif** selama ada pengajuan belum tuntas, dengan keterangan alasannya, mis. "Laporan PDLN-2026-T1-0003 belum disetujui" ([§2.1](#21-aturan-satu-pengajuan-aktif)). |
+| Beranda | Dua tab: **Riwayat PDLN** (tipe, tujuan, tgl, status, status laporan) dan **Riwayat Non-Dinas** (yang sekarang). Tombol "Tambah Usulan Baru" membuka modal dua langkah ([§2](#2-jenis-perjalanan--tipe-pdln)); **nonaktif** selama ada pengajuan belum tuntas, dengan keterangan alasannya, mis. "Laporan PDLN01-1-071026-003 belum disetujui" ([§2.1](#21-aturan-satu-pengajuan-aktif)). |
 | Formulir | Field dinamis per tipe ([§5](#5-formulir-pengajuan-per-tipe)); satu view dengan form class per tipe. |
 | Unggah Dokumen | Daftar dari registri [§6](#6-persyaratan-dokumen-per-tahap); kolom catatan perbaikan saat dikembalikan. |
 | Monitor Progres | Timeline Proses dengan jumlah tahap sesuai tipe (5 untuk T2), header kartu menampilkan tipe/kategori/negara/kota. Saat `selesai`: tombol unduh dokumen hasil (Non-Dinas: ILN; PDLN: lihat [§14](#14-keputusan--pertanyaan-terbuka)). |
@@ -792,10 +800,10 @@ Pendidikan") alih-alih konstanta `JENIS_SURAT` Non-Dinas.
 
 ---
 
-## 12. Integrasi Eksternal (Aplikasi PINTAR)
+## 12. Integrasi Eksternal (Platform BPSDM)
 
 Menu **Informasi Penawaran Beasiswa LN** dan **Pencalonan Beasiswa**
-berada di Aplikasi PINTAR (sistem terpisah). PASPOR hanya **membaca**:
+berada di Platform BPSDM (sistem terpisah). PASPOR hanya **membaca**:
 
 - Droplist "Nama Beasiswa Pendidikan/Pelatihan" pada formulir T2P/T2L
   menampilkan **pencalonan atas nama pegawai yang login** dengan status
@@ -860,7 +868,7 @@ pembekuan aksi alur utama, maksimal satu permohonan terbuka).
 | 3 | Pengembalian selalu ke tahap tepat sebelumnya, catatan dua arah wajib | Konsisten dengan alur Non-Dinas yang sudah berjalan |
 | 4 | Snapshot `unit_organisasi` di `Pengajuan` | Report & scoping stabil saat pegawai mutasi |
 | 5 | Persyaratan dokumen di registri kode | Satu sumber kebenaran untuk view, template, validasi |
-| 6 | Kode Non-Dinas tetap `PSP-…`, PDLN memakai prefiks per tipe | Kompatibel dengan data & dokumen lama; mengikuti mockup |
+| 6 | ~~Kode Non-Dinas tetap `PSP-…`, PDLN memakai prefiks per tipe~~ → diganti format `PLN…`/`PDLN…` dengan Kode Unor & rotasi tahunan | Lihat [PENGKODEAN_AJUAN.MD](PENGKODEAN_AJUAN.MD); kode lama tetap valid |
 | 7 | **PDLN Tipe 3 diajukan oleh Pegawai**, alur sama dengan Tipe 1 *(dikonfirmasi pemilik proses)* | Menyelesaikan inkonsistensi mockup (sebagian teks menyebut "diajukan oleh Admin Unor") |
 | 8 | **Rekomendasi Visa wajib** bila negara tujuan memerlukan visa, **opsional** bila tidak; ditentukan master `Negara.perlu_visa` *(dikonfirmasi)* | [§6.4](#64-tahap-admin-biro-pakln) |
 | 9 | **Satu pengajuan aktif lintas jenis**; pengajuan baru hanya setelah tahap akhir — Non-Dinas: disetujui Admin PAKLN (`selesai`); PDLN: Laporan PDLN disetujui Admin PAKLN *(dikonfirmasi)* | [§2.1](#21-aturan-satu-pengajuan-aktif), [§4.4](#44-pelaporan-pdln) |
@@ -1083,7 +1091,7 @@ Selain itu, cuti pegawai hanya dipotong untuk Non-Dinas.
 | `pengajuan/views_unor.py`, `views_bpsdm.py`, `views_pakln.py` | Dasbor (tab PDLN/Non-Kedinasan), pratinjau, unggah & teruskan/kembalikan/selesaikan, antrean pembatalan, pelaporan |
 | `pengajuan/riwayat.py` | Label & visibilitas catatan per jalur (BPSDM, laporan, pembatalan) |
 | `notifications/services.py` | Event 4x (BPSDM), 5x (laporan), 6x (pembatalan) |
-| `paspor/integrasi/pintar.py` | Antarmuka Aplikasi PINTAR + stub |
+| `paspor/integrasi/pintar.py` | Antarmuka Platform BPSDM + stub |
 | `templates/partials/_dokumen_tahap.html`, `_direktori_dokumen.html`, `_ringkasan_pengajuan.html`, `_pembatalan.html`, `_ringkasan_dasbor.html`, `_filter_report.html` | Komponen bersama |
 | `templates/bpsdm/`, `templates/bersama/`, `templates/report/`, `templates/akun/profil.html`, `templates/pegawai/{formulir_pdln,pelaporan,pembatalan}.html` | Halaman baru |
 | `pengajuan/tests_pdln.py` | Test alur T1/T2P, visa, pelaporan, satu pengajuan aktif, pembatalan, cakupan role, report |

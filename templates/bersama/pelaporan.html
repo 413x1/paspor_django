@@ -1,5 +1,10 @@
 {% extends "base.html" %}
+{% load static pengajuan_extras %}
 {% block title %}Pelaporan PDLN{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/pelaporan.css' %}?v=20261013c">
+{% endblock %}
 
 {% block content %}
 <div class="page-head">
@@ -37,16 +42,24 @@
             <td>{{ b.p.tgl_kembali|date:"d M Y" }}</td>
             <td>
               {% if b.laporan %}{{ b.laporan.get_status_display }}{% else %}Belum melapor{% endif %}
-              {% if b.terlambat %}<br><span style="color:#c0392b;font-weight:700;">Terlambat</span>{% endif %}
+              {% if b.terlambat %}<br><span class="text-danger is-strong">Terlambat</span>{% endif %}
             </td>
             <td>{{ b.laporan.uploaded_at|date:"d M Y"|default:"—" }}</td>
             <td>
-              {% if b.laporan %}
-                <button type="button" class="button is-small" data-doc-preview="{{ b.laporan.file.url }}" data-doc-title="Laporan {{ b.p.kode }}">👁 Lihat</button>
-                {% if dapat_verifikasi and b.status == "menunggu" %}
-                  <button type="button" class="button is-small is-warning" data-modal-open="verif-{{ b.p.pk }}">Verifikasi</button>
+              <div class="aksi-pelaporan">
+                {% if b.laporan and b.laporan.file %}
+                  <button type="button" class="button is-small is-info" data-id="{{ b.laporan.pk }}"
+                    data-doc-preview="{{ b.laporan.file.url }}" data-doc-title="Laporan {{ b.p.kode }}">👁 Lihat</button>
                 {% endif %}
-              {% endif %}
+                {% if dapat_verifikasi and b.status == "menunggu" %}
+                  <button type="button" class="button is-small is-success btn-verifikasi"
+                    data-id="{{ b.laporan.pk }}" data-kode="{{ b.p.kode }}" data-pegawai="{{ b.p.pegawai.profile.nama }}"
+                    data-url="{% url 'pakln:verifikasi_laporan' kode=b.p.kode %}">✓ Verifikasi</button>
+                  <button type="button" class="button is-small is-warning btn-revisi"
+                    data-id="{{ b.laporan.pk }}" data-kode="{{ b.p.kode }}" data-pegawai="{{ b.p.pegawai.profile.nama }}"
+                    data-url="{% url 'pakln:verifikasi_laporan' kode=b.p.kode %}">↩ Request Perbaikan</button>
+                {% endif %}
+              </div>
             </td>
           </tr>
         {% empty %}
@@ -58,31 +71,118 @@
 </div>
 
 {% if dapat_verifikasi %}
-{% for b in baris %}
-  {% if b.status == "menunggu" %}
-  <div id="verif-{{ b.p.pk }}" class="modal paspor-modal">
-    <div class="modal-background"></div>
-    <div class="modal-card">
-      <div class="modal-card-body">
-        <h3>Verifikasi Laporan — {{ b.p.kode }}</h3>
-        <p class="modal-intro">{{ b.p.pegawai.profile.nama }} · {{ b.p.jenis_label }} · {{ b.p.tujuan_negara_display }}</p>
-        <p><button type="button" class="button is-small" data-doc-preview="{{ b.laporan.file.url }}" data-doc-title="Laporan {{ b.p.kode }}">👁 Lihat laporan</button></p>
-        <form method="post" action="{% url 'pakln:verifikasi_laporan' kode=b.p.kode %}">
-          {% csrf_token %}
-          <div class="field">
-            <label class="label">Catatan <span class="cell-muted">(wajib bila mengembalikan)</span></label>
-            <div class="control"><textarea class="textarea" name="catatan" rows="3"></textarea></div>
+{# Ringkasan isi laporan per baris (disembunyikan); disalin ke modal Verifikasi saat tombol diklik. #}
+<div hidden>
+  {% for b in baris %}{% if b.status == "menunggu" %}
+    <div id="ringkasan-{{ b.laporan.pk }}">
+      <div class="verif-isi">
+        {% for judul, isi in b.uraian %}
+          <div class="verif-item">
+            <div class="verif-label">{{ judul }}</div>
+            <div class="verif-teks">{{ isi|default:"—" }}</div>
           </div>
-          <div style="display:flex; gap:8px; justify-content:flex-end;">
-            <button type="button" class="button" data-modal-close>Batal</button>
-            <button type="submit" name="keputusan" value="kembalikan" class="button is-danger is-light">↩ Kembalikan</button>
-            <button type="submit" name="keputusan" value="setujui" class="button is-primary">✓ Setujui Laporan</button>
-          </div>
-        </form>
+        {% endfor %}
+      </div>
+      <div class="verif-biaya">
+        <div class="verif-kotak"><div class="verif-label">Estimasi Biaya</div><div class="verif-nilai">{{ b.laporan.estimasi_biaya|rupiah }}</div></div>
+        <div class="verif-kotak"><div class="verif-label">Realisasi Biaya</div><div class="verif-nilai">{{ b.laporan.realisasi_biaya|rupiah }}</div></div>
+      </div>
+      <div class="verif-dokumen">
+        <span class="verif-label" style="margin:0;">Dokumen Laporan</span>
+        <button type="button" class="button is-small" data-doc-preview="{{ b.laporan.file.url }}" data-doc-title="Laporan {{ b.p.kode }}">👁 Lihat dokumen laporan</button>
       </div>
     </div>
+  {% endif %}{% endfor %}
+</div>
+
+{# ===== Modal 1: Verifikasi (approve) ===== #}
+<div id="modal-verifikasi" class="modal paspor-modal modal-verifikasi">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <div class="modal-card-body">
+      <button type="button" class="delete" aria-label="Tutup"></button>
+      <h3>Verifikasi Laporan PDLN</h3>
+      <p class="modal-intro" id="verifikasiSub"></p>
+      <div id="verifikasiRingkasan"></div>
+      <form method="POST" action="" id="formVerifikasi">
+        {% csrf_token %}
+        <input type="hidden" name="laporan_id" value="">
+        <input type="hidden" name="keputusan" value="setujui">
+        <div class="field">
+          <label class="label" for="verifikasiTanggal">Tanggal Upload ke SIMPEL (Setneg)</label>
+          <div class="control"><input class="input" type="date" id="verifikasiTanggal" name="uploaded_at" max="{% now 'Y-m-d' %}" required></div>
+        </div>
+        <div class="verif-aksi">
+          <button type="button" class="button" data-modal-close>Batal</button>
+          <button type="submit" class="button is-success">Verifikasi Laporan</button>
+        </div>
+      </form>
+    </div>
   </div>
-  {% endif %}
-{% endfor %}
+</div>
+
+{# ===== Modal 2: Request Perbaikan (reject/revisi) ===== #}
+<div id="modal-revisi" class="modal paspor-modal modal-verifikasi modal-revisi">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <div class="modal-card-body">
+      <button type="button" class="delete" aria-label="Tutup"></button>
+      <h3>Request Perbaikan Laporan</h3>
+      <p class="modal-intro" id="revisiSub"></p>
+      <form method="POST" action="" id="formRevisi">
+        {% csrf_token %}
+        <input type="hidden" name="laporan_id" value="">
+        <input type="hidden" name="keputusan" value="kembalikan">
+        <div class="field">
+          <label class="label" for="revisiAlasan">Alasan Perbaikan</label>
+          <div class="control"><textarea class="textarea" id="revisiAlasan" name="catatan_pakln" rows="4" required></textarea></div>
+        </div>
+        <div class="verif-aksi">
+          <button type="button" class="button" data-modal-close>Batal</button>
+          <button type="submit" class="button is-warning">Kirim Request</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if dapat_verifikasi %}
+<script>
+  $(function () {
+    var $verifikasi = $('#modal-verifikasi');
+    var $revisi = $('#modal-revisi');
+
+    function tutupModal() { $verifikasi.add($revisi).removeClass('is-active'); }
+
+    // Tombol "Verifikasi": isi ID laporan, alamat form, dan ringkasan baris itu, lalu tampilkan modal.
+    $('.btn-verifikasi').on('click', function () {
+      var $tombol = $(this);
+      $verifikasi.find('input[name="laporan_id"]').val($tombol.data('id'));
+      $verifikasi.find('form').attr('action', $tombol.data('url'));
+      $('#verifikasiSub').text($tombol.data('kode') + ' · ' + $tombol.data('pegawai'));
+      $('#verifikasiRingkasan').html($('#ringkasan-' + $tombol.data('id')).html());
+      $verifikasi.find('input[name="uploaded_at"]').val('');
+      $verifikasi.addClass('is-active');
+    });
+
+    // Tombol "Request Perbaikan": isi ID laporan dan alamat form, kosongkan alasan, tampilkan modal.
+    $('.btn-revisi').on('click', function () {
+      var $tombol = $(this);
+      $revisi.find('input[name="laporan_id"]').val($tombol.data('id'));
+      $revisi.find('form').attr('action', $tombol.data('url'));
+      $('#revisiSub').text($tombol.data('kode') + ' · ' + $tombol.data('pegawai'));
+      $revisi.find('textarea[name="catatan_pakln"]').val('');
+      $revisi.addClass('is-active');
+      $revisi.find('textarea').trigger('focus');
+    });
+
+    // Tutup lewat tombol X (.delete) atau latar gelap (.modal-background).
+    // (Tombol "Batal" dan tombol Esc sudah ditangani handler global di base.html.)
+    $verifikasi.add($revisi).on('click', '.delete, .modal-background', tutupModal);
+  });
+</script>
 {% endif %}
 {% endblock %}
