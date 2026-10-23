@@ -160,7 +160,7 @@ Pada dropdown lonceng:
 
 ## 5. Catatan untuk Penyusun Dokumentasi
 
-Seluruh gambar pada panduan ini disimpan di folder `docs/user-manual/images/` dan ditautkan dengan path relatif dari masing-masing berkas `.md`. Gunakan nama berkas yang deskriptif, misalnya `pegawai-02-beranda.png`.
+Seluruh gambar pada panduan ini disimpan di folder `wiki/user-manual/images/` dan ditautkan dengan path relatif dari masing-masing berkas `.md`. Gunakan nama berkas yang deskriptif, misalnya `pegawai-02-beranda.png`.
 
 > **Peringatan:** Jangan memuat **data pribadi asli** (NIP, email, nomor HP, nama pegawai sesungguhnya) pada screenshot. Gunakan hanya akun demo pada database lokal.
 
