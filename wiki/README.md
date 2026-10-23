@@ -222,3 +222,9 @@ Sebelum deploy ke produksi, minimal:
 - Aktifkan HTTPS (`SECURE_SSL_REDIRECT`, `SESSION_COOKIE_SECURE`,
   `CSRF_COOKIE_SECURE`, dsb.).
 - Pastikan bucket S3 & key-nya terpisah untuk produksi (lihat `wiki/instructions/S3BUCKET_FILE_UPLOAD.MD`).
+
+---
+
+## Panduan Pengguna
+
+Buku panduan penggunaan aplikasi untuk peran **Pegawai** dan **Admin Unor** ada di [`wiki/user-manual/`](user-manual/README.md).
