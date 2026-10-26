@@ -358,7 +358,7 @@ MAIL_QUEUE = {
 # Jangan menyalakan keduanya sekaligus pada produksi (aman karena baris dikunci, tetapi boros).
 MAIL_USE_CELERY = _env_bool("MAIL_USE_CELERY", "False")
 
-# Koneksi Redis dibangun dari REDIS_* (Docker: REDIS_HOST diisi nama service "redis" oleh docker-compose).
+# Koneksi Redis dibangun dari REDIS_* (Redis berupa instance terpisah; REDIS_HOST diisi IP/host-nya di .env).
 # Password boleh berisi karakter khusus; di-URL-encode otomatis. CELERY_BROKER_URL (opsional) menimpa seluruhnya.
 REDIS_HOST = env("REDIS_HOST", "127.0.0.1")
 REDIS_PORT = env("REDIS_PORT", "6379")
