@@ -10,7 +10,7 @@ from pengajuan.tests_pdln import _Basis
 from .models import EmailLog, Notification
 
 
-@override_settings(MAIL_ALLOW_SEND=True)
+@override_settings(MAIL_ALLOW_SEND=True, MAIL_DEV_REDIRECT_TO="")
 class EmailAlurPengajuanTests(_AlurMixin, TestCase):
     def setUp(self):
         super().setUp()
@@ -73,7 +73,7 @@ class EmailAlurPengajuanTests(_AlurMixin, TestCase):
         self.assertEqual((log.status, log.status_note), ("skipped", "Penerima belum memiliki email"))
 
 
-@override_settings(MAIL_ALLOW_SEND=True)
+@override_settings(MAIL_ALLOW_SEND=True, MAIL_DEV_REDIRECT_TO="")
 class EmailSemuaAdminTests(_Basis, TestCase):
     """Instruksi mentor: begitu pegawai melanjutkan proses, SEMUA admin pada rantai (Unor, BPSDM,
     BKO, Biro PAKLN) menerima email, bukan hanya notifikasi di website."""

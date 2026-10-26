@@ -152,6 +152,27 @@ def _baris_email(notif):
     )
 
 
+def picu_pengiriman():
+    """Minta worker Celery memproses antrean setelah transaksi saat ini commit.
+    No-op bila `MAIL_USE_CELERY=false` (pengiriman oleh worker loop). TIDAK PERNAH melempar error:
+    bila broker (Redis) mati, baris tetap `pending` dan disapu Celery Beat (jaring pengaman)."""
+    if not settings.MAIL_USE_CELERY:
+        return
+
+    def _dorong():
+        try:
+            from .tasks import kirim_antrean_email
+
+            # Gagal cepat bila broker mati (tanpa ini koneksi diulang beberapa detik dan menahan request web).
+            with kirim_antrean_email.app.connection_for_write() as koneksi:
+                koneksi.ensure_connection(max_retries=0, timeout=3)
+                kirim_antrean_email.apply_async(retry=False, expires=120, connection=koneksi)
+        except Exception:
+            logger.exception("Gagal memicu task Celery pengiriman email; baris tetap pending dan disapu Beat")
+
+    transaction.on_commit(_dorong)
+
+
 def enqueue(notifs):
     """Antre email untuk notifikasi in-app yang baru dibuat. TIDAK PERNAH melempar
     error: kegagalan mengantre email tidak boleh menggagalkan alur pengajuan."""
@@ -162,6 +183,8 @@ def enqueue(notifs):
                 baris.append(_baris_email(notif))
         if baris:
             EmailLog.objects.bulk_create(baris)
+            if any(b.status == EmailLog.Status.PENDING for b in baris):
+                picu_pengiriman()
         return len(baris)
     except Exception:
         logger.exception("Gagal mengantre email notifikasi")
@@ -291,4 +314,5 @@ def kirim_ulang(log):
     if log.recipient_id:  # alamat bisa berubah sejak email diantre
         pembaruan["to_email"] = (log.recipient.email or "").strip()
     EmailLog.objects.filter(pk=log.pk).update(**pembaruan, updated_at=timezone.now())
+    picu_pengiriman()
     return True
