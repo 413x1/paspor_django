@@ -9,6 +9,7 @@ akan menyusul pada tahap pengembangan berikutnya.
 
 import os
 from pathlib import Path
+from urllib.parse import quote
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -348,3 +349,45 @@ MAIL_QUEUE = {
     # Jeda antar email dalam satu putaran (detik); menjaga batas kecepatan SMTP.
     "SEND_PACING": int(env("MAIL_DB_QUEUE_SEND_PACING_MS", "2000")) / 1000,
 }
+
+# ---------------------------------------------------------------------------
+# Celery + Redis (lihat wiki/instructions/CELERY_IMPLEMENTATION_PLAN.MD)
+# ---------------------------------------------------------------------------
+# SAKLAR bertahap: False (bawaan) = pengiriman email tetap oleh worker loop `kirim_email_antrean`
+# (service `mail-worker`). True = pengiriman oleh task Celery `notifications.kirim_antrean_email`.
+# Jangan menyalakan keduanya sekaligus pada produksi (aman karena baris dikunci, tetapi boros).
+MAIL_USE_CELERY = _env_bool("MAIL_USE_CELERY", "False")
+
+# Koneksi Redis dibangun dari REDIS_* (Redis berupa instance terpisah; REDIS_HOST diisi IP/host-nya di .env).
+# Password boleh berisi karakter khusus; di-URL-encode otomatis. CELERY_BROKER_URL (opsional) menimpa seluruhnya.
+REDIS_HOST = env("REDIS_HOST", "127.0.0.1")
+REDIS_PORT = env("REDIS_PORT", "6379")
+REDIS_DB = env("REDIS_DB", "0")
+REDIS_PASSWORD = env("REDIS_PASSWORD", "")
+_redis_auth = f":{quote(REDIS_PASSWORD, safe='')}@" if REDIS_PASSWORD else ""
+CELERY_BROKER_URL = env("CELERY_BROKER_URL") or f"redis://{_redis_auth}{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
+CELERY_TIMEZONE = TIME_ZONE                       # Asia/Jakarta: jam jadwal Beat dibaca sebagai WIB
+CELERY_TASK_IGNORE_RESULT = True                  # status dicatat di tabel sendiri (EmailLog), bukan result backend
+CELERY_TASK_ACKS_LATE = True                      # pesan dianggap selesai setelah task sukses
+CELERY_TASK_REJECT_ON_WORKER_LOST = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1             # worker tidak menimbun banyak pesan sekaligus
+CELERY_TASK_SOFT_TIME_LIMIT = 270
+CELERY_TASK_TIME_LIMIT = 300                      # batas keras 5 menit per task
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    "socket_connect_timeout": 3,                  # Redis mati: gagal cepat, jangan menggantung request web
+    "socket_timeout": 5,
+    "visibility_timeout": 3600,
+}
+CELERY_TASK_DEFAULT_QUEUE = "default"
+CELERY_TASK_ROUTES = {"notifications.*": {"queue": "email"}}
+
+CELERY_BEAT_SCHEDULE = {}
+if MAIL_USE_CELERY:
+    # Jaring pengaman: menyapu baris EmailLog `pending` bila pesan Celery hilang (mis. Redis restart)
+    # atau baris menunggu backoff. Jadwal statis (django-celery-beat belum kompatibel dengan Django 6.1).
+    CELERY_BEAT_SCHEDULE["antrean-email-jaring-pengaman"] = {
+        "task": "notifications.kirim_antrean_email",
+        "schedule": 60.0,
+        "options": {"expires": 55},
+    }

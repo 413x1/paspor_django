@@ -1,6 +1,6 @@
 # Deploy PASPOR di Synology Container Manager.
-# MySQL dan Garage berjalan sebagai project terpisah di NAS yang sama;
-# aplikasi menjangkaunya lewat IP NAS (lihat DB_HOST & S3_ENDPOINT di .env).
+# MySQL, Garage, dan Redis berjalan sebagai project terpisah di NAS yang sama;
+# aplikasi menjangkaunya lewat IP NAS (lihat DB_HOST, S3_ENDPOINT & REDIS_HOST di .env).
 services:
   web:
     build: .
@@ -35,6 +35,52 @@ services:
       DJANGO_MIGRATE_ON_START: "False"
       DJANGO_INIT_ON_START: "False"
     command: ["python", "manage.py", "kirim_email_antrean"]
+    depends_on:
+      web:
+        condition: service_healthy
+
+  # --- Celery (lihat wiki/instructions/CELERY_IMPLEMENTATION_PLAN.MD) -------------------------------
+  # Redis adalah instance terpisah khusus project ini; koneksi diatur lewat REDIS_* di .env.
+  # Tidak ikut menyala secara bawaan. Aktifkan dengan:
+  #   docker compose --profile celery up -d --build
+  # dan set MAIL_USE_CELERY=true di .env (lalu hentikan mail-worker agar pengirimnya tunggal).
+
+  # Worker Celery: meniru pola mail-worker (image sama dengan web, hanya "web" yang migrate/seed).
+  celery-worker:
+    image: paspor-django:latest
+    container_name: paspor-celery-worker
+    profiles: ["celery"]
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TZ: Asia/Jakarta
+      DJANGO_MIGRATE_ON_START: "False"
+      DJANGO_INIT_ON_START: "False"
+    # --concurrency 1: menjaga jeda kirim SMTP antar email (MAIL_DB_QUEUE_SEND_PACING_MS).
+    command: ["celery", "-A", "paspor_project", "worker", "-l", "info", "-Q", "default,email", "--concurrency", "1"]
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A paspor_project inspect ping -d celery@$$HOSTNAME"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 40s
+
+  # Celery Beat: penjadwal. TEPAT SATU instance (jangan di-scale). Jadwal statis di settings.py.
+  celery-beat:
+    image: paspor-django:latest
+    container_name: paspor-celery-beat
+    profiles: ["celery"]
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TZ: Asia/Jakarta
+      DJANGO_MIGRATE_ON_START: "False"
+      DJANGO_INIT_ON_START: "False"
+    # /tmp selalu dapat ditulis oleh user non-root "app"; jadwal statis sehingga file ini boleh hilang.
+    command: ["celery", "-A", "paspor_project", "beat", "-l", "info", "--schedule", "/tmp/celerybeat-schedule"]
     depends_on:
       web:
         condition: service_healthy
