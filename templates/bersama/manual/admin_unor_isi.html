@@ -1,0 +1,281 @@
+{% load static %}
+{# Dibuat otomatis oleh scripts/build_user_manual.py dari wiki/user-manual/ - jangan diedit manual. #}
+<h2 id="1-pendahuluan">1. Pendahuluan</h2>
+<p><strong>Paspor PU</strong> adalah aplikasi untuk mengelola pengajuan <strong>Perjalanan Dinas Luar Negeri (PDLN)</strong> dan <strong>Perjalanan Luar Negeri Non-Kedinasan</strong>. Aplikasi mencatat pengajuan dari pegawai, memprosesnya secara berjenjang, dan menyimpan dokumen serta riwayat pemrosesannya.</p>
+<p>Panduan ini membantu <strong>Admin Unor</strong> menjalankan tugasnya di aplikasi, langkah demi langkah: memeriksa pengajuan dan dokumen pegawai di unit organisasinya, lalu meneruskan atau mengembalikannya.</p>
+<blockquote class="catatan">
+<p><strong>Catatan:</strong> Panduan ini hanya memuat fitur untuk peran <strong>Admin Unor</strong>. Peran lain tidak dibahas di sini.</p>
+</blockquote>
+<h2 id="2-akses-akun-dan-profil">2. Akses, Akun, dan Profil</h2>
+<p>Bagian ini berlaku untuk <strong>Pegawai</strong> dan <strong>Admin Unor</strong>.</p>
+<h3 id="21-login">2.1 Login</h3>
+<ol>
+<li>Buka halaman login aplikasi.</li>
+<li>Masukkan <strong>Username</strong> dan <strong>Password</strong>. Centang <strong>Ingat saya</strong> bila diperlukan.</li>
+<li>Klik <strong>Masuk dengan Username</strong>.</li>
+<li>Anda diarahkan ke halaman utama: <strong>Dasbor</strong>.</li>
+</ol>
+<figure><a href="{% static 'images/user-manual/umum-01-login.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/umum-01-login.png' %}" alt="Halaman Login" width="1366" height="800" loading="lazy"></a><figcaption>Halaman Login</figcaption></figure>
+<p><strong>Jika Anda belum memiliki password:</strong></p>
+<ol>
+<li>Klik <strong>Masuk dengan SSO</strong> pada halaman login.</li>
+<li>Setelah masuk, buka menu <strong>Profil</strong>.</li>
+<li>Atur password Anda (lihat <a href="#23-profil-pengguna">2.3 Profil Pengguna</a>).</li>
+<li>Selanjutnya Anda dapat masuk dengan username dan password.</li>
+</ol>
+<blockquote class="penting">
+<p><strong>Penting:</strong> Akun yang belum memiliki password tidak dapat masuk dengan username dan password. Aplikasi akan meminta Anda masuk lewat SSO terlebih dahulu.</p>
+</blockquote>
+<p>Untuk keluar dari aplikasi, klik <strong>Keluar</strong> di bagian bawah sidebar.</p>
+<h3 id="22-ganti-peran">2.2 Ganti Peran</h3>
+<p>Pengguna yang memiliki lebih dari satu peran dapat berpindah peran <strong>tanpa login ulang</strong>.</p>
+<ol>
+<li>Di bagian atas halaman, klik <strong>Masuk sebagai</strong>.</li>
+<li>Pilih peran yang diinginkan dari daftar. Peran yang sedang aktif diberi tanda centang.</li>
+<li>Aplikasi menampilkan menu dan halaman sesuai peran yang dipilih.</li>
+</ol>
+<figure><a href="{% static 'images/user-manual/umum-02-ganti-peran.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/umum-02-ganti-peran.png' %}" alt="Pengalih Peran" width="1366" height="300" loading="lazy"></a><figcaption>Pengalih Peran</figcaption></figure>
+<blockquote class="catatan">
+<p><strong>Catatan:</strong> Pengalih peran hanya tampil untuk akun yang memiliki lebih dari satu peran.</p>
+</blockquote>
+<h3 id="23-profil-pengguna">2.3 Profil Pengguna</h3>
+<p>Buka menu <strong>Profil</strong> pada bagian <strong>Lainnya</strong> di sidebar.</p>
+<h4 id="a-melihat-data-personal">a. Melihat data personal</h4>
+<p>Bagian <strong>Data Personal</strong> menampilkan data dari e-HRM, antara lain nama, NIP, jabatan, pangkat/golongan, unit kerja, unit organisasi, email, dan nomor HP. Data ini <strong>hanya dapat dibaca (read-only)</strong> dan diperbarui lewat sinkronisasi e-HRM.</p>
+<blockquote class="catatan">
+<p><strong>Catatan:</strong> Email dan nomor HP <strong>tidak dapat diubah sendiri</strong> oleh Pegawai maupun Admin Unor. Perubahan dilakukan melalui <strong>Admin Biro PAKLN</strong>. Pada halaman Profil tertulis: &quot;Perubahan email dan nomor HP melalui Admin Biro PAKLN.&quot;</p>
+</blockquote>
+<h4 id="b-mengubah-username">b. Mengubah username</h4>
+<ol>
+<li>Pada bagian <strong>Akun</strong>, klik <strong>Ubah Username</strong>.</li>
+<li>Isi username baru.</li>
+<li>Klik <strong>Simpan Username</strong>.</li>
+</ol>
+<figure><a href="{% static 'images/user-manual/umum-04-profil-ubah-username.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/umum-04-profil-ubah-username.png' %}" alt="Ubah Username" width="1030" height="345" loading="lazy"></a><figcaption>Ubah Username</figcaption></figure>
+<p>Bagian <strong>Akun</strong> juga menampilkan <strong>Metode login</strong> dan <strong>Peran</strong> Anda. Peran hanya dapat diatur oleh Admin Biro PAKLN.</p>
+<h4 id="c-mengatur-mengganti-atau-menghapus-password">c. Mengatur, mengganti, atau menghapus password</h4>
+<p>Bagian <strong>Keamanan</strong> menampilkan tombol sesuai kondisi akun Anda:</p>
+<ul>
+<li><strong>Atur Password:</strong> tampil bila akun belum memiliki password. Isi password baru, lalu klik <strong>Simpan Password</strong>.</li>
+<li><strong>Ganti Password:</strong> tampil bila akun sudah memiliki password.
+<ol>
+<li>Klik <strong>Ganti Password</strong>.</li>
+<li>Isi <strong>Sandi lama</strong>, <strong>Sandi baru</strong>, dan <strong>Konfirmasi sandi baru</strong>.</li>
+<li>Klik <strong>Ganti Password</strong>.</li>
+</ol>
+</li>
+<li><strong>Hapus Password:</strong> tampil bila akun juga terhubung dengan SSO. Klik <strong>Hapus Password</strong>, lalu konfirmasi. Setelah dihapus, Anda hanya dapat masuk lewat SSO.</li>
+</ul>
+<figure><a href="{% static 'images/user-manual/umum-05-profil-password.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/umum-05-profil-password.png' %}" alt="Pengaturan Password" width="1030" height="497" loading="lazy"></a><figcaption>Pengaturan Password</figcaption></figure>
+<blockquote class="">
+<p><strong>Ketentuan sandi baru:</strong> tidak boleh terlalu mirip dengan informasi pribadi Anda, minimal 8 karakter, tidak boleh sandi yang umum digunakan, dan tidak boleh seluruhnya angka.</p>
+</blockquote>
+<h4 id="d-mengunggah-dokumen-kepegawaian-dasar">d. Mengunggah dokumen kepegawaian dasar</h4>
+<ul>
+<li><strong>Admin Unor</strong> melihat bagian <strong>Dokumen Penugasan</strong> dengan satu dokumen: SK Penugasan Admin.</li>
+</ul>
+<p>Langkah mengunggah:</p>
+<ol>
+<li>Pada baris dokumen yang sesuai, klik <strong>Unggah</strong> (atau <strong>Ganti</strong> bila dokumen sudah pernah diunggah).</li>
+<li>Pilih berkas, lalu klik <strong>Unggah</strong> untuk menyimpan.</li>
+<li>Klik <strong>Lihat</strong> untuk melihat berkas yang sudah diunggah.</li>
+</ol>
+<blockquote class="">
+<p><strong>Ketentuan berkas:</strong> berkas harus berformat <strong>PDF</strong> dan berukuran maksimal <strong>2 MB</strong>.</p>
+</blockquote>
+<h3 id="24-notifikasi">2.4 Notifikasi</h3>
+<p>Notifikasi memberi tahu Anda bila ada perkembangan pada pengajuan, misalnya pengajuan dikembalikan, disetujui, atau selesai.</p>
+<p><strong>Melihat daftar notifikasi</strong></p>
+<ul>
+<li>Klik ikon lonceng di bagian atas halaman. Angka merah pada lonceng menunjukkan jumlah notifikasi yang belum dibaca. Daftar notifikasi terbaru tampil sebagai dropdown.</li>
+<li>Klik <strong>Lihat Semua</strong> pada dropdown, atau menu <strong>Notifikasi</strong> di sidebar, untuk membuka halaman Notifikasi lengkap.</li>
+</ul>
+<figure><a href="{% static 'images/user-manual/umum-07b-notifikasi-dropdown.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/umum-07b-notifikasi-dropdown.png' %}" alt="Dropdown Notifikasi" width="1366" height="520" loading="lazy"></a><figcaption>Dropdown Notifikasi</figcaption></figure>
+<figure><a href="{% static 'images/user-manual/umum-07-notifikasi.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/umum-07-notifikasi.png' %}" alt="Halaman Notifikasi" width="1366" height="800" loading="lazy"></a><figcaption>Halaman Notifikasi</figcaption></figure>
+<p><strong>Membuka notifikasi</strong></p>
+<p>Klik sebuah notifikasi untuk membuka halaman terkait pengajuan tersebut.</p>
+<p><strong>Menandai sudah dibaca</strong></p>
+<p>Pada halaman Notifikasi, klik <strong>Tandai Semua Dibaca</strong> untuk menandai seluruh notifikasi sebagai sudah dibaca.</p>
+<p><strong>Menghapus notifikasi</strong></p>
+<p>Pada dropdown lonceng:</p>
+<ul>
+<li>Klik tanda <strong>×</strong> pada sebuah notifikasi untuk menghapusnya.</li>
+<li>Klik <strong>Hapus Semua</strong> untuk menghapus seluruh notifikasi.</li>
+</ul>
+<h2 id="3-panduan-pengguna-admin-unor">3. Panduan Pengguna: Admin Unor</h2>
+<p>Bagian ini menjelaskan tugas Admin Unor dalam memproses pengajuan pegawai di unit organisasinya. Untuk login, profil, dan notifikasi, lihat <a href="#2-akses-akun-dan-profil">Bagian 2: Akses, Akun, dan Profil</a>.</p>
+<h3 id="31-deskripsi-peran">3.1 Deskripsi Peran</h3>
+<p>Admin Unor <strong>memeriksa pengajuan dan dokumen pegawai di unit organisasinya saja</strong>. Semua jenis dan tipe pengajuan (Non-Kedinasan maupun PDLN) di unit tersebut dapat Anda lihat.</p>
+<p>Admin Unor <strong>tidak</strong>:</p>
+<ul>
+<li>memverifikasi data pegawai;</li>
+<li>mengelola user;</li>
+<li>mengelola template;</li>
+<li>mengelola data negara.</li>
+</ul>
+<h3 id="32-menu-sidebar">3.2 Menu Sidebar</h3>
+<div class="manual-table"><table>
+<thead>
+<tr>
+<th>Menu</th>
+<th>Fungsi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Dasbor</strong></td>
+<td>Ringkasan dan tabel pengajuan pegawai unit.</td>
+</tr>
+<tr>
+<td><strong>Pembatalan</strong></td>
+<td>Memutuskan dan mengajukan pembatalan.</td>
+</tr>
+<tr>
+<td><strong>Pelaporan PDLN</strong></td>
+<td>Memantau laporan pegawai unit.</td>
+</tr>
+<tr>
+<td><strong>Rekap</strong></td>
+<td>Statistik pengajuan.</td>
+</tr>
+<tr>
+<td><strong>Export</strong></td>
+<td>Mengunduh data pengajuan.</td>
+</tr>
+<tr>
+<td><strong>Profil</strong> dan <strong>Notifikasi</strong></td>
+<td>Lihat <a href="#2-akses-akun-dan-profil">Bagian 2</a>.</td>
+</tr>
+</tbody>
+</table></div>
+<figure><a href="{% static 'images/user-manual/unor-01-sidebar.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/unor-01-sidebar.png' %}" alt="Sidebar Admin Unor" width="280" height="800" loading="lazy"></a><figcaption>Sidebar Admin Unor</figcaption></figure>
+<blockquote class="catatan">
+<p><strong>Catatan:</strong> Angka kuning pada menu menunjukkan jumlah item yang perlu tindakan Anda, misalnya permohonan pembatalan yang menunggu keputusan.</p>
+</blockquote>
+<h3 id="33-aturan-khusus-admin-unor">3.3 Aturan Khusus Admin Unor</h3>
+<ul>
+<li><strong>Tidak boleh memproses pengajuan milik dirinya sendiri</strong> (Aturan AB-12). Bila Anda juga seorang pegawai, pengajuan Anda harus diproses oleh admin lain.</li>
+<li>Anda hanya melihat pengajuan pegawai di <strong>unit organisasi yang Anda kelola</strong>. Nama unit tampil di bagian atas Dasbor.</li>
+</ul>
+<h3 id="34-tugas-pada-setiap-menu">3.4 Tugas pada Setiap Menu</h3>
+<h4 id="341-dasbor">3.4.1 Dasbor</h4>
+<p>Dasbor menampilkan:</p>
+<ul>
+<li>tab <strong>Dasbor PDLN</strong> dan <strong>Dasbor Non-Kedinasan</strong>;</li>
+<li><strong>Ringkasan Progres</strong>: Total Pengajuan Masuk, Perlu Tindakan Saya, Dikembalikan ke Pegawai, Dalam Proses Unor, Dalam Proses BPSDM, Dalam Proses Biro PAKLN, Selesai, dan Dibatalkan;</li>
+<li><strong>Tabel Rincian per Pengajuan Pegawai</strong> (Pegawai, Unit Kerja, Jenis, Kategori, Tujuan, Berangkat, Kembali, Tgl Pengajuan, Kanal, Status, Action), dengan fitur <strong>cari</strong>, <strong>urut</strong> (klik judul kolom), dan pengaturan jumlah baris yang ditampilkan.</li>
+<li>tombol pintasan <strong>Pembatalan</strong> dan <strong>Rekap</strong>.</li>
+</ul>
+<figure><a href="{% static 'images/user-manual/unor-02-dasbor.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/unor-02-dasbor.png' %}" alt="Dasbor Admin Unor" width="1680" height="900" loading="lazy"></a><figcaption>Dasbor Admin Unor</figcaption></figure>
+<h4 id="342-pratinjau">3.4.2 Pratinjau</h4>
+<ol>
+<li>Pada tabel Dasbor, klik tombol aksi pada pengajuan yang akan diperiksa untuk membuka halaman <strong>Pratinjau</strong>.</li>
+<li>Tinjau <strong>formulir</strong> di sisi kiri dan <strong>Direktori Unggahan Pegawai</strong> di sisi kanan. Klik <strong>Lihat</strong> untuk membuka setiap berkas. Halaman ini bersifat hanya baca.</li>
+<li><strong>Timeline Proses</strong> di bagian bawah menampilkan riwayat pengajuan, termasuk catatan pengembalian sebelumnya.</li>
+<li>Pilih salah satu:
+<ul>
+<li><strong>Menyetujui:</strong> centang pernyataan <strong>&quot;Dokumen dan formulir telah ditinjau dan sesuai...&quot;</strong>, lalu klik <strong>Lanjutkan ke Administrasi Unor</strong>.</li>
+<li><strong>Mengembalikan ke pegawai:</strong> isi <strong>Catatan untuk Pegawai</strong> (wajib), klik <strong>Kembalikan ke Pegawai</strong>, lalu klik <strong>Kembalikan</strong> pada dialog konfirmasi.</li>
+</ul>
+</li>
+</ol>
+<figure><a href="{% static 'images/user-manual/unor-03-pratinjau.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/unor-03-pratinjau.png' %}" alt="Pratinjau Pengajuan" width="1366" height="2225" loading="lazy"></a><figcaption>Pratinjau Pengajuan</figcaption></figure>
+<blockquote class="penting">
+<p><strong>Penting:</strong> Catatan wajib diisi saat mengembalikan pengajuan. Setelah dikembalikan, status pengajuan menjadi <strong>Belum Diajukan</strong> sampai pegawai mengirim ulang, dan pegawai menerima notifikasi.</p>
+</blockquote>
+<h4 id="343-unggah-dokumen-administrasi">3.4.3 Unggah Dokumen Administrasi</h4>
+<p>Setelah mencentang persetujuan dan mengklik <strong>Lanjutkan ke Administrasi Unor</strong>, Anda masuk ke halaman <strong>Unggah Dokumen Administrasi Unor</strong>.</p>
+<ol>
+<li>Pada setiap baris dokumen wajib, klik <strong>Unggah</strong> lalu pilih berkas PDF. Berkas <strong>langsung tersimpan</strong> begitu dipilih.</li>
+<li>Bila dokumen meminta <strong>Tanggal Surat</strong>, isi tanggal pada dialog yang muncul, lalu klik <strong>Simpan</strong>.</li>
+<li>Dokumen yang sudah diunggah menampilkan tombol <strong>Pratinjau</strong>, <strong>Hapus</strong>, dan <strong>Ganti</strong>. Klik <strong>Hapus</strong> bila ada dokumen yang salah, lalu unggah ulang berkas yang benar.</li>
+<li>Bila format dokumen disediakan, tertulis &quot;Format tersedia pada <em>Template Dokumen</em>&quot;.</li>
+<li>Setelah seluruh dokumen wajib lengkap, centang pernyataan kelengkapan, lalu klik tombol <strong>Teruskan</strong> dan konfirmasi.</li>
+</ol>
+<p><strong>Dokumen wajib tahap Unor</strong> (contoh):</p>
+<div class="manual-table"><table>
+<thead>
+<tr>
+<th>Tipe</th>
+<th>Dokumen</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>PDLN Tipe 1</strong></td>
+<td>Izin Prinsip Menteri; Surat Tugas; Nota Dinas Sekretaris Unor ke Kepala Biro PAKLN</td>
+</tr>
+<tr>
+<td><strong>PDLN Tipe 3</strong></td>
+<td>Izin Prinsip/Disposisi Menteri; Surat Tugas; Nota Dinas Sekretaris Unor ke Kepala Biro PAKLN</td>
+</tr>
+<tr>
+<td><strong>PDLN Tipe 2 Pendidikan</strong></td>
+<td>Nota Dinas Sekretaris Unor ke Sekretaris BPSDM; Surat Tugas Pimpinan Unor; DRH ttd Pimpinan Unor</td>
+</tr>
+<tr>
+<td><strong>PDLN Tipe 2 Pelatihan</strong></td>
+<td>Nota Dinas Sekretaris Unor ke Sekretaris BPSDM; Surat Tugas Pimpinan Unor</td>
+</tr>
+<tr>
+<td><strong>Non-Kedinasan</strong></td>
+<td>Sesuai daftar yang tampil pada halaman</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Tujuan penerusan</strong></p>
+<ul>
+<li><strong>PDLN Tipe 2</strong> diteruskan ke <strong>BPSDM</strong>.</li>
+<li><strong>Selain Tipe 2</strong> diteruskan ke <strong>Biro PAKLN</strong> (tombol <strong>Teruskan ke Biro PAKLN</strong>).</li>
+</ul>
+<figure><a href="{% static 'images/user-manual/unor-04-unggah-dokumen.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/unor-04-unggah-dokumen.png' %}" alt="Unggah Dokumen Administrasi Unor" width="1680" height="1537" loading="lazy"></a><figcaption>Unggah Dokumen Administrasi Unor</figcaption></figure>
+<blockquote class="catatan">
+<p><strong>Catatan:</strong> Tombol <strong>Teruskan</strong> nonaktif selama dokumen wajib belum lengkap. Halaman menampilkan dokumen yang masih kurang.</p>
+</blockquote>
+<h4 id="344-pembatalan">3.4.4 Pembatalan</h4>
+<p>Menu <strong>Pembatalan</strong> memiliki dua tab: <strong>Menunggu Saya</strong> (permohonan yang menunggu keputusan Anda) dan <strong>Semua Permohonan</strong>. Tabel menampilkan Pengajuan, Pegawai, Diajukan, Status Saat Diajukan, Alasan, Jenjang Unor, Jenjang PAKLN, dan Status.</p>
+<figure><a href="{% static 'images/user-manual/unor-05-pembatalan.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/unor-05-pembatalan.png' %}" alt="Menu Pembatalan Admin Unor" width="1680" height="900" loading="lazy"></a><figcaption>Menu Pembatalan Admin Unor</figcaption></figure>
+<p><strong>Menyetujui atau menolak permohonan pegawai</strong></p>
+<ol>
+<li>Pada tab <strong>Menunggu Saya</strong>, klik <strong>Tinjau</strong> pada permohonan.</li>
+<li>Baca rincian permohonan (pegawai, waktu pengajuan, dan alasan).</li>
+<li>Isi <strong>Catatan keputusan</strong>:
+<ul>
+<li>klik <strong>Setujui Pembatalan</strong> untuk menyetujui (catatan opsional);</li>
+<li>klik <strong>Tolak</strong> untuk menolak (catatan <strong>wajib</strong>).</li>
+</ul>
+</li>
+</ol>
+<figure><a href="{% static 'images/user-manual/unor-05b-tinjau-pembatalan.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/unor-05b-tinjau-pembatalan.png' %}" alt="Dialog Tinjau Pembatalan" width="1680" height="900" loading="lazy"></a><figcaption>Dialog Tinjau Pembatalan</figcaption></figure>
+<p><strong>Mengajukan pembatalan atas nama unit</strong></p>
+<p>Pada halaman <strong>Pratinjau</strong> sebuah pengajuan, klik <strong>Ajukan Pembatalan</strong>, lalu isi alasan. Permohonan yang diajukan Admin Unor dihitung sebagai persetujuan dari sisi unit, lalu menunggu keputusan berikutnya.</p>
+<p><strong>Menarik pembatalan yang Anda ajukan</strong></p>
+<p>Pada permohonan yang Anda ajukan sendiri dan masih berjalan, klik <strong>Tarik</strong>.</p>
+<blockquote class="penting">
+<p><strong>Penting:</strong> Selama permohonan pembatalan diproses, pengajuan <strong>dibekukan</strong> dan tidak dapat diproses lebih lanjut. Jika permohonan ditolak atau ditarik, pengajuan melanjutkan proses dari status semula.</p>
+</blockquote>
+<h4 id="345-pelaporan-pdln">3.4.5 Pelaporan PDLN</h4>
+<p>Halaman ini memantau laporan perjalanan dinas pegawai di unit organisasi Anda dan bersifat <strong>hanya baca (read-only)</strong>.</p>
+<ul>
+<li>Kartu ringkasan: PDLN Selesai, Belum Melapor, Menunggu Verifikasi, Dikembalikan, Disetujui (Tuntas), dan Terlambat Melapor.</li>
+<li>Tabel: Pegawai, Unor, Tipe/Kode, Negara, Tgl Kembali, Status Pelaporan, Tgl Unggah, dan Aksi. Klik <strong>Lihat</strong> untuk melihat laporan.</li>
+</ul>
+<figure><a href="{% static 'images/user-manual/unor-06-pelaporan.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/unor-06-pelaporan.png' %}" alt="Pelaporan PDLN Admin Unor" width="1680" height="900" loading="lazy"></a><figcaption>Pelaporan PDLN Admin Unor</figcaption></figure>
+<h4 id="346-rekap">3.4.6 Rekap</h4>
+<p>Halaman <strong>Rekap Perjalanan Luar Negeri</strong> menampilkan statistik pengajuan di unit Anda (Dinas dan Non-Dinas).</p>
+<ol>
+<li>Atur <strong>filter</strong> (Jenis, Tipe PDLN, Status, Periode, Negara, Kegiatan, Tahun Kegiatan, Kanal), lalu klik <strong>Terapkan</strong>. Klik <strong>Reset</strong> untuk mengosongkan filter.</li>
+<li>Pilih tab rekap yang diinginkan: Rekap per Status, per Unit Organisasi, per Negara Tujuan, per Bulan Pengajuan, per Kategori &amp; Sumber Pembiayaan, per Kegiatan, Waktu Proses per Tahap (hari kalender), Pengembalian, dan Permohonan Pembatalan.</li>
+<li>Klik <strong>XLSX (Data + Ringkasan)</strong> untuk mengunduh hasilnya.</li>
+</ol>
+<figure><a href="{% static 'images/user-manual/unor-07-rekap.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/unor-07-rekap.png' %}" alt="Rekap" width="1680" height="900" loading="lazy"></a><figcaption>Rekap</figcaption></figure>
+<h4 id="347-export">3.4.7 Export</h4>
+<p>Halaman <strong>Export Database</strong> mengunduh data pengajuan yang sesuai cakupan unit Anda.</p>
+<ol>
+<li>Atur <strong>filter</strong> (Jenis, Tipe PDLN, Status, Periode beserta rentang tanggal, Negara, Kegiatan, Tahun Kegiatan, Kanal), lalu klik <strong>Terapkan</strong>. Tabel di bawahnya menampilkan data yang akan diekspor.</li>
+<li>Klik <strong>Export XLSX</strong> atau <strong>Export CSV</strong>.</li>
+</ol>
+<figure><a href="{% static 'images/user-manual/unor-08-export.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/unor-08-export.png' %}" alt="Export Data" width="1680" height="900" loading="lazy"></a><figcaption>Export Data</figcaption></figure>
+<blockquote class="catatan">
+<p><strong>Catatan:</strong> Berkas XLSX berisi sheet <strong>Data</strong> (kolom umum, PDLN, pelaporan, dan pembatalan) dan sheet <strong>Ringkasan</strong>. Export memuat seluruh baris yang cocok dengan filter, bukan hanya halaman yang tampil.</p>
+</blockquote>
