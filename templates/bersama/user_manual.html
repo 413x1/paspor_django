@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}User Manual{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>User Manual</h2>
+    <p class="sub">Buku Panduan Pengguna aplikasi Paspor PU.</p>
+  </div>
+</div>
+
+<div class="box">
+  <h3 class="title is-5">Buku Panduan Pengguna Paspor PU</h3>
+  <p>
+    Panduan ini menjelaskan langkah demi langkah penggunaan aplikasi Paspor PU,
+    mulai dari login, pengajuan perjalanan, hingga pemantauan progres. Unduh
+    panduan untuk peran Anda saat ini dalam format PDF.
+  </p>
+
+  <div class="buttons mt-4">
+    {% if user.role == 'pegawai' %}
+    <a class="button is-primary"
+       href="{% static 'docs/panduan_pegawai.pdf' %}"
+       download="Panduan_Pegawai_Paspor_PU.pdf">
+      <span class="icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </span>
+      <span>Unduh Panduan Pegawai</span>
+    </a>
+    {% elif user.role == 'admin_unor' %}
+    <a class="button is-primary"
+       href="{% static 'docs/panduan_admin_unor.pdf' %}"
+       download="Panduan_Admin_Unor_Paspor_PU.pdf">
+      <span class="icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </span>
+      <span>Unduh Panduan Admin Unor</span>
+    </a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

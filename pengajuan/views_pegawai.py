@@ -830,3 +830,9 @@ def profil(request):
         return redirect("profil")
 
     return render(request, "akun/profil.html", _context_profil(request))
+
+
+@role_required("pegawai", "admin_unor")
+def user_manual(request):
+    """Halaman Buku Panduan Pengguna: hanya pengantar + tombol unduh PDF statis."""
+    return render(request, "bersama/user_manual.html")
