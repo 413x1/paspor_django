@@ -25,6 +25,7 @@ CRUMBS = {
     # --- Bersama -----------------------------------------------------------
     "profil": ("Profil", None),
     "notifications:list": ("Notifikasi", None),
+    "user_manual": ("User Manual", None),
 
     # --- Pegawai -----------------------------------------------------------
     "pegawai:beranda": ("Beranda", None),

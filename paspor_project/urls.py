@@ -21,6 +21,7 @@ urlpatterns = [
     path("admin-bko/", include(("pengajuan.urls_bko", "bko"), namespace="bko")),
     path("admin-biropakln/", include(("pengajuan.urls_pakln", "pakln"), namespace="pakln")),
     path("profil/", views_pegawai.profil, name="profil"),
+    path("user-manual/", views_pegawai.user_manual, name="user_manual"),
     path("notifikasi/", include(("notifications.urls", "notifications"), namespace="notifications")),
 
     # Demo unggah berkas PDF ke bucket S3 — publik, tanpa login (lihat wiki/instructions/S3BUCKET_FILE_UPLOAD.MD)
