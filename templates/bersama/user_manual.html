@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}User Manual{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/user-manual.css' %}?v=20261030b">
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>User Manual</h2>
+    <p class="sub">Buku Panduan Pengguna Paspor PU &mdash; peran {% if user.role == 'admin_unor' %}Admin Unor{% else %}Pegawai{% endif %}.</p>
+  </div>
+  {% if user.role == 'admin_unor' %}
+  <a class="button is-primary" href="{% static 'docs/panduan_admin_unor.pdf' %}" download="Panduan_Admin_Unor_Paspor_PU.pdf">
+  {% else %}
+  <a class="button is-primary" href="{% static 'docs/panduan_pegawai.pdf' %}" download="Panduan_Pegawai_Paspor_PU.pdf">
+  {% endif %}
+    <span class="icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </span>
+    <span>Unduh PDF</span>
+  </a>
+</div>
+
+<div class="manual-layout">
+  <aside class="manual-toc-wrap box" aria-label="Daftar isi panduan">
+    <details id="manualToc" open>
+      <summary class="manual-toc-title">Daftar Isi</summary>
+      <nav class="manual-toc">
+        {% if user.role == 'admin_unor' %}{% include "bersama/manual/admin_unor_toc.html" %}{% else %}{% include "bersama/manual/pegawai_toc.html" %}{% endif %}
+      </nav>
+    </details>
+  </aside>
+
+  <article class="manual-content box">
+    {% if user.role == 'admin_unor' %}{% include "bersama/manual/admin_unor_isi.html" %}{% else %}{% include "bersama/manual/pegawai_isi.html" %}{% endif %}
+  </article>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Layar kecil: daftar isi tertutup dulu supaya isi panduan langsung terlihat.
+  if (window.matchMedia('(max-width: 1100px)').matches) {
+    document.getElementById('manualToc').removeAttribute('open');
+  }
+
+  // Tandai butir daftar isi sesuai bagian yang sedang dibaca.
+  (function () {
+    var links = document.querySelectorAll('.manual-toc a');
+    if (!links.length || !('IntersectionObserver' in window)) { return; }
+    var peta = {};
+    links.forEach(function (a) { peta[a.getAttribute('href').slice(1)] = a; });
+    var pengamat = new IntersectionObserver(function (entri) {
+      entri.forEach(function (e) {
+        if (!e.isIntersecting || !peta[e.target.id]) { return; }
+        links.forEach(function (l) { l.classList.remove('is-active'); });
+        peta[e.target.id].classList.add('is-active');
+      });
+    }, { rootMargin: '-100px 0px -70% 0px' });
+    document.querySelectorAll('.manual-content [id]').forEach(function (h) {
+      if (peta[h.id]) { pengamat.observe(h); }
+    });
+  })();
+</script>
+{% endblock %}
