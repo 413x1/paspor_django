@@ -124,7 +124,7 @@ workflow state.
 
 | Group | Fields |
 |---|---|
-| Identity | `kode` (auto `PSP-<year>-<0001>`, generated in `save()`), `pegawai` (FK → User) |
+| Identity | `kode` (auto `PLN<kode unor>-<ddmmyy>-<NOURUT 3 digit>`, generated in `save()` — see `wiki/instructions/PENGKODEAN_AJUAN.MD`), `pegawai` (FK → User) |
 | Travel detail (employee-entered) | `kategori`, `maksud`, `tujuan_negara`, `sumber_pembiayaan`, `tgl_berangkat`, `tgl_kembali`, `jumlah_hari_kerja` |
 | Channel / state | `kanal` (`mobile` / `web`, default `web`), `status` |
 | Workflow flags | `form_saved`, `submitted`, `preview_unor_agree`, `preview_pakln_agree` (all boolean) — mirror the mockup's JS state, re-checked server-side to unlock each next page |
@@ -158,13 +158,15 @@ files are stored under `media/pengajuan/<kode>/<stage>/<jenis>/<filename>`.
 | `DokumenPakln` | Admin Biro PAKLN (3) | Nota Dinas Kepala Bagian; Nota Dinas Kepala Biro; Izin Luar Negeri (TTD Sekjen a.n. Menteri) |
 
 `DokumenUnorPendukung` (one-to-one with `Pengajuan`) holds the Admin Unor
-"Dokumen Pendukung Lainnya": a single `file` plus three independent boolean
-flags (`nd_sekunor`, `nd_menteri`, `lainnya`). Uploading/replacing the file
-and toggling a flag are deliberately separate, order-independent actions on
-`unor:upload_dokumen` (`"pendukung_upload"` / `"pendukung_hapus"` /
-`"toggle_pendukung"` POST branches) — neither requires the other to happen
-first. "Lengkap" = all 3 `DokumenUnor` wajib present **and**
-`DokumenUnorPendukung.is_lengkap()` (file present and at least one flag set).
+"Dokumen Pendukung Lainnya": a single `file` plus three boolean flags
+(`nd_sekunor`, `nd_menteri`, `lainnya`). The flags' checklist UI and its
+`"toggle_pendukung"` POST branch were removed from `unor:upload_dokumen` —
+the fields still exist on the model (Admin Biro PAKLN's Pratinjau page
+still reads them for older submissions) but are no longer settable from
+the Unor upload page. Uploading/replacing the file is the only action left
+there (`"pendukung_upload"` / `"pendukung_hapus"` POST branches). The file
+is **optional**: "Lengkap" = all 3 `DokumenUnor` wajib present; a missing
+`DokumenUnorPendukung` file does not block "Teruskan".
 
 Upload size cap: 10 MB (`DATA_UPLOAD_MAX_MEMORY_SIZE`,
 `FILE_UPLOAD_MAX_MEMORY_SIZE` in `settings.py`).
@@ -215,7 +217,7 @@ viewer's role/unit and the current `pengajuan.kategori`.
 |---|---|---|
 | Dasbor | `unor:dashboard` | All applications with `status ≠ belum` + counts (total / proses / proses_pakln / selesai). |
 | Pratinjau | `unor:preview` (`<kode>`) | Read-only view. "Lanjutkan" sets `preview_unor_agree = True`. "Kembalikan ke Pegawai" (requires a note) resets `status = belum`, `submitted = False`, `preview_unor_agree = False`, and stores the note in `catatan_unor` — the application drops out of both dashboards and reappears as the employee's active (draft-status) application with the note shown on Beranda/Formulir/Upload; `catatan_unor` is cleared when the employee resubmits. |
-| Unggah Dokumen | `unor:upload_dokumen` (`<kode>`) | Requires `preview_unor_agree`. Upload the 3 wajib `DokumenUnor` documents individually, plus the independent `DokumenUnorPendukung` upload/checklist (§5.4). "Teruskan" requires all 3 wajib + `DokumenUnorPendukung.is_lengkap()` + acknowledgement → sets `status = proses_pakln`, `tgl_masuk_pakln = today`. |
+| Unggah Dokumen | `unor:upload_dokumen` (`<kode>`) | Requires `preview_unor_agree`. Upload the 3 wajib `DokumenUnor` documents individually, plus the independent `DokumenUnorPendukung` upload/checklist (§5.4). "Teruskan" requires all 3 wajib + acknowledgement (Dokumen Pendukung optional) → sets `status = proses_pakln`, `tgl_masuk_pakln = today`. |
 | Export Database | `unor:export` | HTML table; `?format=csv` streams `paspor_pengajuan_unor.csv`. |
 
 ### Stage 3 — Admin Biro PAKLN (`views_pakln.py`, namespace `pakln`)

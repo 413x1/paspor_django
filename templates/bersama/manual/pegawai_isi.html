@@ -1,0 +1,318 @@
+{% load static %}
+{# Dibuat otomatis oleh scripts/build_user_manual.py dari wiki/user-manual/ - jangan diedit manual. #}
+<h2 id="1-pendahuluan">1. Pendahuluan</h2>
+<p><strong>Paspor PU</strong> adalah aplikasi untuk mengelola pengajuan <strong>Perjalanan Dinas Luar Negeri (PDLN)</strong> dan <strong>Perjalanan Luar Negeri Non-Kedinasan</strong>. Aplikasi mencatat pengajuan dari pegawai, memprosesnya secara berjenjang, dan menyimpan dokumen serta riwayat pemrosesannya.</p>
+<p>Panduan ini membantu <strong>Pegawai</strong> menjalankan tugasnya di aplikasi, langkah demi langkah: mengajukan perjalanan, mengunggah dokumen, memantau progres, melaporkan PDLN, dan mengajukan pembatalan.</p>
+<blockquote class="catatan">
+<p><strong>Catatan:</strong> Panduan ini hanya memuat fitur untuk peran <strong>Pegawai</strong>. Peran lain tidak dibahas di sini.</p>
+</blockquote>
+<h2 id="2-akses-akun-dan-profil">2. Akses, Akun, dan Profil</h2>
+<p>Bagian ini berlaku untuk <strong>Pegawai</strong> dan <strong>Admin Unor</strong>.</p>
+<h3 id="21-login">2.1 Login</h3>
+<ol>
+<li>Buka halaman login aplikasi.</li>
+<li>Masukkan <strong>Username</strong> dan <strong>Password</strong>. Centang <strong>Ingat saya</strong> bila diperlukan.</li>
+<li>Klik <strong>Masuk dengan Username</strong>.</li>
+<li>Anda diarahkan ke halaman utama: <strong>Beranda</strong>.</li>
+</ol>
+<figure><a href="{% static 'images/user-manual/umum-01-login.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/umum-01-login.png' %}" alt="Halaman Login" width="1366" height="800" loading="lazy"></a><figcaption>Halaman Login</figcaption></figure>
+<p><strong>Jika Anda belum memiliki password:</strong></p>
+<ol>
+<li>Klik <strong>Masuk dengan SSO</strong> pada halaman login.</li>
+<li>Setelah masuk, buka menu <strong>Profil</strong>.</li>
+<li>Atur password Anda (lihat <a href="#23-profil-pengguna">2.3 Profil Pengguna</a>).</li>
+<li>Selanjutnya Anda dapat masuk dengan username dan password.</li>
+</ol>
+<blockquote class="penting">
+<p><strong>Penting:</strong> Akun yang belum memiliki password tidak dapat masuk dengan username dan password. Aplikasi akan meminta Anda masuk lewat SSO terlebih dahulu.</p>
+</blockquote>
+<p>Untuk keluar dari aplikasi, klik <strong>Keluar</strong> di bagian bawah sidebar.</p>
+<h3 id="22-ganti-peran">2.2 Ganti Peran</h3>
+<p>Pengguna yang memiliki lebih dari satu peran dapat berpindah peran <strong>tanpa login ulang</strong>.</p>
+<ol>
+<li>Di bagian atas halaman, klik <strong>Masuk sebagai</strong>.</li>
+<li>Pilih peran yang diinginkan dari daftar. Peran yang sedang aktif diberi tanda centang.</li>
+<li>Aplikasi menampilkan menu dan halaman sesuai peran yang dipilih.</li>
+</ol>
+<figure><a href="{% static 'images/user-manual/umum-02-ganti-peran.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/umum-02-ganti-peran.png' %}" alt="Pengalih Peran" width="1366" height="300" loading="lazy"></a><figcaption>Pengalih Peran</figcaption></figure>
+<blockquote class="catatan">
+<p><strong>Catatan:</strong> Pengalih peran hanya tampil untuk akun yang memiliki lebih dari satu peran.</p>
+</blockquote>
+<h3 id="23-profil-pengguna">2.3 Profil Pengguna</h3>
+<p>Buka menu <strong>Profil</strong> pada bagian <strong>Lainnya</strong> di sidebar.</p>
+<figure><a href="{% static 'images/user-manual/umum-03-profil.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/umum-03-profil.png' %}" alt="Halaman Profil" width="1366" height="1947" loading="lazy"></a><figcaption>Halaman Profil</figcaption></figure>
+<h4 id="a-melihat-data-personal">a. Melihat data personal</h4>
+<p>Bagian <strong>Data Personal</strong> menampilkan data dari e-HRM, antara lain nama, NIP, jabatan, pangkat/golongan, unit kerja, unit organisasi, email, dan nomor HP. Data ini <strong>hanya dapat dibaca (read-only)</strong> dan diperbarui lewat sinkronisasi e-HRM.</p>
+<blockquote class="catatan">
+<p><strong>Catatan:</strong> Email dan nomor HP <strong>tidak dapat diubah sendiri</strong> oleh Pegawai maupun Admin Unor. Perubahan dilakukan melalui <strong>Admin Biro PAKLN</strong>. Pada halaman Profil tertulis: &quot;Perubahan email dan nomor HP melalui Admin Biro PAKLN.&quot;</p>
+</blockquote>
+<h4 id="b-mengubah-username">b. Mengubah username</h4>
+<ol>
+<li>Pada bagian <strong>Akun</strong>, klik <strong>Ubah Username</strong>.</li>
+<li>Isi username baru.</li>
+<li>Klik <strong>Simpan Username</strong>.</li>
+</ol>
+<figure><a href="{% static 'images/user-manual/umum-04-profil-ubah-username.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/umum-04-profil-ubah-username.png' %}" alt="Ubah Username" width="1030" height="345" loading="lazy"></a><figcaption>Ubah Username</figcaption></figure>
+<p>Bagian <strong>Akun</strong> juga menampilkan <strong>Metode login</strong> dan <strong>Peran</strong> Anda. Peran hanya dapat diatur oleh Admin Biro PAKLN.</p>
+<h4 id="c-mengatur-mengganti-atau-menghapus-password">c. Mengatur, mengganti, atau menghapus password</h4>
+<p>Bagian <strong>Keamanan</strong> menampilkan tombol sesuai kondisi akun Anda:</p>
+<ul>
+<li><strong>Atur Password:</strong> tampil bila akun belum memiliki password. Isi password baru, lalu klik <strong>Simpan Password</strong>.</li>
+<li><strong>Ganti Password:</strong> tampil bila akun sudah memiliki password.
+<ol>
+<li>Klik <strong>Ganti Password</strong>.</li>
+<li>Isi <strong>Sandi lama</strong>, <strong>Sandi baru</strong>, dan <strong>Konfirmasi sandi baru</strong>.</li>
+<li>Klik <strong>Ganti Password</strong>.</li>
+</ol>
+</li>
+<li><strong>Hapus Password:</strong> tampil bila akun juga terhubung dengan SSO. Klik <strong>Hapus Password</strong>, lalu konfirmasi. Setelah dihapus, Anda hanya dapat masuk lewat SSO.</li>
+</ul>
+<figure><a href="{% static 'images/user-manual/umum-05-profil-password.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/umum-05-profil-password.png' %}" alt="Pengaturan Password" width="1030" height="497" loading="lazy"></a><figcaption>Pengaturan Password</figcaption></figure>
+<blockquote class="">
+<p><strong>Ketentuan sandi baru:</strong> tidak boleh terlalu mirip dengan informasi pribadi Anda, minimal 8 karakter, tidak boleh sandi yang umum digunakan, dan tidak boleh seluruhnya angka.</p>
+</blockquote>
+<h4 id="d-mengunggah-dokumen-kepegawaian-dasar">d. Mengunggah dokumen kepegawaian dasar</h4>
+<ul>
+<li><strong>Pegawai</strong> melihat bagian <strong>Dokumen Kepegawaian</strong> dengan enam dokumen: KTP, Kartu Keluarga, Kartu Pegawai/SK Pengangkatan PNS, Akta Kelahiran/Ijazah Terakhir, SK Kenaikan Pangkat Terakhir, dan Pas Foto (4x6 latar putih).</li>
+</ul>
+<p>Langkah mengunggah:</p>
+<ol>
+<li>Pada baris dokumen yang sesuai, klik <strong>Unggah</strong> (atau <strong>Ganti</strong> bila dokumen sudah pernah diunggah).</li>
+<li>Pilih berkas, lalu klik <strong>Unggah</strong> untuk menyimpan.</li>
+<li>Klik <strong>Lihat</strong> untuk melihat berkas yang sudah diunggah.</li>
+</ol>
+<figure><a href="{% static 'images/user-manual/umum-06-profil-dokumen.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/umum-06-profil-dokumen.png' %}" alt="Dokumen Kepegawaian" width="1030" height="639" loading="lazy"></a><figcaption>Dokumen Kepegawaian</figcaption></figure>
+<blockquote class="">
+<p><strong>Ketentuan berkas:</strong> berkas harus berformat <strong>PDF</strong> dan berukuran maksimal <strong>2 MB</strong>.</p>
+</blockquote>
+<h4 id="e-mengelola-data-paspor-khusus-pegawai">e. Mengelola data paspor (khusus Pegawai)</h4>
+<p>Bagian <strong>Data Paspor</strong> tersedia untuk peran Pegawai.</p>
+<ul>
+<li><strong>Menambah paspor:</strong> isi <strong>Nomor Paspor</strong>, pilih <strong>Jenis</strong> (Paspor Biasa, Paspor Dinas, atau Paspor Diplomatik), isi <strong>Tgl Expired</strong>, lalu klik <strong>Tambah Paspor</strong>.</li>
+<li><strong>Menghapus paspor:</strong> klik ikon hapus pada baris paspor, lalu konfirmasi pada dialog &quot;Hapus data paspor ini?&quot;.</li>
+</ul>
+<figure><a href="{% static 'images/user-manual/pegawai-00-profil-paspor.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/pegawai-00-profil-paspor.png' %}" alt="Data Paspor" width="1030" height="259" loading="lazy"></a><figcaption>Data Paspor</figcaption></figure>
+<h3 id="24-notifikasi">2.4 Notifikasi</h3>
+<p>Notifikasi memberi tahu Anda bila ada perkembangan pada pengajuan, misalnya pengajuan dikembalikan, disetujui, atau selesai.</p>
+<p><strong>Melihat daftar notifikasi</strong></p>
+<ul>
+<li>Klik ikon lonceng di bagian atas halaman. Angka merah pada lonceng menunjukkan jumlah notifikasi yang belum dibaca. Daftar notifikasi terbaru tampil sebagai dropdown.</li>
+<li>Klik <strong>Lihat Semua</strong> pada dropdown, atau menu <strong>Notifikasi</strong> di sidebar, untuk membuka halaman Notifikasi lengkap.</li>
+</ul>
+<figure><a href="{% static 'images/user-manual/umum-07b-notifikasi-dropdown.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/umum-07b-notifikasi-dropdown.png' %}" alt="Dropdown Notifikasi" width="1366" height="520" loading="lazy"></a><figcaption>Dropdown Notifikasi</figcaption></figure>
+<figure><a href="{% static 'images/user-manual/umum-07-notifikasi.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/umum-07-notifikasi.png' %}" alt="Halaman Notifikasi" width="1366" height="800" loading="lazy"></a><figcaption>Halaman Notifikasi</figcaption></figure>
+<p><strong>Membuka notifikasi</strong></p>
+<p>Klik sebuah notifikasi untuk membuka halaman terkait pengajuan tersebut.</p>
+<p><strong>Menandai sudah dibaca</strong></p>
+<p>Pada halaman Notifikasi, klik <strong>Tandai Semua Dibaca</strong> untuk menandai seluruh notifikasi sebagai sudah dibaca.</p>
+<p><strong>Menghapus notifikasi</strong></p>
+<p>Pada dropdown lonceng:</p>
+<ul>
+<li>Klik tanda <strong>×</strong> pada sebuah notifikasi untuk menghapusnya.</li>
+<li>Klik <strong>Hapus Semua</strong> untuk menghapus seluruh notifikasi.</li>
+</ul>
+<h2 id="3-panduan-pengguna-pegawai">3. Panduan Pengguna: Pegawai</h2>
+<p>Bagian ini menjelaskan cara Pegawai mengajukan, memantau, melaporkan, dan membatalkan perjalanan luar negeri. Untuk login, profil, dan notifikasi, lihat <a href="#2-akses-akun-dan-profil">Bagian 2: Akses, Akun, dan Profil</a>.</p>
+<h3 id="31-menu-sidebar">3.1 Menu Sidebar</h3>
+<div class="manual-table"><table>
+<thead>
+<tr>
+<th>Menu</th>
+<th>Fungsi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Beranda</strong></td>
+<td>Melihat pengajuan aktif dan riwayat, serta membuat usulan baru.</td>
+</tr>
+<tr>
+<td><strong>Pelaporan PDLN</strong></td>
+<td>Mengisi dan memantau laporan perjalanan dinas.</td>
+</tr>
+<tr>
+<td><strong>Pembatalan</strong></td>
+<td>Melihat dan menarik permohonan pembatalan.</td>
+</tr>
+<tr>
+<td><strong>Profil</strong> dan <strong>Notifikasi</strong></td>
+<td>Lihat <a href="#2-akses-akun-dan-profil">Bagian 2</a>.</td>
+</tr>
+</tbody>
+</table></div>
+<figure><a href="{% static 'images/user-manual/pegawai-01-sidebar.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/pegawai-01-sidebar.png' %}" alt="Sidebar Pegawai" width="280" height="800" loading="lazy"></a><figcaption>Sidebar Pegawai</figcaption></figure>
+<p><strong>Beranda</strong> menampilkan:</p>
+<ul>
+<li>tombol <strong>Tambah Usulan Baru</strong> (atau <strong>Lanjutkan Draft</strong> bila ada draft);</li>
+<li>tabel <strong>Pengajuan Aktif</strong> (Jenis, Tujuan, Kategori, Tgl Pengajuan, Status, Action);</li>
+<li>tab <strong>Riwayat PDLN</strong> dan <strong>Riwayat Non-Dinas</strong>, dengan fitur cari;</li>
+<li>tabel <strong>Usulan Kegiatan Saya</strong> bila Anda pernah mengusulkan kegiatan.</li>
+</ul>
+<figure><a href="{% static 'images/user-manual/pegawai-02-beranda.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/pegawai-02-beranda.png' %}" alt="Beranda Pegawai" width="1366" height="800" loading="lazy"></a><figcaption>Beranda Pegawai</figcaption></figure>
+<h3 id="32-aturan-khusus-pegawai">3.2 Aturan Khusus Pegawai</h3>
+<ol>
+<li><strong>Hanya boleh ada satu pengajuan aktif.</strong> Pengajuan baru dapat dibuat jika pengajuan sebelumnya sudah <strong>tuntas</strong> atau <strong>dibatalkan</strong>. Selama pengajuan lama belum tuntas, tombol <strong>Tambah Usulan Baru</strong> nonaktif dan alasannya ditampilkan di Beranda.</li>
+<li><strong>Draft juga dihitung sebagai pengajuan aktif.</strong> Lanjutkan draft melalui tombol <strong>Lanjutkan Draft</strong>.</li>
+<li><strong>Untuk PDLN</strong>, pengajuan dianggap tuntas setelah <strong>Laporan PDLN disetujui</strong> (lihat <a href="#langkah-7-pelaporan-pdln-khusus-pdln">Langkah 7</a>).</li>
+<li><strong>Mengusulkan kegiatan baru</strong> dapat dilakukan dari formulir PDLN. Keputusan akhir oleh <strong>Admin Biro PAKLN</strong> (lihat <a href="#34-mengusulkan-kegiatan-baru">Bagian 3.4</a>).</li>
+</ol>
+<h3 id="33-alur-pengajuan">3.3 Alur Pengajuan</h3>
+<h4 id="langkah-1-pilih-jenis-usulan">Langkah 1: Pilih jenis usulan</h4>
+<ol>
+<li>Di <strong>Beranda</strong>, klik <strong>Tambah Usulan Baru</strong>.</li>
+<li>Pilih salah satu jenis:
+<ul>
+<li><strong>Perjalanan Luar Negeri Non-Kedinasan</strong>: untuk ibadah, wisata, atau keperluan pribadi lainnya.</li>
+<li><strong>Perjalanan Dinas Luar Negeri (PDLN)</strong>: lalu pilih salah satu tipe:
+<ul>
+<li><strong>Tipe 1</strong></li>
+<li><strong>Tipe 2 Pendidikan</strong></li>
+<li><strong>Tipe 2 Pelatihan</strong></li>
+<li><strong>Tipe 3</strong></li>
+</ul>
+</li>
+</ul>
+</li>
+</ol>
+<figure><a href="{% static 'images/user-manual/pegawai-03-pilih-jenis.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/pegawai-03-pilih-jenis.png' %}" alt="Pilih Jenis Perjalanan" width="1366" height="800" loading="lazy"></a><figcaption>Pilih Jenis Perjalanan</figcaption></figure>
+<h4 id="langkah-2-isi-formulir-pengajuan">Langkah 2: Isi formulir pengajuan</h4>
+<p>Data pegawai (nama, NIP, unit kerja, unit organisasi, dan seterusnya) terisi <strong>otomatis</strong> dan tidak dapat diubah.</p>
+<p><strong>Formulir Non-Kedinasan</strong></p>
+<ul>
+<li>Bagian atas menampilkan <strong>Sisa Cuti Tahun Berjalan</strong>.</li>
+<li>Isi <strong>Kategori Perjalanan</strong> (pilih dari kategori yang tersedia), <strong>Tujuan Negara</strong>, <strong>Maksud Perjalanan</strong>, <strong>Sumber Pembiayaan</strong>, <strong>Tanggal Keberangkatan</strong>, dan <strong>Tanggal Kembali</strong>.</li>
+<li><strong>Jumlah Hari Kalender</strong> dan <strong>Jumlah Hari Kerja</strong> dihitung otomatis.</li>
+<li>Jumlah hari kerja <strong>tidak boleh melebihi sisa cuti</strong> tahun berjalan.</li>
+</ul>
+<figure><a href="{% static 'images/user-manual/pegawai-04-formulir-nondinas.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/pegawai-04-formulir-nondinas.png' %}" alt="Formulir Non-Kedinasan" width="1366" height="1534" loading="lazy"></a><figcaption>Formulir Non-Kedinasan</figcaption></figure>
+<p><strong>Formulir PDLN</strong></p>
+<ul>
+<li>Pilih <strong>Kategori Perjalanan</strong>, lalu <strong>Kegiatan</strong>. Kolom Kegiatan berupa kotak pencarian: ketik minimal 3 huruf (nama kegiatan, penyelenggara, atau kota), lalu pilih dari hasil.</li>
+<li><strong>Penyelenggara</strong>, <strong>Negara Kegiatan</strong>, <strong>Kota</strong>, dan <strong>Periode Agenda</strong> terisi otomatis dari kegiatan yang dipilih. Negara kegiatan otomatis menjadi negara tujuan, dan Anda boleh menambah negara lain.</li>
+<li>Isi <strong>Tanggal Keberangkatan</strong> dan <strong>Tanggal Kepulangan</strong>. Keberangkatan paling lambat pada tanggal mulai kegiatan, dan kepulangan paling cepat pada tanggal selesai kegiatan.</li>
+<li>Pilih <strong>Sumber Pembiayaan</strong> dan isi <strong>Keterangan Sumber Pembiayaan</strong>.</li>
+<li>Centang pernyataan <strong>&quot;Saya menyatakan data dan formulir yang diisi telah benar&quot;</strong>.</li>
+<li>Klik <strong>Simpan &amp; Lanjutkan</strong>.</li>
+</ul>
+<figure><a href="{% static 'images/user-manual/pegawai-05-formulir-pdln.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/pegawai-05-formulir-pdln.png' %}" alt="Formulir PDLN" width="1366" height="1643" loading="lazy"></a><figcaption>Formulir PDLN</figcaption></figure>
+<blockquote class="penting">
+<p><strong>Penting:</strong> Perhatikan pesan merah pada kolom yang kosong atau tidak valid, lalu perbaiki sebelum menyimpan. Pilihan kategori dan sumber pembiayaan menyesuaikan tipe pengajuan.</p>
+</blockquote>
+<h4 id="langkah-3-unggah-dokumen-wajib">Langkah 3: Unggah dokumen wajib</h4>
+<p>Setelah formulir disimpan, Anda diarahkan ke halaman <strong>Unggah Dokumen</strong>. Daftar dokumen wajib <strong>berbeda sesuai jenis dan tipe pengajuan</strong>:</p>
+<div class="manual-table"><table>
+<thead>
+<tr>
+<th>Jenis / Tipe</th>
+<th>Dokumen wajib tahap Pegawai</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Non-Kedinasan</strong></td>
+<td>Formulir Persetujuan Cuti Pegawai; Formulir Izin Luar Negeri; Nota Dinas Pimpinan Unit Kerja ke Sekretaris Unor; Dokumen Pendukung</td>
+</tr>
+<tr>
+<td><strong>PDLN Tipe 1 dan Tipe 3</strong></td>
+<td>Undangan/Surat Permohonan dari Penyelenggara; Kerangka Acuan Kerja (KAK); RAB Pembiayaan; Jadwal Kegiatan/Itinerary; Nota Dinas Pimpinan Unit Kerja ke Sekretaris Unor</td>
+</tr>
+<tr>
+<td><strong>PDLN Tipe 2 Pendidikan</strong></td>
+<td>Letter of Acceptance (LoA); Letter of Guarantee (LoG); Surat Pernyataan sesuai ketentuan Kemensetneg; Daftar Riwayat Hidup (DRH); Perjanjian Ikatan Dinas; Nota Dinas Pimpinan Unit Kerja ke Sekretaris Unor</td>
+</tr>
+<tr>
+<td><strong>PDLN Tipe 2 Pelatihan</strong></td>
+<td>Letter of Acceptance (LoA); Kerangka Acuan Kerja (KAK); Surat Pernyataan sesuai ketentuan Kemensetneg; Nota Dinas Pimpinan Unit Kerja ke Sekretaris Unor</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Cara mengunggah</strong></p>
+<ol>
+<li>Pada baris dokumen, klik <strong>Unggah</strong> lalu pilih berkas PDF. Berkas <strong>langsung tersimpan</strong> begitu dipilih; tidak ada tombol simpan terpisah.</li>
+<li>Bila dokumen meminta <strong>Tanggal Surat</strong> (misalnya Nota Dinas), muncul dialog <strong>Tanggal Surat</strong>. Isi tanggal, lalu klik <strong>Simpan</strong>.</li>
+<li>Klik <strong>OK</strong> pada pesan &quot;Dokumen berhasil diunggah&quot;.</li>
+<li>Dokumen yang sudah diunggah menampilkan tombol <strong>Pratinjau</strong>, <strong>Hapus</strong>, dan <strong>Ganti</strong>.</li>
+</ol>
+<figure><a href="{% static 'images/user-manual/pegawai-06-unggah-dokumen.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/pegawai-06-unggah-dokumen.png' %}" alt="Unggah Dokumen" width="1366" height="1027" loading="lazy"></a><figcaption>Unggah Dokumen</figcaption></figure>
+<figure><a href="{% static 'images/user-manual/pegawai-06b-tanggal-surat.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/pegawai-06b-tanggal-surat.png' %}" alt="Dialog Tanggal Surat" width="1366" height="800" loading="lazy"></a><figcaption>Dialog Tanggal Surat</figcaption></figure>
+<blockquote class="">
+<p><strong>Ketentuan berkas:</strong> berkas harus berformat <strong>PDF</strong> dan berukuran maksimal <strong>2 MB</strong>.</p>
+</blockquote>
+<h4 id="langkah-4-kirim-ke-admin-unor">Langkah 4: Kirim ke Admin Unor</h4>
+<ol>
+<li>Pastikan seluruh dokumen wajib sudah terunggah.</li>
+<li>Centang pernyataan <strong>&quot;Saya menyatakan seluruh dokumen yang diunggah telah sesuai dan lengkap...&quot;</strong>.</li>
+<li>Klik <strong>Kirim ke Admin Unor</strong>.</li>
+<li>Status pengajuan berubah menjadi <strong>Dalam Proses Unor</strong>.</li>
+</ol>
+<blockquote class="penting">
+<p><strong>Penting:</strong> Tombol <strong>Kirim ke Admin Unor</strong> nonaktif selama dokumen wajib belum lengkap. Halaman menampilkan dokumen mana yang masih kurang.</p>
+</blockquote>
+<p>Bila Anda belum mengirim dan ingin membatalkan draft, gunakan tombol <strong>Batalkan Draft</strong> di bagian bawah halaman Unggah Dokumen.</p>
+<h4 id="langkah-5-pantau-monitor-progres">Langkah 5: Pantau Monitor Progres</h4>
+<ol>
+<li>Di <strong>Beranda</strong>, klik <strong>Lihat Progres</strong> pada pengajuan aktif.</li>
+<li>Halaman <strong>Monitor Progres</strong> menampilkan negara tujuan, status pengajuan, dan <strong>Timeline Proses</strong> beserta riwayat setiap tahap.</li>
+</ol>
+<figure><a href="{% static 'images/user-manual/pegawai-07-monitor-progres.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/pegawai-07-monitor-progres.png' %}" alt="Monitor Progres" width="1366" height="933" loading="lazy"></a><figcaption>Monitor Progres</figcaption></figure>
+<p><strong>Jika pengajuan dikembalikan oleh Admin Unor</strong></p>
+<ol>
+<li>Di Beranda muncul pesan <strong>&quot;Dikembalikan oleh Admin Unor untuk diperbaiki&quot;</strong> beserta catatannya, dan status pengajuan menjadi <strong>Belum Diajukan</strong>. Anda juga menerima notifikasi.</li>
+<li>Klik <strong>Lanjutkan Unggah</strong>, lalu perbaiki formulir atau dokumen sesuai catatan.</li>
+<li>Isi <strong>Catatan perbaikan untuk Admin Unor</strong> (wajib).</li>
+<li>Centang pernyataan kelengkapan, lalu klik <strong>Kirim ke Admin Unor</strong>.</li>
+</ol>
+<figure><a href="{% static 'images/user-manual/pegawai-08-dikembalikan.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/pegawai-08-dikembalikan.png' %}" alt="Pengajuan Dikembalikan" width="1366" height="800" loading="lazy"></a><figcaption>Pengajuan Dikembalikan</figcaption></figure>
+<figure><a href="{% static 'images/user-manual/pegawai-08b-kirim-ulang.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/pegawai-08b-kirim-ulang.png' %}" alt="Kirim Ulang dengan Catatan Perbaikan" width="1366" height="1231" loading="lazy"></a><figcaption>Kirim Ulang dengan Catatan Perbaikan</figcaption></figure>
+<h4 id="langkah-6-dokumen-hasil">Langkah 6: Dokumen hasil</h4>
+<p>Setelah pengajuan berstatus <strong>Selesai</strong>, bagian <strong>Dokumen Hasil PDLN</strong> pada Monitor Progres menyediakan tombol unduh, misalnya <strong>SP Setneg</strong>, <strong>Exit Permit</strong>, <strong>Rekomendasi Visa</strong>, dan <strong>Nota Dinas Karo PAKLN ke Sekretaris Unor</strong>. Dokumen yang tampil mengikuti yang sudah disediakan Biro PAKLN.</p>
+<figure><a href="{% static 'images/user-manual/pegawai-09-dokumen-hasil.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/pegawai-09-dokumen-hasil.png' %}" alt="Dokumen Hasil PDLN" width="1366" height="1580" loading="lazy"></a><figcaption>Dokumen Hasil PDLN</figcaption></figure>
+<h4 id="langkah-7-pelaporan-pdln-khusus-pdln">Langkah 7: Pelaporan PDLN (khusus PDLN)</h4>
+<ol>
+<li>Buka menu <strong>Pelaporan PDLN</strong>, atau klik tombol <strong>Pelaporan PDLN</strong> pada pengajuan yang berstatus Selesai.</li>
+<li>Pada daftar, klik <strong>Pelaporan PDLN</strong> di baris pengajuan Anda.</li>
+<li>Isi <strong>Uraian Laporan</strong>: Tujuan Kegiatan, Materi Kegiatan, Tindak Lanjut, dan Dampak Rekomendasi.</li>
+<li>Isi <strong>Estimasi Biaya (Rp)</strong> dan <strong>Realisasi Biaya (Rp)</strong>.</li>
+<li>Unggah <strong>Dokumen Laporan Kegiatan</strong> (PDF, maksimal 10 MB).</li>
+<li>Klik <strong>Simpan</strong> untuk menyimpan sebagai draft (isian boleh belum lengkap), atau <strong>Laporkan</strong> untuk menyampaikan laporan ke Biro PAKLN. Pada dialog konfirmasi, klik <strong>Ya, Laporkan</strong>.</li>
+<li>Pantau status pada kolom <strong>Status Pelaporan</strong>. Klik <strong>Lihat Laporan</strong> untuk membuka laporan yang sudah dikirim.</li>
+</ol>
+<figure><a href="{% static 'images/user-manual/pegawai-10-pelaporan.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/pegawai-10-pelaporan.png' %}" alt="Daftar Pelaporan PDLN" width="1366" height="800" loading="lazy"></a><figcaption>Daftar Pelaporan PDLN</figcaption></figure>
+<figure><a href="{% static 'images/user-manual/pegawai-10b-form-laporan.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/pegawai-10b-form-laporan.png' %}" alt="Formulir Laporan PDLN" width="1366" height="1582" loading="lazy"></a><figcaption>Formulir Laporan PDLN</figcaption></figure>
+<p><strong>Jika laporan dikembalikan atau ditolak:</strong> perbaiki laporan, lalu unggah ulang disertai catatan balasan.</p>
+<blockquote class="penting">
+<p><strong>Penting:</strong> Laporan yang sudah dilaporkan tidak dapat diubah selama proses verifikasi. Untuk PDLN, pengajuan baru dinyatakan <strong>tuntas</strong> setelah laporan disetujui Admin Biro PAKLN. Selama belum tuntas, Anda belum dapat membuat pengajuan baru.</p>
+</blockquote>
+<h4 id="langkah-8-pembatalan">Langkah 8: Pembatalan</h4>
+<p><strong>Mengajukan pembatalan</strong></p>
+<ol>
+<li>Buka <strong>Monitor Progres</strong> pada pengajuan yang bersangkutan.</li>
+<li>Klik <strong>Ajukan Pembatalan</strong>.</li>
+<li>Isi <strong>Alasan pembatalan</strong> (wajib).</li>
+<li>Klik <strong>Ajukan Pembatalan</strong> pada dialog.</li>
+<li>Permohonan dikirim ke Admin Unor, lalu ke Admin Biro PAKLN.</li>
+</ol>
+<figure><a href="{% static 'images/user-manual/pegawai-11a-ajukan-pembatalan.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/pegawai-11a-ajukan-pembatalan.png' %}" alt="Dialog Ajukan Pembatalan" width="1366" height="800" loading="lazy"></a><figcaption>Dialog Ajukan Pembatalan</figcaption></figure>
+<p><strong>Memantau atau menarik permohonan</strong></p>
+<ol>
+<li>Buka menu <strong>Pembatalan</strong>.</li>
+<li>Klik <strong>Lihat</strong> untuk melihat rincian permohonan.</li>
+<li>Klik <strong>Tarik</strong> untuk menarik permohonan yang masih berjalan.</li>
+</ol>
+<figure><a href="{% static 'images/user-manual/pegawai-11-pembatalan.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/pegawai-11-pembatalan.png' %}" alt="Menu Pembatalan Pegawai" width="1366" height="800" loading="lazy"></a><figcaption>Menu Pembatalan Pegawai</figcaption></figure>
+<blockquote class="penting">
+<p><strong>Penting:</strong> Selama permohonan pembatalan diproses, pengajuan <strong>dibekukan</strong> dan tidak dapat diproses lebih lanjut. Jika permohonan ditolak atau ditarik, pengajuan melanjutkan proses dari status semula.</p>
+</blockquote>
+<h3 id="34-mengusulkan-kegiatan-baru">3.4 Mengusulkan Kegiatan Baru</h3>
+<p>Untuk pengajuan PDLN, kegiatan dipilih dari daftar kegiatan yang sudah disetujui. Bila kegiatan Anda belum ada:</p>
+<ol>
+<li>Pada formulir PDLN, di bawah kolom <strong>Kegiatan</strong>, klik <strong>Usulkan kegiatan baru</strong>.</li>
+<li>Periksa dulu daftar kegiatan agar tidak terjadi duplikat.</li>
+<li>Isi <strong>Data Kegiatan</strong>: Nama Kegiatan, Deskripsi (opsional), Kategori, Skema Pendanaan, Penyelenggara/Universitas, Negara, Kota, Tanggal Mulai Kegiatan, dan Tanggal Selesai Kegiatan.</li>
+<li>Isi <strong>Dasar Kegiatan</strong> (wajib, minimal satu): pilih <strong>Jenis Dasar</strong> dan, bila ada, unggah berkas PDF (maksimal 2 MB). Klik <strong>Tambah Dasar</strong> untuk menambah dasar lain.</li>
+<li>Klik <strong>Kirim Usulan</strong>.</li>
+</ol>
+<figure><a href="{% static 'images/user-manual/pegawai-12-usulkan-kegiatan.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/pegawai-12-usulkan-kegiatan.png' %}" alt="Usulkan Kegiatan Baru" width="1366" height="1547" loading="lazy"></a><figcaption>Usulkan Kegiatan Baru</figcaption></figure>
+<blockquote class="penting">
+<p><strong>Penting:</strong> Usulan kegiatan baru dapat dipilih setelah <strong>disetujui Admin Biro PAKLN</strong>. Status dan catatan keputusan tampil pada bagian <strong>Usulan Kegiatan Saya</strong> di Beranda.</p>
+</blockquote>

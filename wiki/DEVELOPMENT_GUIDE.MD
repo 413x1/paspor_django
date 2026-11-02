@@ -1,7 +1,7 @@
 # Panduan Instalasi & Pengembangan — PASPOR
 
 Panduan lengkap untuk menyiapkan lingkungan pengembangan lokal aplikasi
-**PASPOR** (Django + MySQL + MinIO), dari instalasi awal hingga mengisi
+**PASPOR** (Django + MySQL + S3/Garage), dari instalasi awal hingga mengisi
 database dengan data seed/demo. Untuk gambaran arsitektur & struktur
 proyek, lihat [wiki/README.md](README.md).
 
@@ -13,7 +13,7 @@ proyek, lihat [wiki/README.md](README.md).
 |---|---|---|
 | Python | 3.10+ | Cek dengan `python --version` |
 | MySQL / MariaDB | MySQL 8.x atau MariaDB 10.6+ | Harus sudah berjalan sebelum `migrate` |
-| MinIO | terbaru | Object storage untuk fitur unggah berkas (app `fileupload`). Tidak wajib untuk `runserver`/`migrate`, tapi wajib untuk mengunggah dokumen |
+| S3-compatible storage (Garage) | — | Object storage untuk seluruh berkas unggahan (`default_storage`). `S3_ACCESS_KEY`/`S3_SECRET_KEY` wajib ada di `.env` agar Django bisa start; bucket wajib terjangkau untuk unggah/lihat dokumen |
 | Build tools `mysqlclient` | — | Ubuntu/Debian: `sudo apt install python3-dev default-libmysqlclient-dev build-essential pkg-config`. macOS: `brew install mysql pkg-config`. Windows: wheel prebuilt biasanya otomatis lewat `pip install`, jika gagal gunakan WSL2 |
 
 ---
@@ -40,7 +40,7 @@ pip install -r requirements.txt
 > encoding.
 
 Isi utama `requirements.txt`: `Django==6.1.1`, `mysqlclient` (driver MySQL),
-`minio` (klien object storage), `argon2-cffi`/`pycryptodome` (hashing &
+`django-storages` + `boto3` (object storage S3), `argon2-cffi`/`pycryptodome` (hashing &
 kripto pendukung).
 
 ## 4. Siapkan Database MySQL
@@ -60,30 +60,17 @@ Sesuaikan nama database/user/password bila berbeda — nilainya dibaca dari
 environment variable pada langkah berikutnya (lihat `paspor_project/settings.py`
 bagian `DATABASES`).
 
-## 5. Siapkan MinIO (untuk fitur unggah dokumen)
+## 5. Siapkan Bucket S3 (Garage) untuk unggah dokumen
 
-Aplikasi membaca konfigurasi MinIO lewat env var (`MINIO_ENDPOINT`,
-`MINIO_PORT`, dst. — lihat `settings.py`). Jalankan MinIO lokal dengan Docker:
+Seluruh berkas unggahan (`FileField` di app `pengajuan` dan app
+`fileupload`) disimpan lewat `django-storages` ke bucket S3-compatible —
+saat ini **Garage** di Synology NAS (`http://10.101.21.55:3900`). Buat key
+& bucket di Garage lalu isi variabel `S3_*` di `.env` (lihat §6).
 
-```powershell
-docker run -d --name paspor-minio `
-  -p 9000:9000 -p 9001:9001 `
-  -e MINIO_ROOT_USER=minioadmin `
-  -e MINIO_ROOT_PASSWORD=minioadmin `
-  -v paspor_minio_data:/data `
-  minio/minio server /data --console-address ":9001"
-```
-
-Buka console di `http://localhost:9001` (login `minioadmin`/`minioadmin`)
-dan buat bucket sesuai nilai `MINIO_BUCKET_NAME` di `.env` — atau biarkan
-kosong, karena `fileupload.minio_client.ensure_bucket()` akan membuat
-bucket otomatis saat unggahan pertama kali dilakukan.
-
-Tanpa MinIO berjalan, seluruh aplikasi tetap bisa di-`migrate`, di-seed, dan
-dijalankan — hanya alur **unggah/lihat/hapus dokumen** (app `fileupload`,
-dipakai di halaman Upload Dokumen Pegawai/Unor/PAKLN) yang akan gagal
-dengan error koneksi. Detail mekanismenya ada di
-[wiki/UPLOAD_FILE.MD](UPLOAD_FILE.MD).
+Tanpa bucket yang bisa dijangkau, aplikasi tetap bisa di-`migrate`,
+di-seed, dan dijalankan — hanya alur **unggah/lihat/hapus dokumen** yang
+gagal. Detail konfigurasi, cara kerja, dan pemindahan berkas lama ada di
+[wiki/instructions/S3BUCKET_FILE_UPLOAD.MD](instructions/S3BUCKET_FILE_UPLOAD.MD).
 
 ## 6. Konfigurasi Environment Variable
 
@@ -91,7 +78,7 @@ dengan error koneksi. Detail mekanismenya ada di
 copy .env.example .env
 ```
 
-Edit `.env` sesuai kredensial MySQL & MinIO Anda:
+Edit `.env` sesuai kredensial MySQL & S3 Anda:
 
 ```env
 DJANGO_SECRET_KEY=ganti-dengan-secret-key-acak-yang-panjang
@@ -104,12 +91,10 @@ DB_PASSWORD=paspor_password
 DB_HOST=127.0.0.1
 DB_PORT=3306
 
-MINIO_ROOT_USER=minioadmin
-MINIO_ROOT_PASSWORD=minioadmin
-MINIO_BUCKET_NAME=paspor-dev
-MINIO_ENDPOINT=localhost
-MINIO_PORT=9000
-MINIO_USE_SSL=false
+S3_ACCESS_KEY=GKxxxxxxxxxxxxxxxxxxxxxxxx
+S3_SECRET_KEY=ganti-dengan-secret-key-garage
+S3_BUCKET_NAME=paspor-uploads
+S3_ENDPOINT=http://10.101.21.55:3900
 ```
 
 > Proyek ini membaca env var langsung lewat `os.environ` (helper `env()` di
@@ -246,7 +231,7 @@ python manage.py seed_hari_libur               # kalender libur nasional & cuti 
 
 ## 10. Alur Pengujian Manual (End-to-End)
 
-Setelah seed data (§9.1) dan MinIO (§5) siap, verifikasi alur inti:
+Setelah seed data (§9.1) dan bucket S3 (§5) siap, verifikasi alur inti:
 
 1. Login sebagai **`andra.wibisono`** (`paspor123`) → Beranda → **Tambah
    Usulan Baru** → isi Formulir Pengajuan → Simpan & Lanjutkan.
@@ -262,8 +247,8 @@ Setelah seed data (§9.1) dan MinIO (§5) siap, verifikasi alur inti:
 5. Logout, login kembali sebagai **`andra.wibisono`** → buka Monitor
    Progres → status akhir harus **Selesai**.
 
-Jika langkah unggah dokumen gagal dengan error koneksi, cek kembali MinIO
-(§5) sudah berjalan dan variabel `MINIO_*` di `.env` sudah benar.
+Jika langkah unggah dokumen gagal, cek kembali NAS/Garage (§5) bisa
+dijangkau dan variabel `S3_*` di `.env` sudah benar.
 
 ---
 
@@ -273,8 +258,9 @@ Jika langkah unggah dokumen gagal dengan error koneksi, cek kembali MinIO
 |---|---|
 | `django.db.utils.OperationalError` saat `migrate`/`runserver` | MySQL belum berjalan, atau `DB_*` di `.env`/env var tidak sesuai |
 | Gagal build `mysqlclient` saat `pip install` | Build tools belum terpasang (lihat §1); di Windows coba WSL2 bila wheel prebuilt tidak tersedia |
-| Error koneksi saat mengunggah dokumen | MinIO belum berjalan, atau `MINIO_ENDPOINT`/`MINIO_PORT` salah |
-| `ValueError: MINIO_BUCKET_NAME belum dikonfigurasi` | `MINIO_BUCKET_NAME` kosong di `.env` |
+| `KeyError: 'S3_ACCESS_KEY'` saat start | `S3_ACCESS_KEY`/`S3_SECRET_KEY` belum diisi di `.env` |
+| `ConnectTimeoutError`/`EndpointConnectionError` saat unggah | NAS tidak terjangkau (beda jaringan/VPN) atau `S3_ENDPOINT` salah |
+| `403 Forbidden` / `AccessDenied` saat unggah | Key Garage belum diberi izin ke bucket (`garage bucket allow ...`) |
 | `seed_pegawai_org_units`/`seed_admin_unor_org_units` gagal: "Tabel org_units kosong" | Jalankan `python manage.py seed_demo_data` terlebih dahulu |
 
 ---
@@ -282,6 +268,6 @@ Jika langkah unggah dokumen gagal dengan error koneksi, cek kembali MinIO
 ## 12. Referensi Lanjutan
 
 - [wiki/README.md](README.md) — struktur proyek, pemetaan mockup ↔ Django, keterbatasan & rencana lanjutan, production checklist.
-- [wiki/UPLOAD_FILE.MD](UPLOAD_FILE.MD) — mekanisme unggah/lihat/hapus dokumen berbasis MinIO.
+- [wiki/instructions/S3BUCKET_FILE_UPLOAD.MD](instructions/S3BUCKET_FILE_UPLOAD.MD) — mekanisme unggah/lihat/hapus dokumen ke bucket S3 (Garage).
 - [wiki/tables/UNIT_ORGANISASI.MD](tables/UNIT_ORGANISASI.MD) — daftar `org_units` yang dipakai seed data.
 - [wiki/instructions/](instructions/) — catatan kebutuhan seed/fitur tambahan (mis. `PEGAWAI_SEEDS.md`).

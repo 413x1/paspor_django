@@ -8,6 +8,19 @@
 | **Aktor Terkait** | Pegawai (Pemohon), Admin Unor (Verifikator 1), Admin PKLN (Verifikator Final) |
 | **Teknologi Target** | Web Application (In-App Toast, Notification Center, Email) |
 
+> **Tambahan PDLN T2P v2 — track Admin BKO** (`notifications/services.py`):
+>
+> | Kode | Pemicu | Penerima |
+> |---|---|---|
+> | `NOTIF_07A_FORWARD_BKO` | Admin BPSDM meneruskan T2P (track BKO dibuka) | Admin BKO |
+> | `NOTIF_07B_SK_TUBEL_DIUNGGAH` | Admin BKO mengunggah/mengganti SK Tugas Belajar | Admin Biro PAKLN |
+> | `NOTIF_07C_BKO_DITUTUP` | Admin BKO menutup pemrosesan (dengan alasan) | Pegawai, Admin Unor, Admin BPSDM, Admin Biro PAKLN |
+> | `NOTIF_07D_BKO_DIBUKA` | Track BKO dibuka kembali (Admin BKO / Admin PAKLN) | Semua pihak kecuali role pembuka |
+> | `NOTIF_07E_INFO_BKO` | Admin BPSDM meneruskan ulang ke Biro PAKLN | Admin BKO (info) |
+>
+> `NOTIF_06D_PEMBATALAN_DISETUJUI` juga dikirim ke Admin BKO bila track BKO sudah dibuka.
+> Detail: [PDLN_TIPE_2_FLOW.MD §8](PDLN_TIPE_2_FLOW.MD#8-versi-lanjutan-v2--sk-tubel-oleh-admin-bko).
+
 ---
 
 ## 1. Pendahuluan & Tujuan

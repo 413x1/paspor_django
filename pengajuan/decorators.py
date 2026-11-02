@@ -20,3 +20,18 @@ def role_required(*roles):
         return _wrapped
 
     return decorator
+
+
+PESAN_PENGAJUAN_SENDIRI = "Anda tidak dapat memproses pengajuan milik sendiri."
+
+
+def pengajuan_milik_sendiri(user, pengajuan):
+    """True bila `user` sedang bertindak sebagai admin atas pengajuan miliknya
+    sendiri (AB-12). Sebagai Pegawai, pengajuan sendiri tentu boleh diolah."""
+    return pengajuan.pegawai_id == user.pk and user.role != "pegawai"
+
+
+def tolak_pengajuan_sendiri(request, pengajuan):
+    """Panggil di setiap view aksi admin terhadap pengajuan (AB-12)."""
+    if pengajuan_milik_sendiri(request.user, pengajuan):
+        raise PermissionDenied(PESAN_PENGAJUAN_SENDIRI)

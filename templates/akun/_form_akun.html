@@ -1,0 +1,15 @@
+{# Satu form aksi akun di Profil. Context: form, aksi, tombol. #}
+<form method="post" novalidate class="akun-form">
+  {% csrf_token %}
+  <input type="hidden" name="aksi" value="{{ aksi }}">
+  {% for field in form %}
+    <div class="field">
+      <label class="label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+      <div class="control">{{ field }}</div>
+      {% for e in field.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+      {% if field.help_text and aksi != "ubah_username" %}<div class="helptext">{{ field.help_text|safe }}</div>{% endif %}
+    </div>
+  {% endfor %}
+  {% if form.non_field_errors %}<p class="help is-danger">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+  <button type="submit" class="button is-primary is-small">{{ tombol }}</button>
+</form>

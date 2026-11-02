@@ -33,9 +33,9 @@
     </div>
 
     <div class="field">
-      <label class="label" for="{{ form.file.id_for_label }}">Berkas (PDF atau DOCX)</label>
+      <label class="label" for="{{ form.file.id_for_label }}">Berkas (PDF atau DOCX, maks. 2 MB)</label>
       <p class="helptext">Berkas saat ini: <a href="{{ template.file.url }}" target="_blank" rel="noopener">{{ template.file.name }}</a>. Kosongkan untuk mempertahankan berkas ini.</p>
-      <div class="control">{{ form.file }}</div>
+      {% include "partials/_input_berkas.html" with field=form.file kosong="Tidak diganti" %}
       {% for e in form.file.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
     </div>
 
@@ -53,6 +53,17 @@
             {{ form.untuk_admin_unor }} {{ form.fields.untuk_admin_unor.label }}
           </label>
         </div>
+        {% if form.untuk_admin_bpsdm %}
+        <div class="field">
+          <label class="checkbox" for="{{ form.untuk_admin_bpsdm.id_for_label }}">
+            {{ form.untuk_admin_bpsdm }} {{ form.fields.untuk_admin_bpsdm.label }}
+          </label>
+        </div>
+        <div class="field">
+          <label class="label" for="{{ form.jenis_perjalanan.id_for_label }}">{{ form.fields.jenis_perjalanan.label }}</label>
+          <div class="control"><div class="select is-fullwidth">{{ form.jenis_perjalanan }}</div></div>
+        </div>
+        {% endif %}
         {% if form.non_field_errors %}<p class="help is-danger">{{ form.non_field_errors }}</p>{% endif %}
       </div>
       <div class="column">

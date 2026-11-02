@@ -6,6 +6,8 @@ from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
+from accounts.middleware import SESSION_KEY
+
 from .models import Notification
 from .utils import group_by_day
 
@@ -20,6 +22,10 @@ def go(request, pk):
     if not notif.is_read:
         notif.is_read = True
         notif.save(update_fields=["is_read"])
+    # Role ganda: buka tautan dengan peran yang tepat agar tidak berakhir 403.
+    peran = notif.untuk_peran
+    if peran and peran != request.user.role and request.user.punya_peran(peran):
+        request.session[SESSION_KEY] = peran
     return redirect(notif.redirect_url or "home")
 
 

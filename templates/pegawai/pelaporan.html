@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Pelaporan PDLN{% endblock %}
+{% block wrap_extra_class %} medium{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/pelaporan.css' %}?v=20261013c">
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Pelaporan PDLN</h2>
+    <p class="sub">Isi dan sampaikan laporan perjalanan dinas. Pengajuan PDLN baru dinyatakan tuntas setelah laporan disetujui Admin Biro PAKLN.</p>
+  </div>
+</div>
+
+{% for p in daftar %}
+  {% if p.laporan.status == "dikembalikan" %}
+    <div class="notification paspor-msg is-warning">
+      <strong>⚠ Laporan {{ p.kode }} dikembalikan:</strong> {{ p.laporan.catatan_pakln }}
+    </div>
+  {% endif %}
+{% endfor %}
+
+<div class="box">
+  <div class="table-wrap">
+    <table class="table data-table is-fullwidth is-hoverable">
+      <thead>
+        <tr><th>Tipe / Kode</th><th>Negara</th><th>Tgl Kembali</th><th>Status Perjalanan</th><th>Status Pelaporan</th><th>Aksi</th></tr>
+      </thead>
+      <tbody>
+        {% for p in daftar %}
+          <tr>
+            <td><strong>{{ p.jenis_label }}</strong><br><span class="cell-muted">{{ p.kode }}</span></td>
+            <td>{{ p.tujuan_negara_display|default:"—" }}{% if p.detail.kota_tujuan %}, {{ p.detail.kota_tujuan }}{% endif %}</td>
+            <td>{{ p.tgl_kembali|date:"d M Y"|default:"—" }}</td>
+            <td><span class="tag paspor-status is-{{ p.status }}"><span class="dot"></span>{{ p.get_status_display }}</span></td>
+            <td>
+              {% if p.status != "selesai" %}<span class="cell-muted">—</span>
+              {% elif p.laporan %}{{ p.laporan.get_status_display }}
+              {% else %}Belum melapor{% endif %}
+            </td>
+            <td>
+              {% if p.laporan.file %}
+                <button type="button" class="button is-small" data-doc-preview="{{ p.laporan.file.url }}" data-doc-title="Laporan {{ p.kode }}">👁 Lihat</button>
+              {% endif %}
+              {% if p.status == "selesai" and not p.pembatalan_terbuka %}
+                {% if not p.laporan or p.laporan.status == "draft" or p.laporan.status == "dikembalikan" %}
+                  <a href="{% url 'pegawai:laporan_form' kode=p.kode %}" class="button is-small is-info">Pelaporan PDLN</a>
+                {% else %}
+                  <a href="{% url 'pegawai:laporan_form' kode=p.kode %}" class="button is-small">Lihat Laporan</a>
+                {% endif %}
+              {% elif p.status != "selesai" %}
+                <span class="cell-muted">Selesaikan PDLN dahulu</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="cell-muted">Belum ada pengajuan PDLN.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

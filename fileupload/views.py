@@ -1,23 +1,30 @@
+import os
+import uuid
+
 from django.contrib import messages
-from django.http import Http404, StreamingHttpResponse
+from django.core.files.storage import default_storage
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 
-from . import minio_client
 from .forms import PdfUploadForm
 from .models import UploadedFile
 
+UPLOAD_FOLDER = "public"
+
 
 def upload_view(request):
-    """Halaman publik (tanpa login) untuk mengunggah berkas PDF ke MinIO,
-    mengikuti mekanisme pada wiki/UPLOAD_FILE.MD."""
+    """Halaman publik (tanpa login) untuk mengunggah berkas PDF ke bucket S3
+    lewat `default_storage`, lihat wiki/instructions/S3BUCKET_FILE_UPLOAD.MD."""
     if request.method == "POST":
         form = PdfUploadForm(request.POST, request.FILES)
         if form.is_valid():
             uploaded = form.cleaned_data["file"]
+            # Nama asli diganti UUID untuk mencegah collision & path traversal.
+            ext = os.path.splitext(uploaded.name)[1].lower()
             try:
-                object_name = minio_client.upload_file(uploaded)
+                object_name = default_storage.save(f"{UPLOAD_FOLDER}/{uuid.uuid4()}{ext}", uploaded)
             except Exception as exc:
-                messages.error(request, f"Gagal mengunggah berkas ke MinIO: {exc}")
+                messages.error(request, f"Gagal mengunggah berkas ke penyimpanan: {exc}")
             else:
                 UploadedFile.objects.create(
                     original_filename=uploaded.name,
@@ -37,32 +44,27 @@ def upload_view(request):
 
 
 def view_file(request, pk):
-    """Proxy viewer — file di-stream dari MinIO, bucket tidak pernah
-    diekspos langsung ke publik."""
+    """Redirect ke presigned URL S3 (berlaku S3_QUERYSTRING_EXPIRE detik).
+    Bucket tetap privat — tanpa tanda tangan yang valid object tidak bisa
+    diakses."""
     obj = get_object_or_404(UploadedFile, pk=pk)
-    try:
-        stream = minio_client.open_stream(obj.object_name)
-    except Exception:
+    if not default_storage.exists(obj.object_name):
         raise Http404("Berkas tidak ditemukan di penyimpanan.")
-
-    def chunks():
-        try:
-            for chunk in stream.stream(64 * 1024):
-                yield chunk
-        finally:
-            stream.close()
-            stream.release_conn()
-
-    response = StreamingHttpResponse(chunks(), content_type=obj.content_type or "application/pdf")
-    response["Content-Disposition"] = f'inline; filename="{obj.original_filename}"'
-    return response
+    url = default_storage.url(
+        obj.object_name,
+        parameters={
+            "ResponseContentType": obj.content_type or "application/pdf",
+            "ResponseContentDisposition": f'inline; filename="{obj.original_filename}"',
+        },
+    )
+    return redirect(url)
 
 
 def delete_view(request, pk):
     obj = get_object_or_404(UploadedFile, pk=pk)
     if request.method == "POST":
         try:
-            minio_client.delete_file(obj.object_name)
+            default_storage.delete(obj.object_name)
         except Exception as exc:
             messages.error(request, f"Gagal menghapus berkas: {exc}")
         else:

@@ -4,6 +4,8 @@ from django.db import transaction
 from accounts.models import User
 from paspor.models import UnitOrganisasi
 
+from ._seed_akun import beri_peran, isi_kontak
+
 # 1 nama dummy per unit organisasi (11 unit), dipetakan berurutan sesuai
 # `code` org_units.
 NAMA_ADMIN_UNOR = [
@@ -51,6 +53,8 @@ class Command(BaseCommand):
             user.unit_kerja = unit.name
             user.unit_organisasi = unit
             user.save()
+            beri_peran(user, User.Role.ADMIN_UNOR, unit)
+            isi_kontak(user, email=f"{username}@pu.go.id", no_hp=f"628120{unit.code}00001")
 
         self.stdout.write(self.style.SUCCESS(
             f"\nSelesai. {created_count} user Admin Unor baru dibuat "

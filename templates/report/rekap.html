@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Rekap{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Rekap Perjalanan Luar Negeri</h2>
+    <p class="sub">{{ total }} pengajuan sesuai filter · Dinas &amp; Non-Dinas</p>
+  </div>
+  <div class="buttons">
+    <a href="{% url ns|add:':export' %}?{{ query }}{% if query %}&amp;{% endif %}format=xlsx" class="button is-primary">⬇ XLSX (Data + Ringkasan)</a>
+    <a href="{% url ns|add:':export' %}?{{ query }}" class="button">Export Database</a>
+  </div>
+</div>
+
+{% include "partials/_filter_report.html" %}
+
+<div class="tab-bar">
+  {% for b in blok %}
+    <a href="?{{ query }}{% if query %}&amp;{% endif %}tab={{ b.kunci }}" class="button is-small {% if b.kunci == tab %}is-active{% endif %}">{{ b.judul }}</a>
+  {% endfor %}
+</div>
+
+{% for b in blok %}
+  {% if b.kunci == tab %}
+  <div class="box">
+    <div class="section-title" style="font-size:15px;">{{ b.judul }}</div>
+    <div class="table-wrap">
+      <table class="table data-table is-fullwidth is-hoverable rekap-table">
+        <thead><tr>{% for k in b.kolom %}<th>{{ k }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for row in b.baris %}
+            <tr>{% for v in row %}<td>{{ v }}</td>{% endfor %}</tr>
+          {% empty %}
+            <tr><td colspan="{{ b.kolom|length }}" class="cell-muted">Tidak ada data.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if b.kunci == "waktu" %}
+      <p class="helptext">Dihitung dari Riwayat Pemrosesan: setiap kali pengajuan masuk dan keluar dari suatu tahap (termasuk bolak-balik pengembalian).</p>
+    {% endif %}
+  </div>
+  {% endif %}
+{% endfor %}
+{% endblock %}

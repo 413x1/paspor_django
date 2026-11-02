@@ -1,5 +1,9 @@
 from django.urls import path
 
+from logs import views as log_views
+from notifications import views_email
+
+from . import views_kegiatan, views_report
 from . import views_pakln as views
 
 urlpatterns = [
@@ -11,6 +15,13 @@ urlpatterns = [
     path("generate-nd-karo/unduh-pdf/", views.download_nd_karo_pdf, name="download_nd_karo_pdf"),
     path("histori-generate/", views.histori_generate, name="histori_generate"),
     path("histori-generate/data/", views.histori_generate_data, name="histori_generate_data"),
+    path("log-sistem/", log_views.log_sistem, name="log_sistem"),
+    path("log-sistem/data/", log_views.log_sistem_data, name="log_sistem_data"),
+    path("log-sistem/reset/", log_views.log_sistem_reset, name="log_sistem_reset"),
+    path("monitor-email/", views_email.monitor_email, name="monitor_email"),
+    path("monitor-email/data/", views_email.monitor_email_data, name="monitor_email_data"),
+    path("monitor-email/<int:pk>/kirim-ulang/", views_email.monitor_email_kirim_ulang, name="monitor_email_kirim_ulang"),
+    path("pengaturan/", views.pengaturan_dokumen, name="pengaturan_dokumen"),
     path("users/", views.kelola_user, name="kelola_user"),
     path("users/data/", views.users_data, name="users_data"),
     path("users/<int:user_id>/edit/", views.edit_user, name="edit_user"),
@@ -41,9 +52,21 @@ urlpatterns = [
     path("kategori/<int:kategori_id>/edit/", views.edit_kategori, name="edit_kategori"),
     path("kategori/<int:kategori_id>/toggle/", views.toggle_kategori, name="toggle_kategori"),
     path("kategori/<int:kategori_id>/hapus/", views.hapus_kategori, name="hapus_kategori"),
+    path("kegiatan/", views_kegiatan.pakln_daftar, name="kelola_kegiatan"),
+    path("kegiatan/data/", views_kegiatan.pakln_data, name="kegiatan_data"),
+    path("kegiatan/tambah/", views_kegiatan.pakln_tambah, name="tambah_kegiatan"),
+    path("kegiatan/<int:pk>/", views_kegiatan.pakln_edit, name="edit_kegiatan"),
+    path("kegiatan/<int:pk>/putuskan/", views_kegiatan.pakln_putuskan, name="putuskan_kegiatan"),
+    path("kegiatan/<int:pk>/toggle/", views_kegiatan.pakln_toggle, name="toggle_kegiatan"),
+    path("kegiatan/<int:pk>/hapus/", views_kegiatan.pakln_hapus, name="hapus_kegiatan"),
+    path("pelaporan/", views.pelaporan, name="pelaporan"),
+    path("pembatalan/", views.daftar_pembatalan, name="pembatalan"),
+    path("pembatalan/<int:pk>/putuskan/", views.putuskan_pembatalan, name="putuskan_pembatalan"),
+    path("<str:kode>/laporan/verifikasi/", views.verifikasi_laporan, name="verifikasi_laporan"),
     path("<str:kode>/preview/", views.preview, name="preview"),
     path("<str:kode>/upload/", views.upload_dokumen, name="upload_dokumen"),
     path("<str:kode>/upload/<str:jenis>/hapus/", views.hapus_dokumen, name="hapus_dokumen"),
-    path("export/", views.export_database, name="export"),
-    path("export/data/", views.export_data, name="export_data"),
+    path("export/", views_report.export_database, name="export"),
+    path("export/data/", views_report.export_data, name="export_data"),
+    path("rekap/", views_report.rekap, name="rekap"),
 ]

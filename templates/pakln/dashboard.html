@@ -10,33 +10,38 @@
 <div class="page-head">
   <div>
     <h2>Dasbor Admin Biro PAKLN</h2>
-    <p class="sub">Seluruh pengajuan yang telah dikirim pegawai — tindak lanjut hanya tersedia setelah diteruskan Admin Unor.</p>
+    <p class="sub">Seluruh pengajuan yang telah dikirim pegawai — tindak lanjut tersedia setelah diteruskan ke Biro PAKLN.</p>
+  </div>
+  <div class="buttons">
+    <a href="{% url 'pakln:pelaporan' %}" class="button is-small">Pelaporan PDLN</a>
+    <a href="{% url 'pakln:pembatalan' %}" class="button is-small">Pembatalan</a>
+    <a href="{% url 'pakln:rekap' %}" class="button is-small">Rekap</a>
   </div>
 </div>
 
-<div class="section-title">Ringkasan Progres</div>
-<div class="summary-grid">
-  <div class="summary-card"><div class="num">{{ summary.total }}</div><div class="label">Total Pengajuan</div></div>
-  <div class="summary-card"><div class="num">{{ summary.proses_unor }}</div><div class="label">Dalam Proses Unor</div></div>
-  <div class="summary-card active"><div class="num">{{ summary.proses_pakln }}</div><div class="label">Dalam Proses Biro PAKLN</div></div>
-  <div class="summary-card{% if summary.selesai > 0 %} is-done{% endif %}"><div class="num">{{ summary.selesai }}</div><div class="label">Selesai</div></div>
+<div class="tab-bar">
+  <a href="?tab=pdln" class="button is-small {% if tab == 'pdln' %}is-active{% endif %}">Dasbor PDLN</a>
+  <a href="?tab=nondinas" class="button is-small {% if tab == 'nondinas' %}is-active{% endif %}">Dasbor Non-Kedinasan</a>
 </div>
+
+<div class="section-title">Ringkasan Progres</div>
+{% include "partials/_ringkasan_dasbor.html" with tampil_bpsdm=True %}
 
 <div class="box">
   <div class="table-head-row">
-    <div class="section-title">Tabel Rincian Pengajuan</div>
-    <div class="table-head-actions" data-nav-dropdown>
-      <button type="button" id="btnGenerateNd" class="button is-small is-primary" data-nav-dropdown-toggle disabled>
+    <div class="section-title">Tabel Rincian Pengajuan — {% if tab == "pdln" %}PDLN{% else %}Non-Kedinasan{% endif %}</div>
+    <div class="table-head-actions" data-dropdown>
+      <button type="button" id="btnGenerateNd" class="button is-small is-primary" data-dropdown-toggle aria-haspopup="true" aria-expanded="false" disabled>
         📄 Generate ND<span class="navbar-manage-caret"></span>
       </button>
-      <div class="table-head-menu">
+      <div class="table-head-menu" data-dropdown-panel>
         <a href="#" class="navbar-item" id="menuGenerateNdKabag">Generate ND Kabag</a>
         <a href="#" class="navbar-item" id="menuGenerateNdKaro">Generate ND Karo</a>
       </div>
     </div>
   </div>
   <p class="helptext" style="margin:-6px 0 10px;">
-    Centang baris berstatus <strong>Dalam Proses Biro PAKLN</strong> untuk membuat dokumen ND Kabag/ND Karo sekaligus (batch) lewat tombol Dropdown di kanan atas tabel.
+    Centang satu baris Non-Kedinasan berstatus <strong>Dalam Proses Biro PAKLN</strong> untuk membuat dokumen ND Kabag/ND Karo lewat tombol Dropdown di kanan atas tabel.
   </p>
   <div class="table-wrap">
     <table id="dashboardTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
@@ -44,7 +49,7 @@
         <tr>
           <th class="dt-select-col"></th>
           <th>Pegawai</th><th>Unit Organisasi</th><th>Jenis</th><th>Kategori</th><th>Tujuan</th>
-          <th>Berangkat</th><th>Kembali</th><th>Tgl Pengajuan Unor</th><th>Status</th><th>Action</th>
+          <th>Berangkat</th><th>Kembali</th><th>Tgl Masuk PAKLN</th><th>Status</th><th>Action</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -58,8 +63,10 @@
 <script>
   $(function () {
     // State: kode pengajuan (identifier yang dipakai di seluruh proyek ini,
-    // bukan primary key numerik) yang sedang dicentang untuk digenerate
-    // secara batch — dipertahankan lintas halaman/pencarian/pengurutan tabel.
+    // bukan primary key numerik) yang sedang dicentang untuk digenerate —
+    // hanya SATU pengajuan sekaligus (mencentang baris baru otomatis
+    // melepas centang baris lain, walau elemennya checkbox biasa) —
+    // dipertahankan lintas halaman/pencarian/pengurutan tabel.
     var selectedPengajuanIds = [];
 
     function updateGenerateButtons() {
@@ -70,12 +77,12 @@
       serverSide: true,
       processing: true,
       autoWidth: false,
-      ajax: { url: '{% url "pakln:dashboard_data" %}', type: 'GET', cache: false },
+      ajax: { url: '{% url "pakln:dashboard_data" %}?tab={{ tab }}', type: 'GET', cache: false },
       columns: [
         { data: 0, orderable: false, searchable: false, className: 'dt-select-col' },
         { data: 1 },
         { data: 2 },
-        { data: 3, orderable: false, searchable: false },
+        { data: 3 },
         { data: 4 },
         { data: 5, orderable: false, searchable: false },
         { data: 6 },
@@ -112,12 +119,11 @@
     });
 
     $('#dashboardTable tbody').on('change', '.pengajuan-select-checkbox', function () {
-      var kode = this.value;
-      var idx = selectedPengajuanIds.indexOf(kode);
-      if (this.checked && idx === -1) {
-        selectedPengajuanIds.push(kode);
-      } else if (!this.checked && idx !== -1) {
-        selectedPengajuanIds.splice(idx, 1);
+      if (this.checked) {
+        selectedPengajuanIds = [this.value];
+        $('.pengajuan-select-checkbox').not(this).prop('checked', false);
+      } else {
+        selectedPengajuanIds = [];
       }
       updateGenerateButtons();
     });

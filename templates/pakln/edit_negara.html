@@ -33,6 +33,13 @@
     </div>
 
     <div class="field">
+      <label class="checkbox" for="{{ form.perlu_visa.id_for_label }}">
+        {{ form.perlu_visa }} {{ form.fields.perlu_visa.label }}
+      </label>
+      <p class="helptext">{{ form.fields.perlu_visa.help_text }}</p>
+    </div>
+
+    <div class="field">
       <label class="checkbox" for="{{ form.is_active.id_for_label }}">
         {{ form.is_active }} {{ form.fields.is_active.label }}
       </label>

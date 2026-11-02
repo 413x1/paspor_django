@@ -1,11 +1,11 @@
-{# Satu baris notifikasi, dipakai dropdown Notification Center & halaman "Lihat Semua" #}
+{% load pengajuan_extras %}{# Satu baris notifikasi, dipakai dropdown Notification Center & halaman "Lihat Semua" #}
 <div class="notif-item{% if not notif.is_read %} is-unread{% endif %}" data-notif-id="{{ notif.pk }}">
   <a href="{% url 'notifications:go' notif.pk %}" class="notif-item-link">
     <span class="notif-avatar is-{{ notif.level }}">{% include "notifications/_icon.html" with level=notif.level %}</span>
     <span class="notif-item-main">
       <span class="notif-item-title">{{ notif.title }}</span>
       <span class="notif-item-body">{{ notif.body }}</span>
-      <span class="notif-item-time">{{ notif.created_at|timesince }} lalu</span>
+      <span class="notif-item-time">{{ notif.created_at|timesince }} lalu{% if notif.untuk_peran and user.daftar_peran|length > 1 %} · <span class="badge-peran">{{ notif.untuk_peran|label_peran }}</span>{% endif %}</span>
     </span>
   </a>
   {% if dismissible %}

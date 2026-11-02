@@ -5,112 +5,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}PASPOR{% endblock %} — Kementerian PU</title>
   <link rel="stylesheet" href="{% static 'vendors/bulma/css/versions/bulma-no-dark-mode.min.css' %}">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20260925a">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20261019">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
 
-<nav class="navbar paspor-topbar" role="navigation" aria-label="main navigation">
-  <div class="navbar-brand">
-    <span class="navbar-item brand">
-      <img class="logo" src="{% static 'images/logopu.png' %}" alt="Logo Kementerian PU">
-      <span class="brand-text">
-        <strong>PASPOR</strong>
-        <small>Platform Administrasi Surat Perjalanan Overseas Request</small>
-      </span>
-    </span>
-    <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="pasporNav">
-      <span aria-hidden="true"></span><span aria-hidden="true"></span>
-      <span aria-hidden="true"></span><span aria-hidden="true"></span>
-    </a>
-  </div>
-  <div id="pasporNav" class="navbar-menu">
-    <div class="navbar-start">
-      {% if user.is_authenticated %}
-        {% with vn=request.resolver_match.view_name %}
-        {% if user.role == 'pegawai' %}
-          <a class="navbar-item {% if vn == 'pegawai:beranda' %}is-active{% endif %}" href="{% url 'pegawai:beranda' %}">Beranda</a>
-        {% elif user.role == 'admin_unor' %}
-          <a class="navbar-item {% if vn == 'unor:dashboard' %}is-active{% endif %}" href="{% url 'unor:dashboard' %}">Dasbor</a>
-          <a class="navbar-item {% if vn == 'unor:export' %}is-active{% endif %}" href="{% url 'unor:export' %}">Export</a>
-        {% elif user.role == 'admin_pakln' %}
-          <a class="navbar-item {% if vn == 'pakln:dashboard' %}is-active{% endif %}" href="{% url 'pakln:dashboard' %}">Dasbor</a>
-          <div class="navbar-item has-dropdown{% if vn == 'pakln:kelola_user' or vn == 'pakln:kelola_template' or vn == 'pakln:edit_template' or vn == 'pakln:kelola_negara' or vn == 'pakln:edit_negara' or vn == 'pakln:kelola_sumber_pembiayaan' or vn == 'pakln:edit_sumber_pembiayaan' or vn == 'pakln:kelola_kategori' or vn == 'pakln:edit_kategori' or vn == 'pakln:histori_generate' %} is-active-route{% endif %}" data-nav-dropdown>
-            <a class="navbar-link is-arrowless" href="#" data-nav-dropdown-toggle>Manajemen<span class="navbar-manage-caret"></span></a>
-            <div class="navbar-dropdown">
-              <a class="navbar-item {% if vn == 'pakln:kelola_user' %}is-active{% endif %}" href="{% url 'pakln:kelola_user' %}">Manajemen User</a>
-              <a class="navbar-item {% if vn == 'pakln:kelola_template' or vn == 'pakln:edit_template' %}is-active{% endif %}" href="{% url 'pakln:kelola_template' %}">Manajemen Template</a>
-              <a class="navbar-item {% if vn == 'pakln:kelola_negara' or vn == 'pakln:edit_negara' %}is-active{% endif %}" href="{% url 'pakln:kelola_negara' %}">Manajemen Negara</a>
-              <a class="navbar-item {% if vn == 'pakln:kelola_sumber_pembiayaan' or vn == 'pakln:edit_sumber_pembiayaan' %}is-active{% endif %}" href="{% url 'pakln:kelola_sumber_pembiayaan' %}">Manajemen Sumber Pembiayaan</a>
-              <a class="navbar-item {% if vn == 'pakln:kelola_kategori' or vn == 'pakln:edit_kategori' %}is-active{% endif %}" href="{% url 'pakln:kelola_kategori' %}">Manajemen Kategori Perjalanan</a>
-              <a class="navbar-item {% if vn == 'pakln:kelola_kalender' or vn == 'pakln:edit_hari_libur' %}is-active{% endif %}" href="{% url 'pakln:kelola_kalender' %}">Setting Kalender</a>
-              <a class="navbar-item {% if vn == 'pakln:histori_generate' %}is-active{% endif %}" href="{% url 'pakln:histori_generate' %}">Histori Generate Dokumen</a>
-            </div>
-          </div>
-          <a class="navbar-item {% if vn == 'pakln:export' %}is-active{% endif %}" href="{% url 'pakln:export' %}">Export</a>
-        {% endif %}
-        {% endwith %}
-      {% endif %}
-    </div>
-    <div class="navbar-end">
-      {% if user.is_authenticated %}
-        <div class="navbar-item notif-bell-wrap">
-          <button type="button" class="notif-bell" id="notifBellBtn" aria-haspopup="true" aria-expanded="false" aria-label="Notifikasi">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
-              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-            </svg>
-            {% if notif_unread_count %}<span class="notif-badge" id="notifBadge">{{ notif_unread_count|default:0 }}</span>{% endif %}
-          </button>
-          <div class="notif-dropdown" id="notifDropdown">
-            <div class="notif-dropdown-head">
-              <strong>Notifikasi</strong>
-              <button type="button" class="notif-clear-all" id="notifClearAll" data-clear-url="{% url 'notifications:clear_all' %}">Hapus Semua</button>
-            </div>
-            <div class="notif-dropdown-list" id="notifDropdownList">
-              {% for label, items in notif_dropdown_groups %}
-                <div class="notif-group">
-                  <div class="notif-group-label">{{ label }}</div>
-                  {% for notif in items %}
-                    {% include "notifications/_item.html" with notif=notif dismissible=True %}
-                  {% endfor %}
-                </div>
-              {% empty %}
-                <div class="notif-empty">Belum ada notifikasi.</div>
-              {% endfor %}
-            </div>
-            <div class="notif-dropdown-foot">
-              <a href="{% url 'notifications:list' %}">Lihat Semua</a>
-            </div>
-          </div>
-        </div>
-        <span class="navbar-item">
-          <span class="tag paspor-role">{{ user.get_role_display }}</span>
-        </span>
-        <span class="navbar-item is-hidden-touch">{{ user.get_full_name|default:user.username }}</span>
-        <span class="navbar-item">
-          <span class="avatar-chip">{{ user.get_full_name|default:user.username|initials }}</span>
-        </span>
-        <span class="navbar-item">
-          <form method="post" action="{% url 'logout' %}">
-            {% csrf_token %}
-            <button type="submit" class="button is-small is-logout">Keluar</button>
-          </form>
-        </span>
-      {% endif %}
-    </div>
-  </div>
-</nav>
+{% if user.is_authenticated %}
+<div class="app-shell">
+{% include "partials/_sidebar.html" %}
+<div class="app-main">
+{% include "partials/_header.html" %}
+{% endif %}
 
 <main class="page-wrap{% block wrap_extra_class %}{% endblock %}">
+  {% block breadcrumb %}{% include "partials/_breadcrumb.html" %}{% endblock %}
+  {% if no_hp_kosong %}
+    <div class="notification paspor-msg is-warning banner-no-hp">
+      {% if user.role == "admin_pakln" %}
+        Nomor HP Anda belum tercatat. <a href="{% url 'profil' %}">Lengkapi di menu Profil →</a>
+      {% else %}
+        Nomor HP belum tercatat — hubungi Admin Biro PAKLN.
+      {% endif %}
+    </div>
+  {% endif %}
   {% if messages %}
     {% for message in messages %}
-      <div class="notification paspor-msg {% if message.tags == 'error' %}is-danger{% elif message.tags == 'success' %}is-success{% elif message.tags == 'warning' %}is-warning{% else %}is-info{% endif %}">{{ message }}</div>
+      <div class="notification paspor-msg {% if message.tags == 'error' %}is-danger{% elif message.tags == 'success' %}is-success{% elif message.tags == 'warning' %}is-warning{% else %}is-info{% endif %}"{% if message.tags == 'success' %} data-flash-success{% endif %}>{{ message }}</div>
     {% endfor %}
   {% endif %}
 
   {% block content %}{% endblock %}
 </main>
+
+{% if user.is_authenticated %}
+</div>{# .app-main #}
+</div>{# .app-shell #}
+{% endif %}
 
 {% if notif_toast_queue %}
 <div class="notif-toast-container" id="notifToastContainer">
@@ -146,37 +76,154 @@
   </div>
 </div>
 
+<div id="tanggalSuratModal" class="modal paspor-modal">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <div class="modal-card-body">
+      <h3>Tanggal Surat</h3>
+      <p class="modal-intro">Isi tanggal surat pada dokumen yang baru saja Anda pilih, sebelum berkasnya diunggah.</p>
+      <div class="field">
+        <label class="label">Tanggal Surat</label>
+        <div class="control"><input type="date" id="tanggalSuratInput" class="input" max="{% now 'Y-m-d' %}"></div>
+      </div>
+      <button type="button" id="tanggalSuratSimpan" class="button is-primary is-fullwidth">Simpan</button>
+      <button type="button" class="button is-fullwidth" style="margin-top:8px;" data-modal-close>Batal</button>
+    </div>
+  </div>
+</div>
+
+{# Dialog generik (konfirmasi & notifikasi sukses/gagal, gaya SweetAlert) — dipakai lewat window.pasporConfirm / window.pasporAlert atau atribut data-confirm (lihat script di bawah). Selalu tampil di atas modal lain. #}
+<div id="pasporDialog" class="modal paspor-modal paspor-dialog" role="alertdialog" aria-modal="true" aria-labelledby="pasporDialogTitle" aria-describedby="pasporDialogMsg">
+  <div class="modal-background"></div>
+  <div class="modal-card">
+    <div class="modal-card-body">
+      <div class="dialog-icon" id="pasporDialogIcon" aria-hidden="true"></div>
+      <h3 id="pasporDialogTitle"></h3>
+      <p class="modal-intro" id="pasporDialogMsg"></p>
+      <div class="dialog-actions">
+        <button type="button" class="button" data-dialog-cancel>Batal</button>
+        <button type="button" class="button dialog-ok" data-dialog-ok>OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="{% static 'vendors/JQuery/jquery-4.0.0.min.js' %}"></script>
 <script>
+  // Dialog generik #pasporDialog — pengganti confirm()/alert() bawaan browser.
+  //   pasporConfirm({title, message, confirmText, cancelText, type}) -> Promise<boolean>
+  //   pasporAlert({title, message, confirmText, type})               -> Promise<boolean>
+  // type: 'warning' (default konfirmasi), 'danger', 'success' (default alert), 'error', 'info'.
+  (function () {
+    var ICONS = {
+      warning: '<svg viewBox="0 0 24 24"><line x1="12" y1="7" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+      danger: '<svg viewBox="0 0 24 24"><polyline points="4 7 20 7"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/></svg>',
+      success: '<svg viewBox="0 0 24 24"><polyline class="dialog-check" points="5 12.5 10 17 19 7"/></svg>',
+      error: '<svg viewBox="0 0 24 24"><line x1="7" y1="7" x2="17" y2="17"/><line x1="17" y1="7" x2="7" y2="17"/></svg>',
+      info: '<svg viewBox="0 0 24 24"><line x1="12" y1="11" x2="12" y2="17"/><line x1="12" y1="7" x2="12.01" y2="7"/></svg>'
+    };
+    var TYPES = 'is-warning is-danger is-success is-error is-info';
+    var resolveFn = null, lastFocus = null;
+
+    function open(opts) {
+      var $dlg = $('#pasporDialog');
+      var type = ICONS[opts.type] ? opts.type : 'warning';
+      if (resolveFn) { resolveFn(false); }
+      $dlg.removeClass(TYPES).addClass('is-' + type);
+      $('#pasporDialogIcon').html(ICONS[type]);
+      $('#pasporDialogTitle').text(opts.title || '');
+      $('#pasporDialogMsg').text(opts.message || '').toggle(!!opts.message);
+      var $cancel = $dlg.find('[data-dialog-cancel]').text(opts.cancelText || 'Batal').toggle(opts.showCancel !== false);
+      var $ok = $dlg.find('[data-dialog-ok]').text(opts.confirmText || 'OK');
+      lastFocus = document.activeElement;
+      $dlg.addClass('is-active');
+      // Aksi berisiko: fokus awal di "Batal" supaya Enter tidak langsung mengeksekusi.
+      setTimeout(function () { (opts.showCancel !== false ? $cancel : $ok).trigger('focus'); }, 50);
+      return new Promise(function (resolve) { resolveFn = resolve; });
+    }
+
+    function close(result) {
+      var $dlg = $('#pasporDialog');
+      if (!$dlg.hasClass('is-active')) { return; }
+      $dlg.removeClass('is-active');
+      var fn = resolveFn;
+      resolveFn = null;
+      if (lastFocus && lastFocus.focus) { lastFocus.focus(); }
+      if (fn) { fn(result); }
+    }
+
+    window.pasporConfirm = function (opts) {
+      return open($.extend({ type: 'warning', title: 'Konfirmasi', confirmText: 'Ya, lanjutkan' }, opts));
+    };
+    window.pasporAlert = function (opts) {
+      return open($.extend({ type: 'success', title: 'Berhasil', confirmText: 'OK', showCancel: false }, opts));
+    };
+    window.pasporDialogClose = close;
+
+    $(document).on('click', '#pasporDialog [data-dialog-ok]', function () { close(true); });
+    $(document).on('click', '#pasporDialog [data-dialog-cancel]', function () { close(false); });
+  })();
+
   $(function () {
-    // Navbar burger (mobile)
-    $('.navbar-burger').on('click', function () {
-      var $t = $('#' + $(this).data('target'));
-      $(this).toggleClass('is-active');
-      $t.toggleClass('is-active');
+    // Sidebar: desktop = ciutkan/lebarkan (diingat di localStorage),
+    // layar kecil = off-canvas dengan overlay.
+    var mqDesktop = window.matchMedia('(min-width: 1024px)');
+    try {
+      if (localStorage.getItem('paspor.sidebarCollapsed') === '1') { $('body').addClass('sidebar-collapsed'); }
+    } catch (e) {}
+    $('#sidebarToggle').on('click', function () {
+      if (mqDesktop.matches) {
+        var collapsed = $('body').toggleClass('sidebar-collapsed').hasClass('sidebar-collapsed');
+        try { localStorage.setItem('paspor.sidebarCollapsed', collapsed ? '1' : '0'); } catch (e) {}
+      } else {
+        $('body').toggleClass('sidebar-open');
+      }
+    });
+    $(document).on('click', '[data-sidebar-close]', function () { $('body').removeClass('sidebar-open'); });
+
+    // Grup submenu sidebar (mis. "Manajemen") — buka/tutup akordeon.
+    $(document).on('click', '[data-sidebar-group-toggle]', function () {
+      $(this).closest('[data-sidebar-group]').toggleClass('is-open');
     });
 
-    // Dropdown navbar (mis. "Manajemen" pada topbar Admin PKLN) — dibuka
-    // lewat klik, bukan hover, dan tertutup lagi saat klik di luar area-nya.
-    $(document).on('click', '[data-nav-dropdown-toggle]', function (e) {
+    // Dropdown generik berbasis klik: [data-dropdown] (wadah) +
+    // [data-dropdown-toggle] (tombol pemicu) + [data-dropdown-panel]
+    // (opsional, panel yang klik di dalamnya tidak boleh ikut menutup
+    // dropdown-nya) — satu pola dipakai bersama oleh "Generate ND" di
+    // Dasbor, Notification Center, dan menu akun di header. CSS sudah
+    // menangani animasi masuk/keluar lewat opacity+visibility begitu class
+    // `is-active` di-toggle (lihat style.css), jadi di sini cukup
+    // tambah/lepas satu class — tidak perlu pentahapan atau setTimeout.
+    function closeDropdowns(except) {
+      $('[data-dropdown].is-active').not(except || [])
+        .removeClass('is-active')
+        .find('[data-dropdown-toggle]').attr('aria-expanded', 'false');
+    }
+    $(document).on('click', '[data-dropdown-toggle]', function (e) {
       e.preventDefault();
       e.stopPropagation();
-      var $item = $(this).closest('[data-nav-dropdown]');
-      var wasActive = $item.hasClass('is-active');
-      $('[data-nav-dropdown].is-active').removeClass('is-active');
-      if (!wasActive) { $item.addClass('is-active'); }
+      var $item = $(this).closest('[data-dropdown]');
+      var willOpen = !$item.hasClass('is-active');
+      closeDropdowns($item);
+      $item.toggleClass('is-active', willOpen);
+      $(this).attr('aria-expanded', willOpen ? 'true' : 'false');
     });
-    $(document).on('click', '[data-nav-dropdown] .navbar-dropdown', function (e) {
-      e.stopPropagation();
-    });
-    $(document).on('click', function () {
-      $('[data-nav-dropdown].is-active').removeClass('is-active');
-    });
+    $(document).on('click', '[data-dropdown-panel]', function (e) { e.stopPropagation(); });
+    $(document).on('click', function () { closeDropdowns(); });
     $(document).on('keydown', function (e) {
-      if (e.key === 'Escape') { $('[data-nav-dropdown].is-active').removeClass('is-active'); }
+      if (e.key === 'Escape') {
+        closeDropdowns();
+        $('body').removeClass('sidebar-open');
+      }
     });
 
     function closeModals() {
+      // Dialog konfirmasi bisa terbuka di atas modal lain (mis. Putuskan
+      // Pembatalan) — tutup dialognya saja, modal di bawahnya tetap terbuka.
+      if ($('#pasporDialog').hasClass('is-active')) {
+        window.pasporDialogClose(false);
+        return;
+      }
       $('.modal').removeClass('is-active');
       $('#docPreviewFrame').attr('src', 'about:blank');
     }
@@ -189,6 +236,60 @@
     $(document).on('keydown', function (e) {
       if (e.key === 'Escape') { closeModals(); }
     });
+
+    // Konfirmasi Keluar — tombol "Keluar" di sidebar maupun dropdown profil
+    // (.logout-trigger) tidak langsung submit form logout-nya; munculkan
+    // dialog konfirmasi dulu.
+    $(document).on('click', '.logout-trigger', function (e) {
+      e.preventDefault();
+      var form = $(this).closest('form')[0];
+      pasporConfirm({
+        type: 'danger', title: 'Konfirmasi Keluar',
+        message: 'Apakah Anda yakin ingin keluar dari akun ini?', confirmText: 'Keluar',
+      }).then(function (ok) { if (ok) { form.submit(); } });
+    });
+
+    // Konfirmasi deklaratif: pasang data-confirm="Pesan…" pada <form> atau
+    // pada tombol submit-nya (opsional: data-confirm-title, data-confirm-ok,
+    // data-confirm-type="danger|warning|info"). Form baru dikirim setelah
+    // tombol konfirmasi di dialog ditekan; tombol submit asal (name/value)
+    // tetap ikut terkirim. Validasi HTML5 (required) berjalan lebih dulu.
+    $(document).on('submit', 'form', function (e) {
+      var form = this;
+      if ($(form).data('confirmed')) { $(form).removeData('confirmed'); return; }
+      var submitter = e.originalEvent && e.originalEvent.submitter;
+      var $src = submitter && submitter.hasAttribute('data-confirm') ? $(submitter)
+        : form.hasAttribute('data-confirm') ? $(form) : null;
+      if (!$src) { return; }
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      pasporConfirm({
+        type: $src.attr('data-confirm-type') || 'warning',
+        title: $src.attr('data-confirm-title') || 'Konfirmasi',
+        message: $src.attr('data-confirm'),
+        confirmText: $src.attr('data-confirm-ok') || 'Ya, lanjutkan',
+      }).then(function (ok) {
+        if (!ok) { return; }
+        $(form).data('confirmed', true);
+        if (submitter && form.requestSubmit) {
+          form.requestSubmit(submitter);
+        } else {
+          if (submitter && submitter.name) {
+            $('<input type="hidden">').attr({ name: submitter.name, value: submitter.value }).appendTo(form);
+          }
+          form.submit();
+        }
+      });
+    });
+
+    // Pesan sukses Django (messages level success) ditampilkan sebagai
+    // dialog sukses; banner aslinya hanya fallback bila JS tidak jalan.
+    var $flashSukses = $('[data-flash-success]');
+    if ($flashSukses.length) {
+      var pesan = $flashSukses.map(function () { return $(this).text().trim(); }).get().join('\n');
+      $flashSukses.remove();
+      pasporAlert({ message: pesan });
+    }
 
     // Pratinjau dokumen di dalam modal (tanpa membuka tab baru)
     $(document).on('click', '[data-doc-preview]', function (e) {
@@ -208,14 +309,119 @@
     // Pegawai/Unor/Biro PAKLN) — tombol submit disembunyikan sebagai
     // fallback bila JS nonaktif.
     $('.doc-upload-submit').hide();
-    $(document).on('change', '.doc-file-input', function () {
-      var $form = $(this).closest('form');
+
+    // Jenis dokumen yang berupa surat — wajib diisi Tanggal Surat lewat
+    // modal sebelum berkasnya benar-benar diunggah (lihat #tanggalSuratModal).
+    var JENIS_PERLU_TANGGAL_SURAT = ['cuti', 'notadinas', 'disposisi', 'nd_biropakln', 'iln_sekjen'];
+    var $formMenungguTanggalSurat = null;
+
+    function submitDocUploadForm($form, $fileInput) {
       // Jangan disable input file sebelum submit — browser tidak akan
       // menyertakan field yang disabled ke body POST, sehingga upload
       // gagal validasi (field "file" kosong).
       $form.find('.doc-upload-submit').text('Mengunggah…').prop('disabled', true);
-      $(this).prop('readonly', true);
+      $form.find('.file-cta .file-label').text('Mengunggah…');
+      $fileInput.prop('readonly', true);
       $form.trigger('submit');
+    }
+
+    // Unggahan hanya PDF: periksa ekstensi dan tipe berkas SEBELUM apa pun diproses. Berkas
+    // yang salah dibatalkan (input dikosongkan) disertai pemberitahuan. Server tetap
+    // memvalidasi ulang (ekstensi, MIME type, dan isi berkas) — ini hanya kenyamanan.
+    // Batas ukuran dibaca dari atribut data-max-mb pada input (2 MB; Laporan PDLN 10 MB).
+    function berkasUkuranValid(input) {
+      var f = input.files && input.files[0];
+      var maksMb = parseFloat(input.getAttribute('data-max-mb'));
+      if (!f || !maksMb || f.size <= maksMb * 1024 * 1024) { return true; }
+      $(input).val('');
+      window.pasporAlert({
+        type: 'error', title: 'Berkas terlalu besar',
+        message: 'Ukuran berkas maksimal ' + maksMb + ' MB. Berkas "' + f.name + '" berukuran '
+          + (f.size / 1024 / 1024).toFixed(1).replace('.', ',') + ' MB.',
+      });
+      return false;
+    }
+
+    function berkasPdfValid(input) {
+      var f = input.files && input.files[0];
+      if (!f) { return true; }
+      var ekstensiOk = /\.pdf$/i.test(f.name);
+      var tipeOk = !f.type || f.type === 'application/pdf';  // tipe kosong: biarkan server memeriksa
+      if (ekstensiOk && tipeOk) { return berkasUkuranValid(input); }
+      $(input).val('');
+      window.pasporAlert({
+        type: 'error', title: 'Berkas ditolak',
+        message: 'Hanya berkas PDF (.pdf) yang dapat diunggah. Berkas "' + f.name + '" bukan PDF.',
+      });
+      return false;
+    }
+
+    // Input unggah yang tidak memakai alur .doc-file-input (mis. laporan PDLN).
+    $(document).on('change', 'input[type="file"][data-pdf-only]:not(.doc-file-input)', function () {
+      berkasPdfValid(this);
+    });
+    // Berkas non-PDF (Template Dokumen, impor kalender) — cek ukuran saja.
+    $(document).on('change', 'input[type="file"][data-max-mb]:not([data-pdf-only])', function () {
+      berkasUkuranValid(this);
+    });
+    $(document).on('submit', 'form', function (e) {
+      var valid = true;
+      $(this).find('input[type="file"][data-pdf-only]').each(function () {
+        if (!berkasPdfValid(this)) { valid = false; }
+      });
+      $(this).find('input[type="file"][data-max-mb]:not([data-pdf-only])').each(function () {
+        if (!berkasUkuranValid(this)) { valid = false; }
+      });
+      if (!valid) { e.preventDefault(); }
+    });
+
+    // Nama berkas terpilih pada komponen .file (partials/_input_berkas.html).
+    $(document).on('change', '.file .file-input', function () {
+      var nama = this.files && this.files.length ? this.files[0].name : '';
+      if (nama) { $(this).closest('.file').find('[data-file-name]').text(nama); }
+    });
+
+    $(document).on('change', '.doc-file-input', function () {
+      var $input = $(this);
+      var $form = $input.closest('form');
+      if (!this.files || !this.files.length) { return; }
+      if (!berkasPdfValid(this)) { return; }
+
+      var jenis = $form.find('input[name="jenis"]').val();
+      // Registri persyaratan menandai baris yang butuh Tanggal Surat lewat
+      // atribut data-tanggal-surat (partials/_dokumen_tahap.html); daftar
+      // statis di atas tetap dipakai untuk halaman lama.
+      if ($form.is('[data-tanggal-surat]') || JENIS_PERLU_TANGGAL_SURAT.indexOf(jenis) !== -1) {
+        $formMenungguTanggalSurat = $form;
+        $('#tanggalSuratInput').val('').removeClass('is-danger');
+        $('#tanggalSuratModal').addClass('is-active');
+        return;
+      }
+      submitDocUploadForm($form, $input);
+    });
+
+    $('#tanggalSuratSimpan').on('click', function () {
+      var tanggal = $('#tanggalSuratInput').val();
+      if (!tanggal) { $('#tanggalSuratInput').addClass('is-danger').trigger('focus'); return; }
+      if (!$formMenungguTanggalSurat) { return; }
+      var $form = $formMenungguTanggalSurat;
+      $formMenungguTanggalSurat = null;
+      $form.find('.doc-tanggal-surat-input').val(tanggal);
+      closeModals();
+      submitDocUploadForm($form, $form.find('.doc-file-input'));
+    });
+
+    // Batal/tutup modal Tanggal Surat tanpa menyimpan — kosongkan lagi
+    // input berkas yang sempat dipilih, supaya tidak terlihat "terpilih"
+    // padahal belum diunggah.
+    function batalTanggalSurat() {
+      if (!$formMenungguTanggalSurat) { return; }
+      $formMenungguTanggalSurat.find('.doc-file-input').val('').prop('readonly', false);
+      $formMenungguTanggalSurat = null;
+    }
+    $(document).on('click', '#tanggalSuratModal .modal-background, #tanggalSuratModal [data-modal-close]', batalTanggalSurat);
+    $(document).on('keydown', function (e) {
+      if (e.key === 'Escape') { batalTanggalSurat(); }
     });
 
     // Checkbox yang langsung submit form-nya sendiri begitu dicentang atau
@@ -224,6 +430,21 @@
     $(document).on('change', '.auto-toggle', function () {
       $(this).closest('form').trigger('submit');
     });
+
+    // Tombol submit [data-agree-submit] baru aktif setelah checkbox
+    // pernyataan [data-agree] di form yang sama dicentang (mis. "Teruskan"
+    // pada Unggah Dokumen Unor). Tombol yang dikunci server (dokumen wajib
+    // belum lengkap) memakai data-locked dan tetap nonaktif.
+    function syncAgreeSubmit($form) {
+      var checked = $form.find('[data-agree]').is(':checked');
+      $form.find('[data-agree-submit]').each(function () {
+        $(this).prop('disabled', !checked || $(this).is('[data-locked]'));
+      });
+    }
+    $(document).on('change', '[data-agree]', function () {
+      syncAgreeSubmit($(this).closest('form'));
+    });
+    $('[data-agree]').each(function () { syncAgreeSubmit($(this).closest('form')); });
 
     // Multi-Select Dropdown generik: ubah <select multiple data-multiselect="…">
     // manapun (mis. Tujuan Negara pada Formulir Pengajuan) jadi panel
@@ -312,23 +533,19 @@
     $('select[data-multiselect]').each(function () { initMultiselect($(this)); });
     $(document).on('click', function () { $('.multiselect-panel.is-active').removeClass('is-active'); });
 
-    // Notification Center: dropdown bell di navbar.
-    $('#notifBellBtn').on('click', function (e) {
-      e.stopPropagation();
-      var $btn = $(this);
-      var open = $('#notifDropdown').toggleClass('is-active').hasClass('is-active');
-      $btn.attr('aria-expanded', open ? 'true' : 'false');
-    });
-    $('#notifDropdown').on('click', function (e) { e.stopPropagation(); });
-    $(document).on('click', function () {
-      $('#notifDropdown').removeClass('is-active');
-      $('#notifBellBtn').attr('aria-expanded', 'false');
-    });
-    $(document).on('keydown', function (e) {
-      if (e.key === 'Escape') {
-        $('#notifDropdown').removeClass('is-active');
-        $('#notifBellBtn').attr('aria-expanded', 'false');
-      }
+    // Penanda wajib: tambahkan "*" merah pada label setiap isian ber-atribut
+    // `required` (Django memasangnya otomatis untuk field wajib) atau
+    // `data-wajib` (wajib secara bisnis tetapi boleh kosong saat draft). Label yang
+    // sudah punya penanda (.text-danger) dilewati; badge "Otomatis" tetap di
+    // belakang tanda bintang.
+    $('input[required], select[required], textarea[required], [data-wajib]').each(function () {
+      if (this.type === 'hidden') { return; }
+      var $label = this.id ? $('label[for="' + this.id + '"]').first() : $();
+      if (!$label.length) { $label = $(this).closest('.field').find('label.label').first(); }
+      if (!$label.length || $label.find('.text-danger').length) { return; }
+      var $tanda = $('<span class="text-danger" aria-hidden="true"> *</span>');
+      var $badge = $label.children('.badge-auto').first();
+      if ($badge.length) { $badge.before($tanda); } else { $label.append($tanda); }
     });
 
     // Toast pop-up: muncul bertahap lalu hilang otomatis setelah beberapa detik.
