@@ -6,8 +6,6 @@
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
 <style>
-  .filter-progres { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
-  .filter-progres .field { margin-bottom: 0; }
   .rekap-progres { font-size: 13px; }
   .rekap-progres thead th {
     background: var(--blue-bg); color: var(--navy-900); text-align: center; vertical-align: middle;
@@ -28,10 +26,10 @@
   </div>
 </div>
 
-<form id="formProgres" class="box filter-progres" onsubmit="return false;">
+<form id="formProgres" class="box filter-seragam" onsubmit="return false;">
   <div class="field">
     <label class="label" for="mode">Periode</label>
-    <div class="select is-small">
+    <div class="select">
       <select id="mode" name="mode">
         {% for nilai, label in opsi_mode %}<option value="{{ nilai }}" {% if mode == nilai %}selected{% endif %}>{{ label }}</option>{% endfor %}
       </select>
@@ -39,7 +37,7 @@
   </div>
   <div class="field">
     <label class="label" for="tanggal" id="labelTanggal">Tanggal</label>
-    <input class="input is-small" type="date" id="tanggal" name="tanggal" value="{{ tanggal|date:'Y-m-d' }}">
+    <input class="input" type="date" id="tanggal" name="tanggal" value="{{ tanggal|date:'Y-m-d' }}">
   </div>
 </form>
 

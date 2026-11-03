@@ -13,8 +13,6 @@
   .rekap-detail td { vertical-align: top; }
   .rekap-detail tr.rekap-grup td { background: var(--gold-bg); color: var(--navy-900); font-weight: 800; }
   .rekap-detail .tag-sudah { color: var(--navy-900); font-weight: 600; }
-  .filter-periode { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
-  .filter-periode .field { margin-bottom: 0; }
 </style>
 {% endblock %}
 
@@ -26,10 +24,10 @@
   </div>
 </div>
 
-<form method="get" id="formPeriode" class="box filter-periode">
+<form method="get" id="formPeriode" class="box filter-seragam">
   <div class="field">
     <label class="label" for="periode">Periode</label>
-    <div class="select is-small">
+    <div class="select">
       <select name="periode" id="periode">
         {% for nilai, label in opsi_periode %}<option value="{{ nilai }}" {% if periode == nilai %}selected{% endif %}>{{ label }}</option>{% endfor %}
       </select>
@@ -37,17 +35,17 @@
   </div>
   <div class="field" data-periode-kustom {% if periode != "kustom" %}hidden{% endif %}>
     <label class="label" for="dari">Dari</label>
-    <input class="input is-small" type="date" name="dari" id="dari" value="{{ dari|date:'Y-m-d' }}">
+    <input class="input" type="date" name="dari" id="dari" value="{{ dari|date:'Y-m-d' }}">
   </div>
   <div class="field" data-periode-kustom {% if periode != "kustom" %}hidden{% endif %}>
     <label class="label" for="sampai">Sampai</label>
-    <input class="input is-small" type="date" name="sampai" id="sampai" value="{{ sampai|date:'Y-m-d' }}">
+    <input class="input" type="date" name="sampai" id="sampai" value="{{ sampai|date:'Y-m-d' }}">
   </div>
   <div class="field" data-periode-kustom {% if periode != "kustom" %}hidden{% endif %}>
-    <button type="submit" class="button is-primary is-small">Terapkan</button>
+    <button type="submit" class="button is-primary">Terapkan</button>
   </div>
   {% if periode %}
-  <div class="field"><a href="{% url ns|add:':rekap_pelaporan_pdln' %}" class="button is-small">Reset</a></div>
+  <div class="field"><a href="{% url ns|add:':rekap_pelaporan_pdln' %}" class="button">Reset</a></div>
   {% endif %}
 </form>
 
