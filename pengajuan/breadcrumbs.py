@@ -47,6 +47,7 @@ CRUMBS = {
     "unor:putuskan_pembatalan": ("Putuskan Pembatalan", "unor:pembatalan"),
     "unor:pelaporan": ("Pelaporan PDLN", "unor:dashboard"),
     "unor:rekap": ("Rekap", "unor:dashboard"),
+    "unor:rekap_pelaporan_pdln": ("Rekap Pelaporan PDLN", "unor:rekap"),
     "unor:export": ("Export", "unor:dashboard"),
 
     # --- Admin BPSDM -------------------------------------------------------
@@ -58,6 +59,7 @@ CRUMBS = {
     "bpsdm:tambah_kegiatan": ("Tambah Kegiatan", "bpsdm:kegiatan"),
     "bpsdm:edit_kegiatan": ("Detail Kegiatan", "bpsdm:kegiatan"),
     "bpsdm:rekap": ("Rekap", "bpsdm:dashboard"),
+    "bpsdm:rekap_pelaporan_pdln": ("Rekap Pelaporan PDLN", "bpsdm:rekap"),
     "bpsdm:export": ("Export", "bpsdm:dashboard"),
 
     # --- Admin BKO ---------------------------------------------------------
@@ -65,6 +67,7 @@ CRUMBS = {
     "bko:proses": ("SK Tugas Belajar {kode}", "bko:dashboard"),
     "bko:pembatalan": ("Pembatalan", "bko:dashboard"),
     "bko:rekap": ("Rekap", "bko:dashboard"),
+    "bko:rekap_pelaporan_pdln": ("Rekap Pelaporan PDLN", "bko:rekap"),
     "bko:export": ("Export", "bko:dashboard"),
 
     # --- Admin Biro PAKLN --------------------------------------------------
@@ -81,6 +84,7 @@ CRUMBS = {
     "pakln:edit_kegiatan": ("Detail Kegiatan", "pakln:kelola_kegiatan"),
     "pakln:putuskan_pembatalan": ("Putuskan Pembatalan", "pakln:pembatalan"),
     "pakln:rekap": ("Rekap", "pakln:dashboard"),
+    "pakln:rekap_pelaporan_pdln": ("Rekap Pelaporan PDLN", "pakln:rekap"),
     "pakln:export": ("Export", "pakln:dashboard"),
     "pakln:pengaturan_dokumen": ("Setting", "pakln:dashboard"),
     "grup:manajemen": ("Manajemen", "pakln:dashboard"),

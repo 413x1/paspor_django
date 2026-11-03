@@ -105,6 +105,22 @@ def export_data(request):
 
 
 @role_required(*ADMIN_ROLES)
+def rekap_pelaporan_pdln(request):
+    """Rekap Pelaporan PDLN: ringkasan per Unit Organisasi + daftar detail (DataTables).
+    Periode lewat parameter `periode` (minggu/bulan/tahun/kustom); cakupan data mengikuti role."""
+    preset, dari, sampai = report.rentang_periode(request.GET)
+    return render(request, "report/rekap_pelaporan.html", {
+        **report.data_rekap_pelaporan(request.user, dari, sampai),
+        "ns": request.resolver_match.namespace,
+        "opsi_periode": report.PRESET_PERIODE,
+        "periode": preset,
+        "dari": dari,
+        "sampai": sampai,
+        "tgl_acuan": sampai or timezone.localdate(),
+    })
+
+
+@role_required(*ADMIN_ROLES)
 def rekap(request):
     qs = _qs(request)
     blok = report.rekap(qs)

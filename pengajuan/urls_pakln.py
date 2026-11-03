@@ -69,4 +69,5 @@ urlpatterns = [
     path("export/", views_report.export_database, name="export"),
     path("export/data/", views_report.export_data, name="export_data"),
     path("rekap/", views_report.rekap, name="rekap"),
+    path("rekap/pelaporan-pdln/", views_report.rekap_pelaporan_pdln, name="rekap_pelaporan_pdln"),
 ]
