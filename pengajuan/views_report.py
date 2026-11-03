@@ -112,27 +112,26 @@ def _tgl(nilai):
     return nilai or ""
 
 
-@role_required(*ADMIN_ROLES)
-def rekap_progres_pdln(request):
-    """Rekap Progres PDLN: kerangka halaman + filter periode; data dimuat DataTables dari `rekap_progres_pdln_data`."""
+def _halaman_progres(request, template, tahap, judul):
+    """Kerangka halaman Rekap Progres (PDLN/ILN): filter periode; data dimuat DataTables lewat endpoint `*_data`."""
     mode, acuan, dari, sampai = report.rentang_progres(request.GET)
-    return render(request, "report/rekap_progres_pdln.html", {
+    return render(request, template, {
         "ns": request.resolver_match.namespace,
         "opsi_mode": report.MODE_PROGRES,
-        "tahap": report.TAHAP_PROGRES,
+        "tahap": tahap,
+        "judul": judul,
         "mode": mode,
         "tanggal": acuan,
     })
 
 
-@role_required(*ADMIN_ROLES)
-def rekap_progres_pdln_data(request):
-    """JSON untuk tabel Rekap Progres PDLN. Periode memakai tanggal terakhir pengajuan diperbarui (`updated_at`)."""
+def _data_progres(request, ambil_queryset, ambil_baris, tahap):
+    """JSON tabel Rekap Progres. Periode memakai tanggal terakhir pengajuan diperbarui (`updated_at`)."""
     mode, acuan, dari, sampai = report.rentang_progres(request.GET)
-    qs = report.queryset_progres_pdln(request.user, dari, sampai)
-    kunci_tahap = [k for k, _ in report.TAHAP_PROGRES]
+    qs = ambil_queryset(request.user, dari, sampai)
+    kunci_tahap = [k for k, _ in tahap]
     data = []
-    for b in report.baris_progres_pdln(qs):
+    for b in ambil_baris(qs):
         data.append({
             "no_surat": escape(b["no_surat"]),
             "tanggal": _tgl(b["tanggal"]),
@@ -145,6 +144,27 @@ def rekap_progres_pdln_data(request):
         })
     rentang = f"{dari:%d/%m/%Y}" if dari == sampai else f"{dari:%d/%m/%Y} – {sampai:%d/%m/%Y}"
     return JsonResponse({"rentang": rentang, "data": data})
+
+
+@role_required(*ADMIN_ROLES)
+def rekap_progres_pdln(request):
+    return _halaman_progres(request, "report/rekap_progres_pdln.html", report.TAHAP_PROGRES, "Rekap Progres PDLN")
+
+
+@role_required(*ADMIN_ROLES)
+def rekap_progres_pdln_data(request):
+    return _data_progres(request, report.queryset_progres_pdln, report.baris_progres_pdln, report.TAHAP_PROGRES)
+
+
+@role_required(*ADMIN_ROLES)
+def rekap_progres_iln(request):
+    """Rekap Progres ILN (Non-Kedinasan): hanya tahap Kabag, Karo, dan Sekjen."""
+    return _halaman_progres(request, "report/rekap_progres_iln.html", report.TAHAP_PROGRES_ILN, "Rekap Progres ILN")
+
+
+@role_required(*ADMIN_ROLES)
+def rekap_progres_iln_data(request):
+    return _data_progres(request, report.queryset_progres_iln, report.baris_progres_iln, report.TAHAP_PROGRES_ILN)
 
 
 @role_required(*ADMIN_ROLES)

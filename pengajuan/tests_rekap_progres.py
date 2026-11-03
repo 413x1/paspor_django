@@ -216,3 +216,120 @@ class HalamanRekapProgresTests(_DataProgres, TestCase):
     def test_sidebar_rekap_progres_pdln_menuju_halaman_baru(self):
         resp = self.get(self.admin_pakln, "pakln:rekap_progres_pdln")
         self.assertContains(resp, f'href="{reverse("pakln:rekap_progres_pdln")}"')
+
+
+class ProgresIlnTests(_DataProgres, TestCase):
+    """Rekap Progres ILN = pengajuan Non-Kedinasan, hanya tahap Kabag, Karo, dan Sekjen."""
+
+    def iln(self, diperbarui, **kw):
+        return self.pdln(diperbarui, jenis="nondinas", **kw)
+
+    def tahap(self, p):
+        qs = report.queryset_progres_iln(self.admin_pakln, date(2026, 10, 1), date(2026, 10, 31))
+        return report.tanggal_tahap_iln(qs.get(pk=p.pk))
+
+    def test_queryset_hanya_non_kedinasan_pada_periode_updated_at(self):
+        dalam = self.iln(date(2026, 10, 10))
+        self.iln(date(2026, 9, 30))
+        self.pdln(date(2026, 10, 10))   # PDLN tidak ikut
+        qs = report.queryset_progres_iln(self.admin_pakln, date(2026, 10, 1), date(2026, 10, 31))
+        self.assertEqual(list(qs), [dalam])
+
+    def test_pdln_tidak_memuat_non_kedinasan(self):
+        self.iln(date(2026, 10, 10))
+        self.assertEqual(list(report.queryset_progres_pdln(self.admin_pakln, date(2026, 10, 1), date(2026, 10, 31))), [])
+
+    def test_admin_unor_hanya_unitnya(self):
+        sendiri = self.iln(date(2026, 10, 10))
+        self.iln(date(2026, 10, 10), unit=self.unor_lain)
+        qs = report.queryset_progres_iln(self.admin_unor, date(2026, 10, 1), date(2026, 10, 31))
+        self.assertEqual(list(qs), [sendiri])
+
+    def test_tiga_tahap_dari_log_generate_dan_izin_sekjen(self):
+        p = self.iln(date(2026, 10, 20))
+        self.generate(p, DokumenGenerateLog.Jenis.ND_KABAG, date(2026, 10, 11))
+        self.generate(p, DokumenGenerateLog.Jenis.ND_KARO, date(2026, 10, 12))
+        self.dokumen(p, DokumenPakln.Jenis.ILN_SEKJEN, date(2026, 10, 15))
+        self.assertEqual(self.tahap(p), {"kabag": date(2026, 10, 11), "karo": date(2026, 10, 12), "sekjen": date(2026, 10, 15)})
+
+    def test_sekjen_memakai_tanggal_surat_bila_ada(self):
+        p = self.iln(date(2026, 10, 20))
+        self.dokumen(p, DokumenPakln.Jenis.ILN_SEKJEN, date(2026, 10, 15))
+        DokumenPakln.objects.filter(pengajuan=p).update(tanggal_surat=date(2026, 10, 13))
+        self.assertEqual(self.tahap(p)["sekjen"], date(2026, 10, 13))
+
+    def test_tahap_belum_dilalui_kosong(self):
+        p = self.iln(date(2026, 10, 20))
+        self.assertEqual(self.tahap(p), {"kabag": None, "karo": None, "sekjen": None})
+
+    def test_baris_dan_jumlah_query_tetap(self):
+        for hari in range(10, 16):
+            p = self.iln(date(2026, 10, hari), negara=self.jepang)
+            self.generate(p, DokumenGenerateLog.Jenis.ND_KABAG, date(2026, 10, 11))
+            self.dokumen(p, DokumenPakln.Jenis.ILN_SEKJEN, date(2026, 10, 12))
+        with self.assertNumQueries(4):
+            qs = report.queryset_progres_iln(self.admin_pakln, date(2026, 10, 1), date(2026, 10, 31))
+            baris = list(report.baris_progres_iln(qs))
+        self.assertEqual(len(baris), 6)
+        self.assertEqual(baris[0]["nama_negara"], "Andra ke Jepang Uji")
+        self.assertEqual(set(baris[0]) & {"kabag", "karo", "sekjen"}, {"kabag", "karo", "sekjen"})
+        self.assertNotIn("setneg", baris[0])
+
+
+class HalamanRekapIlnTests(_DataProgres, TestCase):
+    def test_akses_login_dan_peran(self):
+        self.assertEqual(self.client.get(reverse("pakln:rekap_progres_iln")).status_code, 302)
+        self.assertEqual(self.client.get(reverse("pakln:rekap_progres_iln_data")).status_code, 302)
+        self.assertEqual(self.get(self.pegawai, "pakln:rekap_progres_iln").status_code, 403)
+        self.assertEqual(self.get(self.pegawai, "pakln:rekap_progres_iln_data").status_code, 403)
+
+    def test_halaman_hanya_tiga_kolom_tahap_untuk_setiap_role_admin(self):
+        for user, ns in ((self.admin_unor, "unor"), (self.admin_bpsdm, "bpsdm"),
+                         (self.admin_bko, "bko"), (self.admin_pakln, "pakln")):
+            resp = self.get(user, f"{ns}:rekap_progres_iln")
+            self.assertEqual(resp.status_code, 200, ns)
+            self.assertContains(resp, "Rekap Progres ILN")
+            self.assertContains(resp, "Status Progres Surat")
+            self.assertContains(resp, 'colspan="3"')
+            self.assertContains(resp, "Sekjen")
+            self.assertNotContains(resp, "Setneg")
+            self.assertNotContains(resp, "Kemlu")
+            self.assertContains(resp, reverse(f"{ns}:rekap_progres_iln_data"))
+
+    def test_halaman_pdln_tetap_lima_kolom_tahap(self):
+        resp = self.get(self.admin_pakln, "pakln:rekap_progres_pdln")
+        self.assertContains(resp, 'colspan="5"')
+        self.assertContains(resp, reverse("pakln:rekap_progres_pdln_data"))
+        self.assertNotContains(resp, "Sekjen")
+
+    def test_filter_periode_sama_dengan_pdln(self):
+        resp = self.get(self.admin_pakln, "pakln:rekap_progres_iln")
+        for label in ("Harian (Pilih Tanggal)", "Mingguan", "Bulanan", "Tahunan"):
+            self.assertContains(resp, label)
+        self.assertContains(resp, 'type="date"')
+
+    def test_data_json_hanya_non_kedinasan_dengan_kunci_tahap_iln(self):
+        iln = self.pdln(date(2026, 10, 10), negara=self.singapura, jenis="nondinas")
+        self.pdln(date(2026, 10, 10), negara=self.singapura)   # PDLN
+        DokumenPakln.objects.create(pengajuan=iln, jenis=DokumenPakln.Jenis.ILN_SEKJEN, file="uji.pdf")
+        js = self.get(self.admin_pakln, "pakln:rekap_progres_iln_data", "?mode=harian&tanggal=2026-10-10").json()
+        self.assertEqual(js["rentang"], "10/10/2026")
+        self.assertEqual(len(js["data"]), 1)
+        baris = js["data"][0]
+        self.assertEqual(baris["no_surat"], iln.kode)
+        self.assertEqual(baris["status"], "Selesai")
+        self.assertEqual(baris["status_kode"], "selesai")
+        self.assertIn("sekjen", baris)
+        self.assertNotIn("setneg", baris)
+        self.assertEqual(baris["sekjen"], timezone.localdate().strftime("%d/%m/%Y"))
+
+    def test_teks_dari_data_di_escape(self):
+        self.pegawai.profile.nama = "<b>Andra</b>"
+        self.pegawai.profile.save()
+        self.pdln(date(2026, 10, 10), negara=self.jepang, jenis="nondinas")
+        js = self.get(self.admin_pakln, "pakln:rekap_progres_iln_data", "?mode=harian&tanggal=2026-10-10").json()
+        self.assertIn("&lt;b&gt;Andra&lt;/b&gt;", js["data"][0]["nama_negara"])
+
+    def test_sidebar_rekap_progres_iln_menuju_halaman_baru(self):
+        resp = self.get(self.admin_pakln, "pakln:rekap_progres_iln")
+        self.assertContains(resp, f'href="{reverse("pakln:rekap_progres_iln")}"')

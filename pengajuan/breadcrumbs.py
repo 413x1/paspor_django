@@ -48,6 +48,7 @@ CRUMBS = {
     "unor:pelaporan": ("Pelaporan PDLN", "unor:dashboard"),
     "unor:rekap": ("Rekap", "unor:dashboard"),
     "unor:rekap_progres_pdln": ("Rekap Progres PDLN", "unor:rekap"),
+    "unor:rekap_progres_iln": ("Rekap Progres ILN", "unor:rekap"),
     "unor:rekap_pelaporan_pdln": ("Rekap Pelaporan PDLN", "unor:rekap"),
     "unor:export": ("Export", "unor:dashboard"),
 
@@ -61,6 +62,7 @@ CRUMBS = {
     "bpsdm:edit_kegiatan": ("Detail Kegiatan", "bpsdm:kegiatan"),
     "bpsdm:rekap": ("Rekap", "bpsdm:dashboard"),
     "bpsdm:rekap_progres_pdln": ("Rekap Progres PDLN", "bpsdm:rekap"),
+    "bpsdm:rekap_progres_iln": ("Rekap Progres ILN", "bpsdm:rekap"),
     "bpsdm:rekap_pelaporan_pdln": ("Rekap Pelaporan PDLN", "bpsdm:rekap"),
     "bpsdm:export": ("Export", "bpsdm:dashboard"),
 
@@ -70,6 +72,7 @@ CRUMBS = {
     "bko:pembatalan": ("Pembatalan", "bko:dashboard"),
     "bko:rekap": ("Rekap", "bko:dashboard"),
     "bko:rekap_progres_pdln": ("Rekap Progres PDLN", "bko:rekap"),
+    "bko:rekap_progres_iln": ("Rekap Progres ILN", "bko:rekap"),
     "bko:rekap_pelaporan_pdln": ("Rekap Pelaporan PDLN", "bko:rekap"),
     "bko:export": ("Export", "bko:dashboard"),
 
@@ -88,6 +91,7 @@ CRUMBS = {
     "pakln:putuskan_pembatalan": ("Putuskan Pembatalan", "pakln:pembatalan"),
     "pakln:rekap": ("Rekap", "pakln:dashboard"),
     "pakln:rekap_progres_pdln": ("Rekap Progres PDLN", "pakln:rekap"),
+    "pakln:rekap_progres_iln": ("Rekap Progres ILN", "pakln:rekap"),
     "pakln:rekap_pelaporan_pdln": ("Rekap Pelaporan PDLN", "pakln:rekap"),
     "pakln:export": ("Export", "pakln:dashboard"),
     "pakln:pengaturan_dokumen": ("Setting", "pakln:dashboard"),

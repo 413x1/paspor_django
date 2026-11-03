@@ -663,19 +663,28 @@ def rentang_progres(params, hari_ini=None):
     return mode, acuan, date(acuan.year, 1, 1), date(acuan.year, 12, 31)
 
 
-def queryset_progres_pdln(user, dari, sampai):
-    """Pengajuan PDLN (cakupan role) yang status/datanya terakhir diperbarui (`updated_at`) dalam [dari, sampai].
+def _queryset_progres(user, dari, sampai, jenis):
+    """Pengajuan `jenis` (cakupan role) yang status/datanya terakhir diperbarui (`updated_at`) dalam [dari, sampai].
     Batas dibuat sebagai rentang waktu (bukan `__date`) supaya tidak bergantung tabel zona waktu MySQL."""
     zona = timezone.get_current_timezone()
     awal = timezone.make_aware(datetime.combine(dari, time.min), zona)
     akhir = timezone.make_aware(datetime.combine(sampai + timedelta(days=1), time.min), zona)
     return (
         queryset_untuk(user)
-        .filter(jenis_perjalanan=JP.PDLN, updated_at__gte=awal, updated_at__lt=akhir)
+        .filter(jenis_perjalanan=jenis, updated_at__gte=awal, updated_at__lt=akhir)
         .select_related("pegawai__profile__unit_organisasi", "unit_organisasi")
         .prefetch_related("tujuan_negara", "dokumen_pakln", "dokumen_generate_logs")
         .order_by("tgl_pengajuan", "created_at")
     )
+
+
+def queryset_progres_pdln(user, dari, sampai):
+    return _queryset_progres(user, dari, sampai, JP.PDLN)
+
+
+def queryset_progres_iln(user, dari, sampai):
+    """ILN = pengajuan Non-Kedinasan (Formulir Izin Luar Negeri); tidak ada model terpisah."""
+    return _queryset_progres(user, dari, sampai, JP.NONDINAS)
 
 
 def tanggal_tahap_progres(p):
@@ -698,8 +707,8 @@ def tanggal_tahap_progres(p):
     }
 
 
-def baris_progres_pdln(qs):
-    """Satu dict per pengajuan untuk tabel Rekap Progres PDLN (nilai tanggal masih `date`)."""
+def _baris_progres(qs, tanggal_tahap):
+    """Satu dict per pengajuan untuk tabel Rekap Progres (nilai tanggal masih `date`)."""
     for p in qs:
         prof = getattr(p.pegawai, "profile", None)
         unit = p.unit_organisasi or (prof.unit_organisasi if prof else None)
@@ -710,8 +719,40 @@ def baris_progres_pdln(qs):
             "tanggal": p.tgl_pengajuan,
             "nama_negara": f"{nama} ke {negara}" if negara else nama,
             "unit": unit.alias if unit else "—",
-            **tanggal_tahap_progres(p),
+            **tanggal_tahap(p),
             "status": p.get_status_display(),
             "status_kode": p.status,
             "ket": "",
         }
+
+
+def baris_progres_pdln(qs):
+    return _baris_progres(qs, tanggal_tahap_progres)
+
+
+# --- Rekap Progres ILN (Non-Kedinasan): hanya 3 tahap ------------------------
+# Kabag = ND Kabag digenerate · Karo = ND Karo digenerate · Sekjen = Izin Luar Negeri (TTD Sekjen) —
+# tanggal surat bila diisi, jika tidak tanggal diunggah.
+TAHAP_PROGRES_ILN = (
+    ("kabag", "Kabag"),
+    ("karo", "Karo"),
+    ("sekjen", "Sekjen"),
+)
+
+
+def tanggal_tahap_iln(p):
+    """{kunci tahap: tanggal | None} untuk satu pengajuan ILN, tanpa query tambahan (hasil prefetch)."""
+    log = {}
+    for g in p.dokumen_generate_logs.all():
+        tgl = timezone.localtime(g.created_at).date()
+        log[g.jenis] = min(tgl, log.get(g.jenis, tgl))   # tanggal pertama kali digenerate
+    sekjen = next((d for d in p.dokumen_pakln.all() if d.jenis == DokumenPakln.Jenis.ILN_SEKJEN), None)
+    return {
+        "kabag": log.get(DokumenGenerateLog.Jenis.ND_KABAG),
+        "karo": log.get(DokumenGenerateLog.Jenis.ND_KARO),
+        "sekjen": (sekjen.tanggal_surat or timezone.localtime(sekjen.uploaded_at).date()) if sekjen else None,
+    }
+
+
+def baris_progres_iln(qs):
+    return _baris_progres(qs, tanggal_tahap_iln)
