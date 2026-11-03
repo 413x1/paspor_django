@@ -59,12 +59,7 @@
             <span>Pelaporan PDLN</span>
           </a>
         </li>
-        <li>
-          <a class="sidebar-link {% if vn == 'unor:rekap' %}is-active{% endif %}" href="{% url 'unor:rekap' %}">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-            <span>Rekap</span>
-          </a>
-        </li>
+        {% include "partials/_sidebar_rekap.html" with ns="unor" %}
         <li>
           <a class="sidebar-link {% if vn == 'unor:export' %}is-active{% endif %}" href="{% url 'unor:export' %}">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -96,12 +91,7 @@
             <span>Pembatalan</span>
           </a>
         </li>
-        <li>
-          <a class="sidebar-link {% if vn == 'bpsdm:rekap' %}is-active{% endif %}" href="{% url 'bpsdm:rekap' %}">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-            <span>Rekap</span>
-          </a>
-        </li>
+        {% include "partials/_sidebar_rekap.html" with ns="bpsdm" %}
         <li>
           <a class="sidebar-link {% if vn == 'bpsdm:export' %}is-active{% endif %}" href="{% url 'bpsdm:export' %}">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -121,12 +111,7 @@
             <span>Pembatalan</span>
           </a>
         </li>
-        <li>
-          <a class="sidebar-link {% if vn == 'bko:rekap' %}is-active{% endif %}" href="{% url 'bko:rekap' %}">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-            <span>Rekap</span>
-          </a>
-        </li>
+        {% include "partials/_sidebar_rekap.html" with ns="bko" %}
         <li>
           <a class="sidebar-link {% if vn == 'bko:export' %}is-active{% endif %}" href="{% url 'bko:export' %}">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -161,12 +146,7 @@
             {% if sidebar_badge.pembatalan %}<span class="sidebar-badge">{{ sidebar_badge.pembatalan }}</span>{% endif %}
           </a>
         </li>
-        <li>
-          <a class="sidebar-link {% if vn == 'pakln:rekap' %}is-active{% endif %}" href="{% url 'pakln:rekap' %}">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-            <span>Rekap</span>
-          </a>
-        </li>
+        {% include "partials/_sidebar_rekap.html" with ns="pakln" %}
         <li>
           <a class="sidebar-link {% if vn == 'pakln:log_sistem' %}is-active{% endif %}" href="{% url 'pakln:log_sistem' %}">
             <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
