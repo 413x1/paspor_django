@@ -3,6 +3,7 @@ Rekap (BISNIS_PROSES_PDLN.MD §10). Dipasang di namespace masing-masing role
 (`unor:export`, `bpsdm:rekap`, …); cakupan data mengikuti role lewat
 `report.queryset_untuk`."""
 
+from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
 from django.utils.html import escape, format_html
@@ -102,6 +103,48 @@ def export_data(request):
         ]
 
     return report.datatable(request, qs, _EXPORT_ORDER_FIELDS, baris, report.search_pengajuan, "-tgl_pengajuan")
+
+
+def _tgl(nilai):
+    """Tanggal untuk sel tabel: dd/mm/yyyy; teks (mis. "Bebas Visa") apa adanya; kosong bila tidak ada."""
+    if hasattr(nilai, "strftime"):
+        return nilai.strftime("%d/%m/%Y")
+    return nilai or ""
+
+
+@role_required(*ADMIN_ROLES)
+def rekap_progres_pdln(request):
+    """Rekap Progres PDLN: kerangka halaman + filter periode; data dimuat DataTables dari `rekap_progres_pdln_data`."""
+    mode, acuan, dari, sampai = report.rentang_progres(request.GET)
+    return render(request, "report/rekap_progres_pdln.html", {
+        "ns": request.resolver_match.namespace,
+        "opsi_mode": report.MODE_PROGRES,
+        "tahap": report.TAHAP_PROGRES,
+        "mode": mode,
+        "tanggal": acuan,
+    })
+
+
+@role_required(*ADMIN_ROLES)
+def rekap_progres_pdln_data(request):
+    """JSON untuk tabel Rekap Progres PDLN. Periode memakai tanggal terakhir pengajuan diperbarui (`updated_at`)."""
+    mode, acuan, dari, sampai = report.rentang_progres(request.GET)
+    qs = report.queryset_progres_pdln(request.user, dari, sampai)
+    kunci_tahap = [k for k, _ in report.TAHAP_PROGRES]
+    data = []
+    for b in report.baris_progres_pdln(qs):
+        data.append({
+            "no_surat": escape(b["no_surat"]),
+            "tanggal": _tgl(b["tanggal"]),
+            "nama_negara": escape(b["nama_negara"]),
+            "unit": escape(b["unit"]),
+            **{k: _tgl(b[k]) for k in kunci_tahap},
+            "status": escape(b["status"]),
+            "status_kode": b["status_kode"],
+            "ket": escape(b["ket"]),
+        })
+    rentang = f"{dari:%d/%m/%Y}" if dari == sampai else f"{dari:%d/%m/%Y} – {sampai:%d/%m/%Y}"
+    return JsonResponse({"rentang": rentang, "data": data})
 
 
 @role_required(*ADMIN_ROLES)
