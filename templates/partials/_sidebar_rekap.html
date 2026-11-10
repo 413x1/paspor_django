@@ -1,6 +1,6 @@
-{# Grup akordeon "Rekap" untuk Admin Unor/BPSDM/BKO/Biro PAKLN, sama polanya dengan grup "Manajemen". `ns` = namespace role; `vn` dari _sidebar.html. "Progres PDLN"/"Progres ILN" = halaman Rekap dengan filter Jenis PDLN/Non-Kedinasan. #}
-{% with rekap=ns|add:":rekap" pelaporan=ns|add:":rekap_pelaporan_pdln" %}
-<li class="sidebar-group{% if vn == rekap or vn == pelaporan %} is-open is-active-route{% endif %}" data-sidebar-group>
+{# Grup akordeon "Rekap" untuk Admin Unor/BPSDM/BKO/Biro PAKLN, sama polanya dengan grup "Manajemen". `ns` = namespace role; `vn` dari _sidebar.html. #}
+{% with rekap=ns|add:":rekap" progres=ns|add:":rekap_progres_pdln" progres_iln=ns|add:":rekap_progres_iln" pelaporan=ns|add:":rekap_pelaporan_pdln" %}
+<li class="sidebar-group{% if vn == rekap or vn == progres or vn == progres_iln or vn == pelaporan %} is-open is-active-route{% endif %}" data-sidebar-group>
   <button type="button" class="sidebar-link" data-sidebar-group-toggle>
     <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
     <span>Rekap</span>
@@ -8,8 +8,8 @@
   </button>
   <ul class="sidebar-submenu">
     <li><a class="{% if vn == rekap and not request.GET.jenis %}is-active{% endif %}" href="{% url rekap %}">Rekap data</a></li>
-    <li><a class="{% if vn == rekap and request.GET.jenis == 'pdln' %}is-active{% endif %}" href="{% url rekap %}?jenis=pdln">Rekap Progres PDLN</a></li>
-    <li><a class="{% if vn == rekap and request.GET.jenis == 'nondinas' %}is-active{% endif %}" href="{% url rekap %}?jenis=nondinas">Rekap Progres ILN</a></li>
+    <li><a class="{% if vn == progres %}is-active{% endif %}" href="{% url progres %}">Rekap Progres PDLN</a></li>
+    <li><a class="{% if vn == progres_iln %}is-active{% endif %}" href="{% url progres_iln %}">Rekap Progres ILN</a></li>
     <li><a class="{% if vn == pelaporan %}is-active{% endif %}" href="{% url pelaporan %}">Rekap Pelaporan PDLN</a></li>
   </ul>
 </li>

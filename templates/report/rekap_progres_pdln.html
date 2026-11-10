@@ -1,0 +1,3 @@
+{% extends "report/rekap_progres_base.html" %}
+{% block catatan_tahap %}Tahap diambil dari dokumen yang sudah ada: Kabag = ND Kabag digenerate · Karo/Setjen = ND Karo digenerate · Setneg = SP Setneg · Kemlu = Paspor Dinas · Visa = Rekomendasi Visa ("Bebas Visa" bila negara tujuan tidak wajib visa).{% endblock %}
+{% block url_data %}{% url ns|add:":rekap_progres_pdln_data" %}{% endblock %}

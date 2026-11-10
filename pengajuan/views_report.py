@@ -3,6 +3,7 @@ Rekap (BISNIS_PROSES_PDLN.MD §10). Dipasang di namespace masing-masing role
 (`unor:export`, `bpsdm:rekap`, …); cakupan data mengikuti role lewat
 `report.queryset_untuk`."""
 
+from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
 from django.utils.html import escape, format_html
@@ -102,6 +103,68 @@ def export_data(request):
         ]
 
     return report.datatable(request, qs, _EXPORT_ORDER_FIELDS, baris, report.search_pengajuan, "-tgl_pengajuan")
+
+
+def _tgl(nilai):
+    """Tanggal untuk sel tabel: dd/mm/yyyy; teks (mis. "Bebas Visa") apa adanya; kosong bila tidak ada."""
+    if hasattr(nilai, "strftime"):
+        return nilai.strftime("%d/%m/%Y")
+    return nilai or ""
+
+
+def _halaman_progres(request, template, tahap, judul):
+    """Kerangka halaman Rekap Progres (PDLN/ILN): filter periode; data dimuat DataTables lewat endpoint `*_data`."""
+    mode, acuan, dari, sampai = report.rentang_progres(request.GET)
+    return render(request, template, {
+        "ns": request.resolver_match.namespace,
+        "opsi_mode": report.MODE_PROGRES,
+        "tahap": tahap,
+        "judul": judul,
+        "mode": mode,
+        "tanggal": acuan,
+    })
+
+
+def _data_progres(request, ambil_queryset, ambil_baris, tahap):
+    """JSON tabel Rekap Progres. Periode memakai tanggal terakhir pengajuan diperbarui (`updated_at`)."""
+    mode, acuan, dari, sampai = report.rentang_progres(request.GET)
+    qs = ambil_queryset(request.user, dari, sampai)
+    kunci_tahap = [k for k, _ in tahap]
+    data = []
+    for b in ambil_baris(qs):
+        data.append({
+            "no_surat": escape(b["no_surat"]),
+            "tanggal": _tgl(b["tanggal"]),
+            "nama_negara": escape(b["nama_negara"]),
+            "unit": escape(b["unit"]),
+            **{k: _tgl(b[k]) for k in kunci_tahap},
+            "status": escape(b["status"]),
+            "status_kode": b["status_kode"],
+            "ket": escape(b["ket"]),
+        })
+    rentang = f"{dari:%d/%m/%Y}" if dari == sampai else f"{dari:%d/%m/%Y} – {sampai:%d/%m/%Y}"
+    return JsonResponse({"rentang": rentang, "data": data})
+
+
+@role_required(*ADMIN_ROLES)
+def rekap_progres_pdln(request):
+    return _halaman_progres(request, "report/rekap_progres_pdln.html", report.TAHAP_PROGRES, "Rekap Progres PDLN")
+
+
+@role_required(*ADMIN_ROLES)
+def rekap_progres_pdln_data(request):
+    return _data_progres(request, report.queryset_progres_pdln, report.baris_progres_pdln, report.TAHAP_PROGRES)
+
+
+@role_required(*ADMIN_ROLES)
+def rekap_progres_iln(request):
+    """Rekap Progres ILN (Non-Kedinasan): hanya tahap Kabag, Karo, dan Sekjen."""
+    return _halaman_progres(request, "report/rekap_progres_iln.html", report.TAHAP_PROGRES_ILN, "Rekap Progres ILN")
+
+
+@role_required(*ADMIN_ROLES)
+def rekap_progres_iln_data(request):
+    return _data_progres(request, report.queryset_progres_iln, report.baris_progres_iln, report.TAHAP_PROGRES_ILN)
 
 
 @role_required(*ADMIN_ROLES)
