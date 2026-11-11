@@ -518,7 +518,7 @@ Tidak ada pertanyaan terbuka tersisa untuk v2.
 
 ## 9. Versi Lanjutan (v3) — Surat Tugas Pimpinan Unor setelah Izin Prinsip
 
-> **Status: sudah diimplementasikan** (`pengajuan/surat_tugas.py`, `surat_tugas_format.py`, migrasi `pengajuan`
+> **Status: sudah diimplementasikan** (`pengajuan/surat_tugas.py`, migrasi `pengajuan`
 > 0031–0032 dan `notifications` 0010). Berlaku **sama untuk T2P dan T2L**. Non-Kedinasan, PDLN Tipe 1, dan Tipe 3
 > tidak berubah. Rancangan:
 > [RANCANGAN_UPDATE_AJUAN_TP2_PENDIDIKAN_TP2_PELATIHAN.md](../perancangan/RANCANGAN_UPDATE_AJUAN_TP2_PENDIDIKAN_TP2_PELATIHAN.md).
@@ -534,7 +534,7 @@ Tidak ada pertanyaan terbuka tersisa untuk v2.
 | Syarat Admin BPSDM meneruskan | Dokumen BPSDM lengkap | Sama — **tidak menunggu** Surat Tugas. `izin_prinsip` kini wajib **Tanggal Surat** |
 | Pemeriksa Surat Tugas | Admin BPSDM lalu Biro PAKLN lewat pratinjau | **Biro PAKLN**: dapat **mengembalikan** Surat Tugas ke Admin Unor dengan catatan wajib, tanpa mengubah status pengajuan |
 | Unggah dokumen PAKLN (SP Setneg dst.) dan **Selesai** | Terbuka sejak diteruskan ke Biro PAKLN | **Terkunci** sampai Surat Tugas `dikirim` dan tidak sedang `dikembalikan`; Biro PAKLN tetap dapat meninjau berkas |
-| Format Surat Tugas | Berkas statis (`DokumenTemplate`) | **Dibangkitkan sistem** (PDF, WeasyPrint) memuat Tanggal Izin Prinsip |
+| Format Surat Tugas | Berkas statis (`DokumenTemplate`, Manajemen Template Biro PAKLN) | **Tidak berubah** — format otomatis (PDF) sempat dibuat lalu ditiadakan atas arahan review PR ([§9.5](#95-format-surat-tugas)) |
 | Notifikasi | — | 3 event baru (§9.6) |
 
 Status utama tetap lima tahap (`belum → proses → proses_bpsdm → proses_pakln → selesai`); Surat Tugas berjalan di
@@ -567,7 +567,7 @@ memproses pengajuan sendiri (AB-12) berlaku. Mengganti Izin Prinsip **tidak** me
 |---|---|---|
 | Admin Unor | `proses` | Unggah ND ke Sekretaris BPSDM (+ DRH ttd untuk T2P), **Teruskan** — tanpa Surat Tugas |
 | Admin BPSDM | `proses_bpsdm` | Unggah **Izin Prinsip** + Tanggal Surat → jalur `menunggu`, Admin Unor diberi tahu. **Teruskan** ke Biro PAKLN (dan BKO pada T2P) tanpa menunggu |
-| Admin Unor | `proses_bpsdm`/`proses_pakln` | Halaman **Surat Tugas** (`/admin-unor/<kode>/surat-tugas/`): unduh format otomatis, unggah/ganti/hapus berkas, **Kirim** |
+| Admin Unor | `proses_bpsdm`/`proses_pakln` | Halaman **Surat Tugas** (`/admin-unor/<kode>/surat-tugas/`): unduh Template Dokumen (bila ada), unggah/ganti/hapus berkas, **Kirim** |
 | Biro PAKLN | `proses_pakln` | Meninjau berkas. Bila Surat Tugas tidak sesuai: **Kembalikan Surat Tugas** (catatan wajib). Setelah `dikirim`: unggah dokumen PAKLN, lalu **Selesai** |
 
 ### 9.4 Penguncian
@@ -580,13 +580,12 @@ memproses pengajuan sendiri (AB-12) berlaku. Mengganti Izin Prinsip **tidak** me
 | Biro PAKLN mengunggah/menghapus dokumen PAKLN | Jalur `dikirim` (T2P/T2L); dokumen yang sudah ada tetap tersimpan saat dikembalikan |
 | Biro PAKLN **Selesai** / **Lanjutkan tanpa SK Tubel** | Jalur `dikirim` (di samping syarat BKO untuk T2P). **Hentikan pengajuan** tetap dapat dilakukan |
 
-### 9.5 Format Surat Tugas otomatis
+### 9.5 Format Surat Tugas
 
-Halaman Surat Tugas Admin Unor memuat kotak **Format Surat Tugas Otomatis**: PDF (WeasyPrint, pola Generate ND)
-terisi dari data pegawai, kegiatan, tujuan, rentang tanggal, dan **Tanggal Surat Izin Prinsip**. Admin Unor melengkapi nomor
-surat, kota, tanggal, serta nama/jabatan penandatangan (kosong → kolom pengganti), mengunduh, meminta tanda tangan, lalu
-mengunggah hasilnya. Pengunduhan dicatat di Log Sistem. **Tata letak adalah format umum**; format resmi menunggu contoh
-Biro PAKLN/BPSDM (§14 butir 10 pada BISNIS_PROSES_PDLN.MD) — cukup ubah `templates/unor/pdf_template_surat_tugas.html`.
+Format Surat Tugas diambil dari **Template Dokumen** (Manajemen Template Biro PAKLN, `untuk_admin_unor`), seperti dokumen
+berpenanda **F** lainnya; halaman Surat Tugas Admin Unor menampilkan daftar template yang tersedia. Rancangan semula meminta format
+yang **dibangkitkan sistem** (PDF, WeasyPrint) dan terisi Tanggal Izin Prinsip. Fitur itu sempat diimplementasikan lalu **dihapus
+atas arahan review PR**. **Tanggal Surat Izin Prinsip** tetap wajib, tersimpan, dan ditampilkan di halaman Surat Tugas.
 
 ### 9.6 Notifikasi
 
@@ -628,10 +627,9 @@ Notifikasi ke peran admin otomatis juga diemailkan. Notifikasi dikirim setelah t
 | `pengajuan/models.py` + migrasi 0031 | `Pengajuan.status_surat_tugas` (`StatusSuratTugas`), `catatan_surat_tugas`, properti `pakai_surat_tugas_paralel`/`track_surat_tugas_terbuka`; `RiwayatPengajuan.Aksi`: `surat_tugas_dikirim`, `surat_tugas_dikembalikan` |
 | Migrasi 0032 | Data lama → `dikirim` |
 | `pengajuan/surat_tugas.py` *(baru)* | State machine (`buka_jalur`, `kirim`, `kembalikan`), pemeriksaan penguncian, notifikasi, penanda dasbor, keterangan timeline |
-| `pengajuan/surat_tugas_format.py` *(baru)* + `templates/unor/pdf_template_surat_tugas.html` | Format PDF otomatis |
 | `pengajuan/persyaratan.py` / `tahap.py` | `surat_tugas` keluar dari `(T2P/T2L, "unor")`; tahap baru `"surat_tugas"` (`DokumenUnor`); `izin_prinsip` ber-`tanggal_surat` |
 | `pengajuan/views_bpsdm.py` | Unggah Izin Prinsip pertama membuka jalur + notifikasi |
-| `pengajuan/views_unor.py`, `urls_unor.py`, `templates/unor/surat_tugas.html` | Halaman Surat Tugas, unduh format, tombol dasbor |
+| `pengajuan/views_unor.py`, `urls_unor.py`, `templates/unor/surat_tugas.html` | Halaman Surat Tugas, tombol dasbor |
 | `pengajuan/views_pakln.py`, `templates/pakln/*.html`, `partials/_status_surat_tugas.html` | Kunci unggah/hapus/Selesai, aksi Kembalikan, banner status |
 | `notifications/` + migrasi 0010 | Event 09A–09C |
 | `pengajuan/alur.py`, `riwayat.py`, `partials/_timeline_proses.html`, `static/css/style.css` | Timeline, ikon riwayat, penanda dasbor |
@@ -640,7 +638,7 @@ Notifikasi ke peran admin otomatis juga diemailkan. Notifikasi dikirim setelah t
 
 Berkas: `tests_surat_tugas.py` (state machine), `tests_surat_tugas_alur.py` (registri & Izin Prinsip), `tests_surat_tugas_unor.py`
 (halaman Unor), `tests_surat_tugas_pakln.py` (sisi Biro PAKLN), `tests_surat_tugas_notif.py` (notifikasi/email),
-`tests_surat_tugas_format.py` (PDF), `tests_surat_tugas_tampilan.py` (timeline/riwayat/dasbor), dan
+`tests_surat_tugas_tampilan.py` (timeline/riwayat/dasbor), dan
 **`tests_surat_tugas_penerimaan.py`** (perjalanan lengkap T2P/T2L + pengajuan lama). Peta kriteria penerimaan → tes ada pada
 `PETA_KRITERIA` di berkas terakhir. Helper tes lama (`tests_pdln.py`: `surat_tugas_dikirim`) menyesuaikan `pakln_selesai`.
 
@@ -648,5 +646,5 @@ Berkas: `tests_surat_tugas.py` (state machine), `tests_surat_tugas_alur.py` (reg
 
 Tujuh pertanyaan terbuka pada rancangan dijawab pemilik proses (10 Nov 2026): dokumen BPSDM tidak menunggu Surat Tugas;
 tidak ada aksi "minta perbaikan" bagi Admin BPSDM; penggantian Izin Prinsip tidak mewajibkan unggah ulang Surat Tugas; format
-memuat **tanggal** Izin Prinsip saja; tidak ada batas waktu unggah; Surat Tugas yang dikirim menjadi syarat Selesai;
+memuat **tanggal** Izin Prinsip saja *(format otomatis kemudian ditiadakan atas arahan review PR, §9.5)*; tidak ada batas waktu unggah; Surat Tugas yang dikirim menjadi syarat Selesai;
 unggah dokumen PAKLN menunggu Surat Tugas dikirim (T2P dan T2L). Rinciannya ada di dokumen rancangan.

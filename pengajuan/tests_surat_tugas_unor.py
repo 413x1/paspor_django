@@ -68,6 +68,15 @@ class AksesHalamanTests(_DasarUnor, TestCase):
             self.assertContains(resp, "Kirim ke Biro PAKLN")
             self.assertContains(resp, "doc-upload-form")
 
+    def test_tanpa_kotak_format_otomatis_dan_format_diambil_dari_template_dokumen(self):
+        # Arahan review PR: kotak "Format Surat Tugas Otomatis" ditiadakan; format memakai Template Dokumen.
+        p = self.pengajuan(jalur=SS.MENUNGGU)
+        DokumenBpsdm.objects.create(pengajuan=p, jenis="izin_prinsip", file="ip.pdf", tanggal_surat=date(2026, 10, 5))
+        resp = self.halaman(p)
+        self.assertNotContains(resp, "Format Surat Tugas Otomatis")
+        self.assertNotContains(resp, "Unduh Format Surat Tugas")
+        self.assertContains(resp, "Format tersedia pada")
+
     def test_sebelum_izin_prinsip_halaman_terkunci_tanpa_formulir_unggah(self):
         resp = self.halaman(self.pengajuan(jalur=""))
         self.assertContains(resp, "setelah Admin BPSDM mengunggah Izin Prinsip")

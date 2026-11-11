@@ -109,7 +109,7 @@ Pada PDLN Tipe 2, Surat Tugas **tidak** diunggah saat meneruskan ke BPSDM. Surat
 
 1. Setelah Izin Prinsip diunggah, Anda menerima notifikasi (dan email). Pada **Dasbor**, baris pengajuan tersebut menampilkan penanda **Menunggu Surat Tugas** dan tombol **Surat Tugas →**.
 2. Klik **Surat Tugas →**. Halaman menampilkan Izin Prinsip beserta Tanggal Surat-nya.
-3. Pada kotak **Format Surat Tugas Otomatis**, isi nomor surat, kota, tanggal, serta nama dan jabatan Pimpinan Unor (boleh dikosongkan untuk diisi tangan), lalu klik **Unduh Format Surat Tugas (PDF)**. Data pegawai, kegiatan, dan Tanggal Izin Prinsip terisi otomatis.
+3. Bila Biro PAKLN menyediakan format Surat Tugas, unduh dari kotak **Template Dokumen Tersedia**, lalu susun Surat Tugas sesuai Izin Prinsip tersebut.
 4. Minta tanda tangan Pimpinan Unor, lalu klik **Unggah** pada baris **Surat Tugas Pimpinan Unor** dan isi **Tanggal Surat**. Berkas dapat diganti atau dihapus selama belum dikirim.
 5. Centang pernyataan, lalu klik **Kirim ke Biro PAKLN**.
 

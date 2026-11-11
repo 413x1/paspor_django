@@ -33,8 +33,8 @@ PETA_KRITERIA = {
         "AlurLengkapTests.langkah 1 (+ tests_surat_tugas_alur.AdminUnorTanpaSuratTugasTests)",
     "Sebelum Izin Prinsip ada, Admin Unor tidak dapat mengunggah Surat Tugas":
         "AlurLengkapTests.langkah 2 (+ tests_surat_tugas_unor.UnggahSuratTugasTests)",
-    "Admin BPSDM wajib mengisi Tanggal Surat Izin Prinsip dan tanggalnya muncul di format Surat Tugas":
-        "AlurLengkapTests.langkah 3 + tests_surat_tugas_format",
+    "Admin BPSDM wajib mengisi Tanggal Surat Izin Prinsip (tanggalnya tersimpan dan tampil di halaman Surat Tugas)":
+        "AlurLengkapTests.langkah 3 + tests_surat_tugas_unor.AksesHalamanTests (format otomatis ditiadakan saat review PR)",
     "Setelah Izin Prinsip, Admin Unor diberi notifikasi dan dapat mengunggah serta mengirim untuk unitnya":
         "AlurLengkapTests.langkah 3 dan 6 + tests_surat_tugas_notif",
     "Admin BPSDM dapat meneruskan ke Biro PAKLN dan Admin BKO walau Surat Tugas belum ada":
@@ -168,10 +168,6 @@ class PembatalanDanDataLamaTests(_DasarNotif, TestCase):
         resp = self.client.post(reverse("unor:hapus_surat_tugas", kwargs={"kode": p.kode, "jenis": "surat_tugas"}), follow=True)
         self.assertContains(resp, "pembatalan")
         self.assertTrue(DokumenUnor.objects.filter(pengajuan=p, jenis="surat_tugas").exists())
-
-    def test_unduh_format_surat_tugas_memerlukan_login(self):
-        p = self.pengajuan("T2L", S.PROSES_BPSDM, SS.MENUNGGU)
-        self.assertEqual(self.client.post(reverse("unor:unduh_format_surat_tugas", kwargs={"kode": p.kode})).status_code, 302)
 
     def _pengajuan_lama(self, tipe):
         """Keadaan hasil migrasi data 0032: Surat Tugas sudah diunggah di tahap Unor (aturan lama) → `dikirim`."""

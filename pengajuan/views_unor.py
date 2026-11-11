@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.db import transaction
-from django.http import Http404, HttpResponse
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -12,7 +12,7 @@ from paspor.validators import periksa_pdf
 from logs.utils import catat_riwayat, record_activity
 from notifications.services import notify_approve_unor, notify_forward_bpsdm, notify_reject_unor
 
-from . import alur, pembatalan, persyaratan, report, riwayat, surat_tugas, surat_tugas_format, tahap
+from . import alur, pembatalan, persyaratan, report, riwayat, surat_tugas, tahap
 from .decorators import role_required, tolak_pengajuan_sendiri
 from .surat_tugas import SuratTugasError
 from .models import DokumenUnorPendukung, LaporanPdln, Pengajuan, PermohonanPembatalan, RiwayatPengajuan
@@ -373,7 +373,6 @@ def halaman_surat_tugas(request, kode):
 
     dok = tahap.konteks_dokumen(pengajuan, "surat_tugas")
     terkunci = surat_tugas.alasan_berkas_terkunci(pengajuan)
-    tgl_izin_prinsip = surat_tugas_format.tanggal_izin_prinsip(pengajuan)
     return render(request, "unor/surat_tugas.html", {
         "pengajuan": pengajuan,
         **dok,
@@ -381,45 +380,9 @@ def halaman_surat_tugas(request, kode):
         "terkunci": terkunci,
         "bisa_kirim": not terkunci and dok["lengkap"],
         "izin_prinsip": pengajuan.dokumen_bpsdm.filter(jenis="izin_prinsip").first(),
-        # Format Surat Tugas otomatis: tersedia selama Surat Tugas masih boleh diubah dan Izin Prinsip bertanggal ada.
-        "format_tersedia": not terkunci and bool(tgl_izin_prinsip),
-        "isian_default": {"tanggal_surat": timezone.localdate().isoformat(), "kota": surat_tugas_format.KOTA_DEFAULT},
         "templates": tahap.templates_untuk(request.user, pengajuan, "surat_tugas"),
         **riwayat.konteks(pengajuan, request.user),
     })
-
-
-@role_required("admin_unor")
-@require_POST
-def unduh_format_surat_tugas(request, kode):
-    """Unduh format Surat Tugas (PDF, WeasyPrint) yang terisi otomatis dari data pengajuan dan Tanggal Izin Prinsip."""
-    pengajuan = get_object_or_404(_scoped(request).exclude(tgl_pengajuan__isnull=True), kode=kode)
-    if not pengajuan.pakai_surat_tugas_paralel:
-        raise Http404("Surat Tugas hanya berlaku untuk PDLN Tipe 2.")
-    tolak_pengajuan_sendiri(request, pengajuan)  # AB-12
-    if not surat_tugas_format.tanggal_izin_prinsip(pengajuan):
-        messages.error(request, "Format Surat Tugas tersedia setelah Admin BPSDM mengunggah Izin Prinsip Menteri.")
-        return redirect("unor:surat_tugas", kode=kode)
-    try:
-        pdf_bytes = surat_tugas_format.buat_pdf(pengajuan, request.POST)
-    except ImportError:
-        messages.error(request, "Gagal membuat PDF: pustaka WeasyPrint belum terpasang di server ini.")
-        return redirect("unor:surat_tugas", kode=kode)
-    except OSError:
-        messages.error(
-            request,
-            "Gagal membuat PDF: WeasyPrint memerlukan pustaka native GTK/Pango yang belum "
-            "terpasang di server ini (lihat dokumentasi instalasi WeasyPrint untuk Windows/Linux).",
-        )
-        return redirect("unor:surat_tugas", kode=kode)
-    nama = surat_tugas_format.nama_berkas(pengajuan)
-    record_activity(
-        request, ActivityLog.Aktivitas.GENERATE_ND, f"Generate format Surat Tugas — {pengajuan.kode}",
-        target_type="pengajuan", target_id=pengajuan.kode,
-    )
-    response = HttpResponse(pdf_bytes, content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="{nama}"'
-    return response
 
 
 @role_required("admin_unor")

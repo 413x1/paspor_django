@@ -84,8 +84,7 @@ _PAKLN_PDLN = [
 # diunggah Admin BPSDM, bukan lagi syarat tahap Unor (lihat `pengajuan.surat_tugas`). Tahap "surat_tugas" memakai
 # registri yang sama dengan tahap lain, sehingga unggah/hapus/kelengkapannya lewat `tahap.*` seperti biasa.
 _SURAT_TUGAS_T2 = [
-    # Tanpa `aksi`: formatnya dibangkitkan sistem (pengajuan/surat_tugas_format.py), bukan berkas Template Dokumen.
-    Syarat("surat_tugas", "Surat Tugas Pimpinan Unor", tanggal_surat=True),
+    Syarat("surat_tugas", "Surat Tugas Pimpinan Unor", tanggal_surat=True, aksi="format"),
 ]
 
 PERSYARATAN = {
