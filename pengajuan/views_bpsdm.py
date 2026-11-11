@@ -13,7 +13,7 @@ from django.utils.safestring import mark_safe
 from logs.utils import catat_riwayat
 from notifications.services import notify_approve_unor, notify_forward_bko, notify_info_bko, notify_reject_bpsdm
 
-from . import alur, bko, persyaratan, report, riwayat, tahap
+from . import alur, bko, persyaratan, report, riwayat, surat_tugas, tahap
 from .decorators import role_required, tolak_pengajuan_sendiri
 from .models import Pengajuan, PermohonanPembatalan, RiwayatPengajuan
 from .views_unor import status_html
@@ -134,6 +134,8 @@ def upload_dokumen(request, kode):
             hasil = _teruskan(request, pengajuan)
         else:
             hasil = tahap.proses_unggah(request, pengajuan, "bpsdm", "bpsdm:upload_dokumen")
+            if hasil and request.POST.get("jenis") == "izin_prinsip":
+                _buka_jalur_surat_tugas(pengajuan)
         if hasil:
             return hasil
 
@@ -145,6 +147,14 @@ def upload_dokumen(request, kode):
         "templates": tahap.templates_untuk(request.user, pengajuan, "bpsdm"),
         **riwayat.konteks(pengajuan, request.user),
     })
+
+
+def _buka_jalur_surat_tugas(pengajuan):
+    """Izin Prinsip Menteri pertama yang diunggah membuka jalur Surat Tugas Pimpinan Unor (PDLN Tipe 2).
+    Mengganti Izin Prinsip tidak membuka ulang; Admin BPSDM tidak menunggu Surat Tugas untuk meneruskan.
+    Notifikasi ke Admin Unor menyusul di modul notifikasi."""
+    with transaction.atomic():
+        return surat_tugas.buka_jalur(alur.kunci(pengajuan))
 
 
 def _teruskan(request, pengajuan):
