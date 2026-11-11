@@ -15,9 +15,9 @@
 
 {% include "partials/_filter_report.html" %}
 
-<div class="tab-bar">
+<div class="tab-bar is-rekap">
   {% for b in blok %}
-    <a href="?{{ query }}{% if query %}&amp;{% endif %}tab={{ b.kunci }}" class="button is-small {% if b.kunci == tab %}is-active{% endif %}">{{ b.judul }}</a>
+    <a href="?{{ query }}{% if query %}&amp;{% endif %}tab={{ b.kunci }}" class="button {% if b.kunci == tab %}is-active{% endif %}">{{ b.judul }}</a>
   {% endfor %}
 </div>
 

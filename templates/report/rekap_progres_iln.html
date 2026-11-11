@@ -1,0 +1,3 @@
+{% extends "report/rekap_progres_base.html" %}
+{% block catatan_tahap %}ILN = pengajuan Non-Kedinasan (Formulir Izin Luar Negeri). Tahap diambil dari dokumen yang sudah ada: Kabag = ND Kabag digenerate · Karo = ND Karo digenerate · Sekjen = Izin Luar Negeri (TTD Sekjen) menurut tanggal surat.{% endblock %}
+{% block url_data %}{% url ns|add:":rekap_progres_iln_data" %}{% endblock %}

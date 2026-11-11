@@ -9,19 +9,22 @@ Report terpadu Dinas & Non-Dinas — wiki/instructions/BISNIS_PROSES_PDLN.MD §1
 - Filter global (`terapkan_filter`) dipakai Dasbor, Export, dan Rekap.
 """
 
+import calendar
 import csv
 import io
 from collections import Counter, defaultdict
-from datetime import date
+from datetime import date, datetime, time, timedelta
 from statistics import median
 
 from django.db.models import Count, Q
+from django.db.models.functions import Coalesce
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 
 from accounts.models import User
+from paspor.models import UnitOrganisasi
 
-from .models import LaporanPdln, Pengajuan, PermohonanPembatalan, RiwayatPengajuan
+from .models import DokumenGenerateLog, DokumenPakln, LaporanPdln, Pengajuan, PermohonanPembatalan, RiwayatPengajuan
 
 S = Pengajuan.Status
 T = Pengajuan.TipePdln
@@ -496,3 +499,260 @@ def _rekap_pembatalan(qs):
         "kolom": ["Jenis / Tipe"] + [label[s] for s in kolom_status] + ["Total"],
         "baris": [[j] + [c[s] for s in kolom_status] + [sum(c.values())] for j, c in sorted(data.items())],
     }
+
+
+# ---------------------------------------------------------------------------
+# Rekap Pelaporan PDLN (contoh dari mentor: "Data Telah Kumpul Laporan PDLN")
+# ---------------------------------------------------------------------------
+
+# Batas kolom "Data Awal": PDLN yang tanggal berangkatnya s.d. tanggal ini. Ubah di sini bila acuan berganti.
+TGL_CUTOFF_DATA_AWAL = date(2026, 8, 28)
+
+# Laporan dianggap "terkumpul" bila sudah dilaporkan (bukan draft) — sama dengan `status_pelaporan`.
+STATUS_LAPORAN_TERKUMPUL = (
+    LaporanPdln.Status.MENUNGGU, LaporanPdln.Status.DIKEMBALIKAN, LaporanPdln.Status.DISETUJUI,
+)
+
+PRESET_PERIODE = (
+    ("", "Semua s.d. hari ini"),
+    ("minggu", "Minggu ini"),
+    ("bulan", "Bulan ini"),
+    ("tahun", "Tahun ini"),
+    ("kustom", "Pilih tanggal…"),
+)
+
+
+def rentang_periode(params, hari_ini=None):
+    """(preset, dari, sampai) dari parameter GET `periode` (+ `dari`/`sampai` untuk "kustom").
+    Tanpa preset: seluruh data s.d. hari ini (kumulatif), seperti contoh tabel mentor."""
+    hari_ini = hari_ini or timezone.localdate()
+    preset = params.get("periode", "")
+    if preset == "minggu":
+        awal_minggu = hari_ini - timedelta(days=hari_ini.weekday())  # Senin
+        return preset, awal_minggu, awal_minggu + timedelta(days=6)
+    if preset == "bulan":
+        akhir_bulan = calendar.monthrange(hari_ini.year, hari_ini.month)[1]
+        return preset, hari_ini.replace(day=1), hari_ini.replace(day=akhir_bulan)
+    if preset == "tahun":
+        return preset, date(hari_ini.year, 1, 1), date(hari_ini.year, 12, 31)
+    if preset == "kustom":
+        dari, sampai = _tanggal(params.get("dari")), _tanggal(params.get("sampai"))
+        if dari and sampai and dari > sampai:
+            dari, sampai = sampai, dari
+        return preset, dari, sampai
+    return "", None, hari_ini
+
+
+def data_rekap_pelaporan(user, dari=None, sampai=None, cutoff=TGL_CUTOFF_DATA_AWAL):
+    """Rekap pelaporan PDLN. Data = PDLN berstatus Selesai (yang wajib lapor) menurut cakupan role,
+    dengan tanggal berangkat sebagai basis periode.
+
+    - `ringkasan`: per Unit Organisasi → Data Awal (berangkat s.d. cut-off), Data per periode,
+      Laporan Terkumpul, Belum Kumpul (= Data − Terkumpul); `grand_total` di akhir.
+    - `detail`: satu baris per pengajuan, diurutkan per unit organisasi lalu tanggal berangkat;
+      `grup` memuat subtotal (jumlah data & laporan sudah) per unit untuk judul kelompok.
+    """
+    dasar = (
+        queryset_untuk(user).filter(jenis_perjalanan=JP.PDLN, status=S.SELESAI)
+        .annotate(unor=Coalesce("unit_organisasi_id", "pegawai__profile__unit_organisasi_id"))
+    )
+    dalam_periode = Q(pk__isnull=False)
+    if dari:
+        dalam_periode &= Q(tgl_berangkat__gte=dari)
+    if sampai:
+        dalam_periode &= Q(tgl_berangkat__lte=sampai)
+
+    unit = UnitOrganisasi.objects.all()
+    if user.role == User.Role.ADMIN_UNOR:
+        unit = unit.filter(pk=user.unit_admin_id())
+    unit = list(unit)
+
+    agregat = {
+        r["unor"]: r
+        for r in dasar.order_by().values("unor").annotate(
+            awal=Count("pk", filter=Q(tgl_berangkat__lte=cutoff)),
+            total=Count("pk", filter=dalam_periode),
+            terkumpul=Count("pk", filter=dalam_periode & Q(laporan_pdln__status__in=STATUS_LAPORAN_TERKUMPUL)),
+        )
+    }
+
+    def baris_ringkas(nama, r):
+        awal, total, kumpul = r.get("awal", 0), r.get("total", 0), r.get("terkumpul", 0)
+        return {"unit": nama, "awal": awal, "total": total, "terkumpul": kumpul, "belum": total - kumpul}
+
+    ringkasan = [baris_ringkas(f"{u.code} {u.alias}", agregat.get(u.pk, {})) for u in unit]
+    tanpa_unit = agregat.get(None)
+    if tanpa_unit and (tanpa_unit["awal"] or tanpa_unit["total"]):
+        ringkasan.append(baris_ringkas("— Tanpa unit organisasi", tanpa_unit))
+    grand_total = {k: sum(b[k] for b in ringkasan) for k in ("awal", "total", "terkumpul", "belum")}
+
+    nama_unit = {u.pk: u.name for u in unit}
+    daftar = (
+        dasar.filter(dalam_periode)
+        .annotate(kode_unor=Coalesce("unit_organisasi__code", "pegawai__profile__unit_organisasi__code"))
+        .select_related("pegawai__profile", "kegiatan", "detail_pdln", "laporan_pdln")
+        .prefetch_related("tujuan_negara")
+        .order_by("kode_unor", "tgl_berangkat", "pk")
+    )
+    detail, grup = [], {}
+    for p in daftar:
+        prof = getattr(p.pegawai, "profile", None)
+        d, lap = p.detail, p.laporan
+        sudah = bool(lap and lap.status in STATUS_LAPORAN_TERKUMPUL)
+        nama = nama_unit.get(p.unor, "Tanpa unit organisasi")
+        g = grup.setdefault(nama, {"unit": nama, "total": 0, "sudah": 0})
+        g["total"] += 1
+        g["sudah"] += sudah
+        detail.append({
+            "no": len(detail) + 1,
+            "unit": nama,
+            "nama": prof.nama if prof else p.pegawai.get_full_name(),
+            "jabatan": prof.jabatan if prof else "",
+            "program": d.kegiatan_nama if d and d.kegiatan_nama else (p.kegiatan.nama if p.kegiatan else ""),
+            "tujuan": p.tujuan_negara_display,
+            "tgl_berangkat": p.tgl_berangkat,
+            "tgl_kembali": p.tgl_kembali,
+            "sudah": sudah,
+            "tgl_upload": timezone.localtime(lap.uploaded_at).date() if sudah else None,
+        })
+    return {
+        "ringkasan": ringkasan, "grand_total": grand_total,
+        "detail": detail, "grup": list(grup.values()), "cutoff": cutoff,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Rekap Progres PDLN (contoh dari mentor: "Status Progres PDLN")
+# ---------------------------------------------------------------------------
+
+MODE_PROGRES = (
+    ("harian", "Harian (Pilih Tanggal)"),
+    ("mingguan", "Mingguan"),
+    ("bulanan", "Bulanan"),
+    ("tahunan", "Tahunan"),
+)
+
+# Kolom "Status Progres Surat" (urutan = urutan kolom). Sumber tanggal tiap tahap, lihat `tanggal_tahap_progres`:
+#   Kabag = ND Kabag digenerate · Karo/Setjen = ND Karo digenerate · Setneg = SP Setneg diunggah
+#   Kemlu = Paspor Dinas diunggah · Visa = Rekomendasi Visa diunggah ("Bebas Visa" bila tujuan tanpa visa)
+TAHAP_PROGRES = (
+    ("kabag", "Kabag"),
+    ("karo", "Karo/Setjen"),
+    ("setneg", "Setneg"),
+    ("kemlu", "Kemlu"),
+    ("visa", "Visa"),
+)
+
+
+def rentang_progres(params, hari_ini=None):
+    """(mode, tanggal_acuan, dari, sampai) dari parameter GET `mode` dan `tanggal`.
+    Harian = tanggal itu saja; mingguan = Senin–Minggu pada pekan tanggal itu; bulanan/tahunan = bulan/tahun tanggal itu.
+    Tanpa parameter: bulan berjalan."""
+    hari_ini = hari_ini or timezone.localdate()
+    mode = params.get("mode", "bulanan")
+    if mode not in dict(MODE_PROGRES):
+        mode = "bulanan"
+    acuan = _tanggal(params.get("tanggal")) or hari_ini
+    if mode == "harian":
+        return mode, acuan, acuan, acuan
+    if mode == "mingguan":
+        awal_minggu = acuan - timedelta(days=acuan.weekday())
+        return mode, acuan, awal_minggu, awal_minggu + timedelta(days=6)
+    if mode == "bulanan":
+        return mode, acuan, acuan.replace(day=1), acuan.replace(day=calendar.monthrange(acuan.year, acuan.month)[1])
+    return mode, acuan, date(acuan.year, 1, 1), date(acuan.year, 12, 31)
+
+
+def _queryset_progres(user, dari, sampai, jenis):
+    """Pengajuan `jenis` (cakupan role) yang status/datanya terakhir diperbarui (`updated_at`) dalam [dari, sampai].
+    Batas dibuat sebagai rentang waktu (bukan `__date`) supaya tidak bergantung tabel zona waktu MySQL."""
+    zona = timezone.get_current_timezone()
+    awal = timezone.make_aware(datetime.combine(dari, time.min), zona)
+    akhir = timezone.make_aware(datetime.combine(sampai + timedelta(days=1), time.min), zona)
+    return (
+        queryset_untuk(user)
+        .filter(jenis_perjalanan=jenis, updated_at__gte=awal, updated_at__lt=akhir)
+        .select_related("pegawai__profile__unit_organisasi", "unit_organisasi")
+        .prefetch_related("tujuan_negara", "dokumen_pakln", "dokumen_generate_logs")
+        .order_by("tgl_pengajuan", "created_at")
+    )
+
+
+def queryset_progres_pdln(user, dari, sampai):
+    return _queryset_progres(user, dari, sampai, JP.PDLN)
+
+
+def queryset_progres_iln(user, dari, sampai):
+    """ILN = pengajuan Non-Kedinasan (Formulir Izin Luar Negeri); tidak ada model terpisah."""
+    return _queryset_progres(user, dari, sampai, JP.NONDINAS)
+
+
+def tanggal_tahap_progres(p):
+    """{kunci tahap: tanggal | "Bebas Visa" | None} untuk satu pengajuan, tanpa query tambahan
+    (memakai hasil prefetch dari `queryset_progres_pdln`)."""
+    dokumen = {d.jenis: timezone.localtime(d.uploaded_at).date() for d in p.dokumen_pakln.all()}
+    log = {}
+    for g in p.dokumen_generate_logs.all():
+        tgl = timezone.localtime(g.created_at).date()
+        log[g.jenis] = min(tgl, log.get(g.jenis, tgl))   # tanggal pertama kali digenerate
+    visa = dokumen.get(DokumenPakln.Jenis.VISA)
+    if visa is None and not any(n.perlu_visa for n in p.tujuan_negara.all()):
+        visa = "Bebas Visa"
+    return {
+        "kabag": log.get(DokumenGenerateLog.Jenis.ND_KABAG),
+        "karo": log.get(DokumenGenerateLog.Jenis.ND_KARO),
+        "setneg": dokumen.get(DokumenPakln.Jenis.SP_SETNEG),
+        "kemlu": dokumen.get(DokumenPakln.Jenis.PASPOR_DINAS),
+        "visa": visa,
+    }
+
+
+def _baris_progres(qs, tanggal_tahap):
+    """Satu dict per pengajuan untuk tabel Rekap Progres (nilai tanggal masih `date`)."""
+    for p in qs:
+        prof = getattr(p.pegawai, "profile", None)
+        unit = p.unit_organisasi or (prof.unit_organisasi if prof else None)
+        nama = prof.nama if prof else p.pegawai.get_full_name()
+        negara = ", ".join(n.nama_negara for n in p.tujuan_negara.all())
+        yield {
+            "no_surat": p.kode,
+            "tanggal": p.tgl_pengajuan,
+            "nama_negara": f"{nama} ke {negara}" if negara else nama,
+            "unit": unit.alias if unit else "—",
+            **tanggal_tahap(p),
+            "status": p.get_status_display(),
+            "status_kode": p.status,
+            "ket": "",
+        }
+
+
+def baris_progres_pdln(qs):
+    return _baris_progres(qs, tanggal_tahap_progres)
+
+
+# --- Rekap Progres ILN (Non-Kedinasan): hanya 3 tahap ------------------------
+# Kabag = ND Kabag digenerate · Karo = ND Karo digenerate · Sekjen = Izin Luar Negeri (TTD Sekjen) —
+# tanggal surat bila diisi, jika tidak tanggal diunggah.
+TAHAP_PROGRES_ILN = (
+    ("kabag", "Kabag"),
+    ("karo", "Karo"),
+    ("sekjen", "Sekjen"),
+)
+
+
+def tanggal_tahap_iln(p):
+    """{kunci tahap: tanggal | None} untuk satu pengajuan ILN, tanpa query tambahan (hasil prefetch)."""
+    log = {}
+    for g in p.dokumen_generate_logs.all():
+        tgl = timezone.localtime(g.created_at).date()
+        log[g.jenis] = min(tgl, log.get(g.jenis, tgl))   # tanggal pertama kali digenerate
+    sekjen = next((d for d in p.dokumen_pakln.all() if d.jenis == DokumenPakln.Jenis.ILN_SEKJEN), None)
+    return {
+        "kabag": log.get(DokumenGenerateLog.Jenis.ND_KABAG),
+        "karo": log.get(DokumenGenerateLog.Jenis.ND_KARO),
+        "sekjen": (sekjen.tanggal_surat or timezone.localtime(sekjen.uploaded_at).date()) if sekjen else None,
+    }
+
+
+def baris_progres_iln(qs):
+    return _baris_progres(qs, tanggal_tahap_iln)

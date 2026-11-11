@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Rekap Pelaporan PDLN{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
+<style>
+  .rekap-ringkas { text-align: center; }
+  .rekap-ringkas thead th { background: var(--blue-bg); color: var(--navy-900); text-align: center; vertical-align: middle; border: 1px solid var(--slate-600); }
+  .rekap-ringkas td { border: 1px solid var(--slate-600); vertical-align: middle; }
+  .rekap-ringkas td:first-child { text-align: left; }
+  .rekap-ringkas tfoot td { font-weight: 800; background: var(--bg); }
+  .rekap-detail td { vertical-align: top; }
+  .rekap-detail tr.rekap-grup td { background: var(--gold-bg); color: var(--navy-900); font-weight: 800; }
+  .rekap-detail .tag-sudah { color: var(--navy-900); font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Rekap Pelaporan PDLN</h2>
+    <p class="sub">PDLN berstatus Selesai (wajib lapor) · periode berdasarkan tanggal berangkat · cut-off Data Awal {{ cutoff|date:"j F Y" }}</p>
+  </div>
+</div>
+
+<form method="get" id="formPeriode" class="box filter-seragam">
+  <div class="field">
+    <label class="label" for="periode">Periode</label>
+    <div class="select">
+      <select name="periode" id="periode">
+        {% for nilai, label in opsi_periode %}<option value="{{ nilai }}" {% if periode == nilai %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+  </div>
+  <div class="field" data-periode-kustom {% if periode != "kustom" %}hidden{% endif %}>
+    <label class="label" for="dari">Dari</label>
+    <input class="input" type="date" name="dari" id="dari" value="{{ dari|date:'Y-m-d' }}">
+  </div>
+  <div class="field" data-periode-kustom {% if periode != "kustom" %}hidden{% endif %}>
+    <label class="label" for="sampai">Sampai</label>
+    <input class="input" type="date" name="sampai" id="sampai" value="{{ sampai|date:'Y-m-d' }}">
+  </div>
+  <div class="field" data-periode-kustom {% if periode != "kustom" %}hidden{% endif %}>
+    <button type="submit" class="button is-primary">Terapkan</button>
+  </div>
+  {% if periode %}
+  <div class="field"><a href="{% url ns|add:':rekap_pelaporan_pdln' %}" class="button">Reset</a></div>
+  {% endif %}
+</form>
+
+<div class="box">
+  <div class="section-title" style="font-size:15px; text-align:center; margin-bottom:14px;">Data Telah Kumpul Laporan PDLN</div>
+  <div class="table-wrap">
+    <table class="table is-fullwidth rekap-ringkas">
+      <thead>
+        <tr>
+          <th>Unit Organisasi</th>
+          <th>Data Awal<br>(Cut-Off {{ cutoff|date:"j F Y" }})</th>
+          <th>Data per {{ tgl_acuan|date:"j F Y" }}</th>
+          <th>Laporan Terkumpul</th>
+          <th>Belum Kumpul Laporan</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in ringkasan %}
+          <tr><td>{{ b.unit }}</td><td>{{ b.awal }}</td><td>{{ b.total }}</td><td>{{ b.terkumpul }}</td><td>{{ b.belum }}</td></tr>
+        {% empty %}
+          <tr><td colspan="5" class="cell-muted">Tidak ada data.</td></tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr><td>Grand Total</td><td>{{ grand_total.awal }}</td><td>{{ grand_total.total }}</td><td>{{ grand_total.terkumpul }}</td><td>{{ grand_total.belum }}</td></tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<div class="box">
+  <div class="section-title" style="font-size:15px;">Detail per Peserta</div>
+  <div class="table-wrap">
+    <table id="tabelDetail" class="table data-table is-fullwidth is-hoverable rekap-detail">
+      <thead>
+        <tr>
+          <th>No</th><th>Nama</th><th>Jabatan</th><th>Program</th><th>Tujuan</th>
+          <th>Tgl Berangkat</th><th>Tgl Kembali</th><th>Laporan</th><th>Tgl Upload</th><th>Unit Organisasi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in detail %}
+          <tr>
+            <td>{{ r.no }}</td>
+            <td>{{ r.nama }}</td>
+            <td>{{ r.jabatan|default:"—" }}</td>
+            <td>{{ r.program|default:"—" }}</td>
+            <td>{{ r.tujuan|default:"—" }}</td>
+            <td>{{ r.tgl_berangkat|date:"d/m/Y"|default:"—" }}</td>
+            <td>{{ r.tgl_kembali|date:"d/m/Y"|default:"—" }}</td>
+            <td>{% if r.sudah %}<span class="tag-sudah">sudah</span>{% else %}<span class="cell-muted">belum</span>{% endif %}</td>
+            <td>{{ r.tgl_upload|date:"d/m/Y"|default:"" }}</td>
+            <td>{{ r.unit }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="helptext">Laporan dihitung "sudah" bila sudah dilaporkan (bukan draft), apa pun hasil verifikasinya. Judul kelompok menampilkan jumlah data dan laporan yang sudah terkumpul per unit organisasi.</p>
+</div>
+
+{{ grup|json_script:"dataGrup" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
+<script>
+  $(function () {
+    // --- Filter periode: pilihan preset langsung dikirim; "Pilih tanggal" menampilkan isian tanggal dulu.
+    var $form = $('#formPeriode');
+    $('#periode').on('change', function () {
+      var kustom = $(this).val() === 'kustom';
+      $form.find('[data-periode-kustom]').prop('hidden', !kustom);
+      if (!kustom) { $form.trigger('submit'); }
+    });
+    $form.on('submit', function () {
+      // Tanggal hanya relevan untuk periode kustom; jangan ikut terkirim di preset lain.
+      if ($('#periode').val() !== 'kustom') { $('#dari, #sampai').prop('disabled', true); }
+    });
+
+    // --- Tabel detail: pencarian + paginasi; judul kelompok per unit organisasi (subtotal dari server).
+    var grup = {};
+    JSON.parse($('#dataGrup').text()).forEach(function (g) { grup[g.unit] = g; });
+    var KOLOM_UNIT = 9;
+
+    $('#tabelDetail').DataTable({
+      autoWidth: false,
+      ordering: false,   // urutan sudah per unit organisasi lalu tanggal berangkat; jaga kelompok tetap utuh
+      pageLength: 25, lengthMenu: [10, 25, 50, 100],
+      columnDefs: [{ targets: KOLOM_UNIT, visible: false }],
+      dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
+      language: {
+        search: '', searchPlaceholder: 'Cari peserta, program, tujuan...', lengthMenu: 'Tampilkan _MENU_ baris',
+        info: 'Menampilkan _START_–_END_ dari _TOTAL_ data', infoEmpty: 'Tidak ada data',
+        infoFiltered: '(disaring dari _MAX_)', zeroRecords: 'Tidak ada data yang cocok.', emptyTable: 'Tidak ada data.',
+        paginate: { previous: '‹ Sebelumnya', next: 'Berikutnya ›' },
+      },
+      drawCallback: function () {
+        var api = this.api();
+        var $body = $(api.table().body());
+        $body.find('tr.rekap-grup').remove();
+        var terakhir = null;
+        api.rows({ page: 'current' }).every(function () {
+          var unit = this.data()[KOLOM_UNIT];
+          if (unit !== terakhir) {
+            var g = grup[unit] || { total: 0, sudah: 0 };
+            $(this.node()).before(
+              $('<tr class="rekap-grup"></tr>').append(
+                $('<td colspan="' + KOLOM_UNIT + '"></td>').text(unit + ' — ' + g.total + ' data, ' + g.sudah + ' laporan sudah')
+              )
+            );
+            terakhir = unit;
+          }
+        });
+      },
+    });
+  });
+</script>
+{% endblock %}
