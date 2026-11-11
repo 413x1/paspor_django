@@ -21,6 +21,8 @@ pembukaan jalur (ke Admin Unor) dikirim oleh view BPSDM setelah transaksi unggah
 """
 
 from django.db import transaction
+from django.utils import timezone
+from django.utils.formats import date_format
 
 from accounts.models import User
 from notifications import services as notif
@@ -155,3 +157,37 @@ def kembalikan(pengajuan, aktor, catatan):
         riwayat.catat(p, Aksi.SURAT_TUGAS_DIKEMBALIKAN, aktor, p.status, catatan=catatan)
     notif.notify_surat_tugas_dikembalikan(p, catatan)
     return p
+
+
+# ---------------------------------------------------------------------------
+# Tampilan: penanda dasbor dan keterangan Timeline Proses
+# ---------------------------------------------------------------------------
+
+# Penanda singkat pada tabel dasbor — hanya untuk keadaan yang menahan proses (menunggu atau dikembalikan).
+LABEL_PENANDA = {
+    SS.MENUNGGU: "Menunggu Surat Tugas",
+    SS.DIKEMBALIKAN: "Surat Tugas dikembalikan",
+}
+
+
+def penanda_dasbor(pengajuan):
+    """(label, status) penanda jalur Surat Tugas untuk tabel dasbor, atau (None, None) bila tidak perlu."""
+    if (pengajuan.track_surat_tugas_terbuka and pengajuan.status in STATUS_JALUR_AKTIF
+            and pengajuan.status_surat_tugas in LABEL_PENANDA):
+        return LABEL_PENANDA[pengajuan.status_surat_tugas], pengajuan.status_surat_tugas
+    return None, None
+
+
+def keterangan_timeline(pengajuan):
+    """(teks, tone) sub-keterangan jalur Surat Tugas pada Timeline Proses, atau (None, None) bila jalur belum
+    dibuka. Catatan pengembalian sengaja tidak dimuat di sini (timeline juga dilihat Pegawai)."""
+    if not pengajuan.track_surat_tugas_terbuka:
+        return None, None
+    awal = "Surat Tugas Pimpinan Unor (Admin Unor): "
+    if pengajuan.status_surat_tugas == SS.DIKEMBALIKAN:
+        return awal + "Dikembalikan Biro PAKLN, menunggu perbaikan", "warning"
+    if pengajuan.status_surat_tugas == SS.DIKIRIM:
+        dikirim = pengajuan.riwayat.filter(aksi=Aksi.SURAT_TUGAS_DIKIRIM).order_by("-created_at").first()
+        tgl = f" ({date_format(timezone.localtime(dikirim.created_at), 'd M Y')})" if dikirim else ""
+        return awal + f"Dikirim ke Biro PAKLN{tgl}", "success"
+    return awal + "Menunggu diunggah dan dikirim", "info"
