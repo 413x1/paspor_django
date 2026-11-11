@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% load static %}
+{# Dasar halaman Rekap Progres (PDLN & ILN). Konteks: judul, tahap [(kunci, judul)], mode, tanggal, opsi_mode, ns. #}
+{% block title %}{{ judul }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
+<style>
+  .rekap-progres { font-size: 13px; }
+  .rekap-progres thead th {
+    background: var(--blue-bg); color: var(--navy-900); text-align: center; vertical-align: middle;
+    border: 1px solid var(--slate-400);
+  }
+  .rekap-progres tbody td { border: 1px solid var(--line); vertical-align: middle; }
+  .rekap-progres td.kol-tgl, .rekap-progres td.kol-tengah { text-align: center; white-space: nowrap; }
+  .rekap-progres td.status-selesai { background: #fff44f; font-weight: 600; text-align: center; }
+  .rekap-progres td.status-lain { text-align: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>{{ judul }}</h2>
+    <p class="sub">Status progres surat · periode berdasarkan tanggal terakhir status diperbarui · <strong id="rentang">…</strong></p>
+  </div>
+</div>
+
+<form id="formProgres" class="box filter-seragam" onsubmit="return false;">
+  <div class="field">
+    <label class="label" for="mode">Periode</label>
+    <div class="select">
+      <select id="mode" name="mode">
+        {% for nilai, label in opsi_mode %}<option value="{{ nilai }}" {% if mode == nilai %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+  </div>
+  <div class="field">
+    <label class="label" for="tanggal" id="labelTanggal">Tanggal</label>
+    <input class="input" type="date" id="tanggal" name="tanggal" value="{{ tanggal|date:'Y-m-d' }}">
+  </div>
+</form>
+
+<div class="box">
+  <div class="table-wrap">
+    <table id="tabelProgres" class="table is-fullwidth is-hoverable rekap-progres">
+      <thead>
+        <tr>
+          <th rowspan="2">No.</th>
+          <th rowspan="2">No Surat Usulan</th>
+          <th rowspan="2">Tanggal</th>
+          <th rowspan="2">Nama/Negara</th>
+          <th rowspan="2">Unit Organisasi</th>
+          <th colspan="{{ tahap|length }}">Status Progres Surat</th>
+          <th rowspan="2">Status</th>
+          <th rowspan="2">Ket</th>
+        </tr>
+        <tr>
+          {% for kunci, judul_tahap in tahap %}<th>{{ judul_tahap }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <p class="helptext">{% block catatan_tahap %}{% endblock %} Kolom kosong berarti tahap belum dilalui.</p>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
+<script>
+  $(function () {
+    var NAMA_MODE = { harian: 'Tanggal', mingguan: 'Tanggal dalam pekan', bulanan: 'Tanggal dalam bulan', tahunan: 'Tanggal dalam tahun' };
+    var KOLOM_STATUS = 5 + {{ tahap|length }};   // No, No Surat, Tanggal, Nama/Negara, Unit + kolom tahap
+
+    var tabel = $('#tabelProgres').DataTable({
+      autoWidth: false,
+      ordering: false,   // urutan dari server: tanggal pengajuan; nomor urut mengikuti hasil pencarian
+      ajax: {
+        url: '{% block url_data %}{% endblock %}',
+        dataSrc: 'data',
+        cache: false,
+        data: function (d) { d.mode = $('#mode').val(); d.tanggal = $('#tanggal').val(); },
+      },
+      columns: [
+        { data: null, defaultContent: '', className: 'kol-tengah' },
+        { data: 'no_surat' },
+        { data: 'tanggal', className: 'kol-tgl' },
+        { data: 'nama_negara' },
+        { data: 'unit', className: 'kol-tengah' },
+        {% for kunci, judul_tahap in tahap %}{ data: '{{ kunci }}', defaultContent: '', className: 'kol-tgl' },
+        {% endfor %}{ data: 'status' },
+        { data: 'ket', defaultContent: '' },
+      ],
+      createdRow: function (row, data) {
+        $('td', row).eq(KOLOM_STATUS).addClass(data.status_kode === 'selesai' ? 'status-selesai' : 'status-lain');
+      },
+      pageLength: 25, lengthMenu: [10, 25, 50, 100],
+      dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
+      language: {
+        search: '', searchPlaceholder: 'Cari surat, nama, negara...', lengthMenu: 'Tampilkan _MENU_ baris',
+        info: 'Menampilkan _START_–_END_ dari _TOTAL_ pengajuan', infoEmpty: 'Tidak ada data',
+        infoFiltered: '(disaring dari _MAX_)', zeroRecords: 'Tidak ada data yang cocok.',
+        emptyTable: 'Tidak ada pengajuan yang statusnya diperbarui pada periode ini.',
+        loadingRecords: 'Memuat…', paginate: { previous: '‹ Sebelumnya', next: 'Berikutnya ›' },
+      },
+    });
+
+    // Nomor urut mengikuti urutan tampil (hasil pencarian & halaman), bukan data mentah.
+    tabel.on('draw', function () {
+      var mulai = tabel.page.info().start;
+      tabel.column(0, { page: 'current' }).nodes().each(function (sel, i) { sel.textContent = mulai + i + 1; });
+    });
+    // Tampilkan rentang tanggal yang benar-benar dipakai server (mis. pekan Senin–Minggu).
+    tabel.on('xhr', function () {
+      var json = tabel.ajax.json();
+      if (json) { $('#rentang').text(json.rentang); }
+    });
+
+    function sesuaikanLabel() { $('#labelTanggal').text(NAMA_MODE[$('#mode').val()] || 'Tanggal'); }
+    sesuaikanLabel();
+
+    // Ubah mode atau tanggal -> muat ulang data tabel tanpa memuat ulang halaman.
+    $('#mode, #tanggal').on('change', function () {
+      sesuaikanLabel();
+      if ($('#tanggal').val()) { tabel.ajax.reload(); }
+    });
+  });
+</script>
+{% endblock %}
