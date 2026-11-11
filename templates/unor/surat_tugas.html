@@ -27,6 +27,44 @@
   {% endif %}
 </div>
 
+{% if format_tersedia %}
+<div class="box is-info-soft">
+  <div class="section-title" style="font-size:14px;margin-bottom:6px;">📄 Format Surat Tugas Otomatis</div>
+  <p class="helptext" style="margin:0 0 12px;">
+    Terisi otomatis dari data pegawai, kegiatan, dan Tanggal Surat Izin Prinsip
+    ({{ izin_prinsip.tanggal_surat|date:"d M Y" }}). Lengkapi isian berikut, unduh PDF, minta tanda tangan Pimpinan Unor,
+    lalu unggah hasilnya di bawah.
+  </p>
+  <form method="post" action="{% url 'unor:unduh_format_surat_tugas' kode=pengajuan.kode %}">
+    {% csrf_token %}
+    <div class="columns is-multiline">
+      <div class="column is-6">
+        <div class="field"><label class="label" for="st_nomor">Nomor Surat</label>
+          <input class="input" type="text" id="st_nomor" name="nomor_surat" maxlength="100" placeholder="Kosongkan bila diisi tangan"></div>
+      </div>
+      <div class="column is-3">
+        <div class="field"><label class="label" for="st_kota">Kota</label>
+          <input class="input" type="text" id="st_kota" name="kota" maxlength="60" value="{{ isian_default.kota }}"></div>
+      </div>
+      <div class="column is-3">
+        <div class="field"><label class="label" for="st_tanggal">Tanggal Surat Tugas</label>
+          <input class="input" type="date" id="st_tanggal" name="tanggal_surat" value="{{ isian_default.tanggal_surat }}"></div>
+      </div>
+      <div class="column is-6">
+        <div class="field"><label class="label" for="st_pejabat">Nama Pimpinan Unor</label>
+          <input class="input" type="text" id="st_pejabat" name="nama_pimpinan" maxlength="150" placeholder="Nama penandatangan"></div>
+      </div>
+      <div class="column is-6">
+        <div class="field"><label class="label" for="st_jabatan">Jabatan Pimpinan Unor</label>
+          <input class="input" type="text" id="st_jabatan" name="jabatan_pimpinan" maxlength="150" placeholder="cth. Sekretaris Direktorat Jenderal"></div>
+      </div>
+    </div>
+    <button type="submit" class="button is-primary">⬇ Unduh Format Surat Tugas (PDF)</button>
+    <p class="helptext">Isian yang dikosongkan tampil sebagai kolom pengganti di PDF untuk diisi tangan.</p>
+  </form>
+</div>
+{% endif %}
+
 {% if templates %}
 <div class="box is-info-soft">
   <div class="section-title" style="font-size:14px;margin-bottom:10px;">📄 Template Dokumen Tersedia</div>
