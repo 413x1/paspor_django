@@ -77,6 +77,7 @@ _DESKRIPSI = {
 # Sub-status laporan pada tahap Selesai (PDLN).
 _LABEL_LAPORAN = {
     None: "Menunggu Laporan PDLN",
+    LaporanPdln.Status.DRAFT: "Laporan PDLN masih draft — belum dilaporkan",
     LaporanPdln.Status.MENUNGGU: "Laporan menunggu verifikasi Biro PAKLN",
     LaporanPdln.Status.DIKEMBALIKAN: "Laporan dikembalikan — perlu diunggah ulang",
     LaporanPdln.Status.DISETUJUI: "Laporan disetujui — tuntas",
