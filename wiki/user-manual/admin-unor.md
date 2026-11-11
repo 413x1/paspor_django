@@ -90,8 +90,8 @@ Setelah mencentang persetujuan dan mengklik **Lanjutkan ke Administrasi Unor**, 
 |---|---|
 | **PDLN Tipe 1** | Izin Prinsip Menteri; Surat Tugas; Nota Dinas Sekretaris Unor ke Kepala Biro PAKLN |
 | **PDLN Tipe 3** | Izin Prinsip/Disposisi Menteri; Surat Tugas; Nota Dinas Sekretaris Unor ke Kepala Biro PAKLN |
-| **PDLN Tipe 2 Pendidikan** | Nota Dinas Sekretaris Unor ke Sekretaris BPSDM; Surat Tugas Pimpinan Unor; DRH ttd Pimpinan Unor |
-| **PDLN Tipe 2 Pelatihan** | Nota Dinas Sekretaris Unor ke Sekretaris BPSDM; Surat Tugas Pimpinan Unor |
+| **PDLN Tipe 2 Pendidikan** | Nota Dinas Sekretaris Unor ke Sekretaris BPSDM; DRH ttd Pimpinan Unor |
+| **PDLN Tipe 2 Pelatihan** | Nota Dinas Sekretaris Unor ke Sekretaris BPSDM |
 | **Non-Kedinasan** | Sesuai daftar yang tampil pada halaman |
 
 **Tujuan penerusan**
@@ -102,6 +102,18 @@ Setelah mencentang persetujuan dan mengklik **Lanjutkan ke Administrasi Unor**, 
 ![Unggah Dokumen Administrasi Unor](images/unor-04-unggah-dokumen.png)
 
 > **Catatan:** Tombol **Teruskan** nonaktif selama dokumen wajib belum lengkap. Halaman menampilkan dokumen yang masih kurang.
+
+**Surat Tugas Pimpinan Unor (khusus PDLN Tipe 2)**
+
+Pada PDLN Tipe 2, Surat Tugas **tidak** diunggah saat meneruskan ke BPSDM. Surat Tugas diunggah **setelah Admin BPSDM mengunggah Izin Prinsip Menteri**, dan BPSDM tidak menunggunya untuk meneruskan ke Biro PAKLN.
+
+1. Setelah Izin Prinsip diunggah, Anda menerima notifikasi (dan email). Pada **Dasbor**, baris pengajuan tersebut menampilkan penanda **Menunggu Surat Tugas** dan tombol **Surat Tugas →**.
+2. Klik **Surat Tugas →**. Halaman menampilkan Izin Prinsip beserta Tanggal Surat-nya.
+3. Bila Biro PAKLN menyediakan format Surat Tugas, unduh dari kotak **Template Dokumen Tersedia**, lalu susun Surat Tugas sesuai Izin Prinsip tersebut.
+4. Minta tanda tangan Pimpinan Unor, lalu klik **Unggah** pada baris **Surat Tugas Pimpinan Unor** dan isi **Tanggal Surat**. Berkas dapat diganti atau dihapus selama belum dikirim.
+5. Centang pernyataan, lalu klik **Kirim ke Biro PAKLN**.
+
+> **Penting:** Setelah dikirim, berkas **terkunci**. Biro PAKLN baru dapat mengunggah dokumen PAKLN dan menyelesaikan pengajuan setelah Surat Tugas dikirim. Bila Biro PAKLN menilai Surat Tugas tidak sesuai, Surat Tugas **dikembalikan** dengan catatan (Anda menerima notifikasi dan penanda **Surat Tugas dikembalikan**). Perbaiki berkas, lalu klik **Kirim Ulang ke Biro PAKLN**. Status pengajuan tidak berubah selama proses ini.
 
 ### 4.4 Pembatalan
 

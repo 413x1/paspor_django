@@ -20,6 +20,17 @@
 >
 > `NOTIF_06D_PEMBATALAN_DISETUJUI` juga dikirim ke Admin BKO bila track BKO sudah dibuka.
 > Detail: [PDLN_TIPE_2_FLOW.MD §8](PDLN_TIPE_2_FLOW.MD#8-versi-lanjutan-v2--sk-tubel-oleh-admin-bko).
+>
+> **Tambahan PDLN T2P/T2L v3 — jalur Surat Tugas Pimpinan Unor** (`notifications/services.py`):
+>
+> | Kode | Pemicu | Penerima |
+> |---|---|---|
+> | `NOTIF_09A_SURAT_TUGAS_DIBUKA` | Admin BPSDM mengunggah Izin Prinsip pertama (jalur dibuka) | Admin Unor unit pengajuan |
+> | `NOTIF_09B_SURAT_TUGAS_DIKIRIM` | Admin Unor mengirim / mengirim ulang Surat Tugas | Admin Biro PAKLN |
+> | `NOTIF_09C_SURAT_TUGAS_DIKEMBALIKAN` | Biro PAKLN mengembalikan Surat Tugas (catatan wajib) | Admin Unor unit pengajuan |
+>
+> Seluruh notifikasi ke peran admin juga dikirim lewat email.
+> Detail: [PDLN_TIPE_2_FLOW.MD §9](PDLN_TIPE_2_FLOW.MD#9-versi-lanjutan-v3--surat-tugas-pimpinan-unor-setelah-izin-prinsip).
 
 ---
 

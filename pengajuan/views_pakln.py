@@ -28,7 +28,7 @@ from paspor.impor_libur import ImporError, baca_berkas, buat_template_xlsx, simp
 from paspor.kalender import AKHIR_PEKAN, hitung_hari_kalender
 from paspor.models import HariLibur, KategoriPerjalanan, Negara, SumberPembiayaan
 
-from . import alur, bko, pembatalan, persyaratan, report, riwayat, tahap
+from . import alur, bko, pembatalan, persyaratan, report, riwayat, surat_tugas, tahap
 from .decorators import role_required, tolak_pengajuan_sendiri
 from .forms import (
     DokumenTemplateForm, HariLiburForm, ImporHariLiburForm, KategoriPerjalananForm,
@@ -38,6 +38,7 @@ from .models import (
     DokumenGenerateLog, DokumenPaklnPendukung, DokumenTemplate, LaporanPdln, Pengajuan,
     PengaturanDokumen, PermohonanPembatalan, RiwayatPengajuan,
 )
+from .surat_tugas import SuratTugasError
 from .views_unor import status_html
 
 _BULAN_ID = [
@@ -1797,6 +1798,7 @@ def preview(request, kode):
         "tujuan_kembali": tujuan_kembali,
         "dibekukan": alur.alasan_dibekukan(pengajuan),
         "pembatalan_terbuka": pengajuan.pembatalan_terbuka,
+        "alasan_menunggu_st": surat_tugas.alasan_menunggu_surat_tugas(pengajuan),
         **riwayat.konteks(pengajuan, request.user),
         "catatan_perbaikan": riwayat.catatan_perbaikan(pengajuan, RiwayatPengajuan.Aksi.DITERUSKAN_ULANG),
     })
@@ -1830,6 +1832,15 @@ def upload_dokumen(request, kode):
             hasil = _selesaikan(request, pengajuan, tanpa_sk_tubel=True)
             if hasil:
                 return hasil
+        elif "kembalikan_surat_tugas" in request.POST:
+            try:
+                p = surat_tugas.kembalikan(pengajuan, request.user, request.POST.get("catatan", ""))
+            except SuratTugasError as exc:
+                messages.error(request, str(exc))
+            else:
+                catat_riwayat(request, p, RiwayatPengajuan.Aksi.SURAT_TUGAS_DIKEMBALIKAN)
+                messages.success(request, f"Surat Tugas {p.kode} dikembalikan ke Admin Unor beserta catatan.")
+                return redirect("pakln:upload_dokumen", kode=kode)
         elif "buka_kembali_bko" in request.POST:
             try:
                 p = bko.buka_kembali(pengajuan, request.user, request.POST.get("catatan", ""))
@@ -1884,18 +1895,35 @@ def upload_dokumen(request, kode):
                 pendukung.save(update_fields=[kategori])
                 return redirect("pakln:upload_dokumen", kode=kode)
         else:
-            hasil = tahap.proses_unggah(request, pengajuan, "pakln", "pakln:upload_dokumen")
-            if hasil:
-                return hasil
+            # Unggah dokumen PAKLN menunggu Surat Tugas Pimpinan Unor dikirim (PDLN Tipe 2).
+            with transaction.atomic():
+                p = alur.kunci(pengajuan)
+                terkunci = surat_tugas.alasan_menunggu_surat_tugas(p)
+                if terkunci:
+                    messages.error(request, terkunci)
+                else:
+                    hasil = tahap.proses_unggah(request, p, "pakln", "pakln:upload_dokumen")
+                    if hasil:
+                        return hasil
 
+    alasan_menunggu_st = surat_tugas.alasan_menunggu_surat_tugas(pengajuan)
+    surat_tugas_berkas = None
+    if pengajuan.status_surat_tugas in (Pengajuan.StatusSuratTugas.DIKIRIM, Pengajuan.StatusSuratTugas.DIKEMBALIKAN):
+        surat_tugas_berkas = pengajuan.dokumen_unor.filter(jenis="surat_tugas").first()
     context = {
         "pengajuan": pengajuan,
         **tahap.konteks_dokumen(pengajuan, "pakln"),
         "pendukung": pendukung,
         "pendukung_kategori": list(DokumenPaklnPendukung.KATEGORI_LABELS.items()),
         "dapat_diubah": dapat_diubah,
-        "readonly": not dapat_diubah,
+        "readonly": not dapat_diubah or bool(alasan_menunggu_st),
         "dibekukan": alur.alasan_dibekukan(pengajuan),
+        "alasan_menunggu_st": alasan_menunggu_st,
+        "surat_tugas_berkas": surat_tugas_berkas,
+        "bisa_kembalikan_st": (
+            dapat_diubah and pengajuan.status_surat_tugas == Pengajuan.StatusSuratTugas.DIKIRIM
+            and not alur.alasan_dibekukan(pengajuan)
+        ),
         "sk_tubel": pengajuan.dokumen_bko.first() if pengajuan.pakai_bko else None,
         "alasan_selesai_bko": bko.alasan_tidak_bisa_selesai(pengajuan),
         **riwayat.konteks(pengajuan, request.user),
@@ -1921,6 +1949,10 @@ def _selesaikan(request, pengajuan, tanpa_sk_tubel=False):
     if pesan_bko:
         messages.error(request, pesan_bko)
         return None
+    pesan_st = surat_tugas.alasan_menunggu_surat_tugas(pengajuan)
+    if pesan_st:
+        messages.error(request, pesan_st)
+        return None
     # Catatan "Lanjutkan tanpa SK Tubel" wajib — hanya terlihat Admin PAKLN.
     catatan = request.POST.get("catatan", "").strip() if tanpa_sk_tubel else ""
     if tanpa_sk_tubel and not catatan:
@@ -1943,6 +1975,10 @@ def _selesaikan(request, pengajuan, tanpa_sk_tubel=False):
         pesan_bko = _cek_bko_selesai(p, tanpa_sk_tubel)
         if pesan_bko:
             messages.error(request, pesan_bko)
+            return redirect("pakln:upload_dokumen", kode=p.kode)
+        pesan_st = surat_tugas.alasan_menunggu_surat_tugas(p)
+        if pesan_st:
+            messages.error(request, pesan_st)
             return redirect("pakln:upload_dokumen", kode=p.kode)
         if not p.is_pdln:
             # Cuti hanya terpakai untuk perjalanan Non-Kedinasan; PDLN adalah
@@ -1977,7 +2013,13 @@ def hapus_dokumen(request, kode, jenis):
     pengajuan = get_object_or_404(Pengajuan, kode=kode)
     tolak_pengajuan_sendiri(request, pengajuan)  # AB-12
     if pengajuan.status == Pengajuan.Status.PROSES_PAKLN:
-        tahap.hapus(request, pengajuan, "pakln", jenis)
+        with transaction.atomic():
+            p = alur.kunci(pengajuan)
+            terkunci = surat_tugas.alasan_menunggu_surat_tugas(p)
+            if terkunci:
+                messages.error(request, terkunci)
+            else:
+                tahap.hapus(request, p, "pakln", jenis)
     return redirect("pakln:upload_dokumen", kode=pengajuan.kode)
 
 

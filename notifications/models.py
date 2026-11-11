@@ -40,6 +40,10 @@ class Notification(models.Model):
         BKO_DITUTUP = "NOTIF_07C_BKO_DITUTUP", "Pemrosesan ditutup Admin BKO"
         BKO_DIBUKA = "NOTIF_07D_BKO_DIBUKA", "Pemrosesan BKO dibuka kembali"
         INFO_BKO = "NOTIF_07E_INFO_BKO", "Perbaikan diteruskan ulang (info BKO)"
+        # Jalur Surat Tugas Pimpinan Unor (PDLN Tipe 2: T2P & T2L)
+        SURAT_TUGAS_DIBUKA = "NOTIF_09A_SURAT_TUGAS_DIBUKA", "Izin Prinsip diunggah, Surat Tugas dapat diunggah"
+        SURAT_TUGAS_DIKIRIM = "NOTIF_09B_SURAT_TUGAS_DIKIRIM", "Surat Tugas dikirim ke Biro PAKLN"
+        SURAT_TUGAS_DIKEMBALIKAN = "NOTIF_09C_SURAT_TUGAS_DIKEMBALIKAN", "Surat Tugas dikembalikan Biro PAKLN"
         # Kegiatan PDLN (EVENT_IMPLEMENTATION_PLAN.MD §9)
         KEGIATAN_DIUSULKAN = "NOTIF_08A_KEGIATAN_DIUSULKAN", "Kegiatan diusulkan"
         KEGIATAN_DISETUJUI = "NOTIF_08B_KEGIATAN_DISETUJUI", "Usulan kegiatan disetujui"

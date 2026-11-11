@@ -121,7 +121,19 @@ class _Basis:
             "file": SimpleUploadedFile("sk_tubel.pdf", b"%PDF-1.4 sk", content_type="application/pdf"),
         })
 
+    def surat_tugas_dikirim(self, p):
+        """PDLN Tipe 2: Biro PAKLN baru dapat mengunggah dokumen PAKLN dan menyelesaikan pengajuan setelah
+        Admin Unor mengirim Surat Tugas (lihat tests_surat_tugas*.py untuk uji jalurnya sendiri)."""
+        from .models import DokumenUnor
+
+        if p.pakai_surat_tugas_paralel:
+            DokumenUnor.objects.get_or_create(
+                pengajuan=p, jenis="surat_tugas", defaults={"file": "x.pdf", "tanggal_surat": date.today()},
+            )
+            Pengajuan.objects.filter(pk=p.pk).update(status_surat_tugas=Pengajuan.StatusSuratTugas.DIKIRIM)
+
     def pakln_selesai(self, p, kecuali=()):
+        self.surat_tugas_dikirim(p)
         self.post(self.admin_pakln, "pakln:preview", {"lanjutkan": "1"}, kode=p.kode)
         self.lengkapi(p, "pakln", kecuali=kecuali)
         return self.post(self.admin_pakln, "pakln:upload_dokumen", {"selesaikan": "1", "agree": "on"}, kode=p.kode)
@@ -287,6 +299,7 @@ class AlurT2PBkoTests(_Basis, TestCase):
         return self.refresh(p)
 
     def selesai(self, p):
+        self.surat_tugas_dikirim(p)     # Tipe 2: Selesai menunggu Surat Tugas dikirim (uji jalurnya: tests_surat_tugas_pakln)
         return self.post(self.admin_pakln, "pakln:upload_dokumen", {"selesaikan": "1", "agree": "on"}, kode=p.kode)
 
     def tutup(self, p, catatan="Pencalonan beasiswa belum ditetapkan"):
