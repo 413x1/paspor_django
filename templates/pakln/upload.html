@@ -6,6 +6,7 @@
 {% block content %}
 {% if dibekukan %}<div class="notification paspor-msg is-warning">{{ dibekukan }}</div>{% endif %}
 {% include "partials/_status_bko.html" %}
+{% include "partials/_status_surat_tugas.html" %}
 
 <div class="box">
   <div class="level" style="margin-bottom:12px;">
@@ -34,6 +35,41 @@
   </div>
 
   {% include "partials/_dokumen_tahap.html" with hapus_url="pakln:hapus_dokumen" %}
+
+  {% if pengajuan.pakai_surat_tugas_paralel %}
+  <div class="section-title" style="font-size:14px;margin:20px 0 8px;">Surat Tugas Pimpinan Unor — Admin Unor</div>
+  <div class="doc-row {% if pengajuan.status_surat_tugas == 'dikirim' %}uploaded{% endif %}">
+    <div class="info">
+      <h4>Surat Tugas Pimpinan Unor <span class="badge-auto">Wajib untuk unggah dokumen PAKLN dan Selesai</span></h4>
+      {% if pengajuan.status_surat_tugas == "dikirim" %}
+        <p style="color:var(--green);">✓ Dikirim Admin Unor{% if surat_tugas_berkas %} — {{ surat_tugas_berkas.uploaded_at|date:"d M Y H:i" }}{% endif %}</p>
+        {% if surat_tugas_berkas.tanggal_surat %}<p class="cell-muted">📅 Tanggal Surat: {{ surat_tugas_berkas.tanggal_surat|date:"d M Y" }}</p>{% endif %}
+      {% elif pengajuan.status_surat_tugas == "dikembalikan" %}
+        <p style="color:var(--gold-dark);">■ Dikembalikan ke Admin Unor: {{ pengajuan.catatan_surat_tugas }}</p>
+      {% elif pengajuan.status_surat_tugas == "menunggu" %}
+        <p>Menunggu Admin Unor mengunggah dan mengirim Surat Tugas.</p>
+      {% else %}
+        <p>Menunggu Izin Prinsip Menteri diunggah Admin BPSDM.</p>
+      {% endif %}
+    </div>
+    <div class="actions">
+      {% if surat_tugas_berkas %}
+        <button type="button" class="button is-small" data-doc-preview="{{ surat_tugas_berkas.file.url }}" data-doc-title="Surat Tugas Pimpinan Unor">👁 Pratinjau</button>
+      {% endif %}
+    </div>
+  </div>
+  {% if bisa_kembalikan_st %}
+  <form method="post" style="margin:10px 0 0;" data-confirm="Kembalikan Surat Tugas ke Admin Unor untuk diperbaiki? Unggah dokumen PAKLN akan terkunci sampai dikirim ulang." data-confirm-title="Kembalikan Surat Tugas" data-confirm-ok="Kembalikan">
+    {% csrf_token %}
+    <div class="field">
+      <label class="label" for="catatan_st">Catatan pengembalian untuk Admin Unor</label>
+      <div class="control"><textarea class="textarea" id="catatan_st" name="catatan" rows="2" required placeholder="cth. Nomor surat tidak sesuai dengan Izin Prinsip."></textarea></div>
+      <p class="helptext">Wajib diisi. Status pengajuan tidak berubah; hanya Surat Tugas yang dikembalikan.</p>
+    </div>
+    <button type="submit" name="kembalikan_surat_tugas" class="button is-danger is-light">↩ Kembalikan Surat Tugas ke Admin Unor</button>
+  </form>
+  {% endif %}
+  {% endif %}
 
   {% if pengajuan.pakai_bko %}
   <div class="section-title" style="font-size:14px;margin:20px 0 8px;">SK Tugas Belajar — Admin BKO</div>
@@ -119,13 +155,14 @@
         Admin Biro PAKLN menyatakan seluruh dokumen administrasi wajib telah <strong>lengkap dan sesuai</strong>, untuk selanjutnya menyelesaikan proses.
       </label>
     </div>
-    <button type="submit" name="selesaikan" class="button is-warning is-fullwidth" {% if not lengkap or dibekukan or alasan_selesai_bko %}disabled{% endif %}>
+    <button type="submit" name="selesaikan" class="button is-warning is-fullwidth" {% if not lengkap or dibekukan or alasan_selesai_bko or alasan_menunggu_st %}disabled{% endif %}>
       Selesaikan Proses ✓
     </button>
     {% if not lengkap %}
       <p class="helptext">Lengkapi dokumen wajib untuk melanjutkan: {{ dokumen_kurang|join:", " }}.</p>
     {% endif %}
     {% if alasan_selesai_bko %}<p class="helptext">{{ alasan_selesai_bko }}</p>{% endif %}
+    {% if alasan_menunggu_st %}<p class="helptext">{{ alasan_menunggu_st }}</p>{% endif %}
   </form>
   {% endif %}
 </div>
@@ -154,7 +191,7 @@
       <input type="checkbox" id="agree_lanjut" name="agree" required>
       <label for="agree_lanjut">Dokumen administrasi Biro PAKLN telah <strong>lengkap dan sesuai</strong>; pengajuan diselesaikan tanpa SK Tugas Belajar.</label>
     </div>
-    <button type="submit" name="selesaikan_tanpa_sk_tubel" class="button is-warning is-fullwidth" {% if not lengkap %}disabled{% endif %}>✓ Lanjutkan tanpa SK Tubel</button>
+    <button type="submit" name="selesaikan_tanpa_sk_tubel" class="button is-warning is-fullwidth" {% if not lengkap or alasan_menunggu_st %}disabled{% endif %}>✓ Lanjutkan tanpa SK Tubel</button>
     {% if not lengkap %}<p class="helptext">Lengkapi dokumen wajib: {{ dokumen_kurang|join:", " }}.</p>{% endif %}
   </form>
 

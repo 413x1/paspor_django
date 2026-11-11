@@ -83,7 +83,8 @@ def alasan_menunggu_surat_tugas(pengajuan):
     if pengajuan.status_surat_tugas == SS.DIKIRIM:
         return ""
     if pengajuan.status_surat_tugas == SS.DIKEMBALIKAN:
-        return (f"Surat Tugas dikembalikan ke Admin Unor: {pengajuan.catatan_surat_tugas}. "
+        catatan = (pengajuan.catatan_surat_tugas or "").strip().rstrip(".")
+        return (f"Surat Tugas dikembalikan ke Admin Unor: {catatan}. "
                 "Dokumen PAKLN terbuka lagi setelah Surat Tugas dikirim ulang.")
     return "Menunggu Surat Tugas Pimpinan Unor dikirim. Berkas hanya dapat ditinjau."
 
