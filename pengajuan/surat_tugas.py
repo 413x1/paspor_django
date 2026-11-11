@@ -16,11 +16,14 @@ menunggu jalur ini; yang menunggu adalah Biro PAKLN (unggah dokumen PAKLN dan Se
 selama Surat Tugas belum `dikirim`).
 
 Semua perubahan `status_surat_tugas` lewat modul ini (row lock `alur.kunci`), pola yang sama dengan `bko.py`.
+Notifikasi dikirim setelah transaksi selesai: `kirim` -> Admin Biro PAKLN, `kembalikan` -> Admin Unor. Notifikasi
+pembukaan jalur (ke Admin Unor) dikirim oleh view BPSDM setelah transaksi unggah Izin Prinsip, seperti track BKO.
 """
 
 from django.db import transaction
 
 from accounts.models import User
+from notifications import services as notif
 
 from . import alur, riwayat
 from .decorators import PESAN_PENGAJUAN_SENDIRI, pengajuan_milik_sendiri
@@ -132,7 +135,7 @@ def kirim(pengajuan, aktor):
         p.catatan_surat_tugas = ""
         p.save(update_fields=["status_surat_tugas", "catatan_surat_tugas", "updated_at"])
         riwayat.catat(p, Aksi.SURAT_TUGAS_DIKIRIM, aktor, p.status)
-    # TODO (modul notifikasi): notif.notify_surat_tugas_dikirim(p)   -> ke Admin Biro PAKLN
+    notif.notify_surat_tugas_dikirim(p)
     return p
 
 
@@ -150,5 +153,5 @@ def kembalikan(pengajuan, aktor, catatan):
         p.catatan_surat_tugas = catatan
         p.save(update_fields=["status_surat_tugas", "catatan_surat_tugas", "updated_at"])
         riwayat.catat(p, Aksi.SURAT_TUGAS_DIKEMBALIKAN, aktor, p.status, catatan=catatan)
-    # TODO (modul notifikasi): notif.notify_surat_tugas_dikembalikan(p, catatan)   -> ke Admin Unor
+    notif.notify_surat_tugas_dikembalikan(p, catatan)
     return p

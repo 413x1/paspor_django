@@ -11,7 +11,9 @@ from django.utils.html import escape, format_html
 from django.utils.safestring import mark_safe
 
 from logs.utils import catat_riwayat
-from notifications.services import notify_approve_unor, notify_forward_bko, notify_info_bko, notify_reject_bpsdm
+from notifications.services import (
+    notify_approve_unor, notify_forward_bko, notify_info_bko, notify_reject_bpsdm, notify_surat_tugas_dibuka,
+)
 
 from . import alur, bko, persyaratan, report, riwayat, surat_tugas, tahap
 from .decorators import role_required, tolak_pengajuan_sendiri
@@ -152,9 +154,13 @@ def upload_dokumen(request, kode):
 def _buka_jalur_surat_tugas(pengajuan):
     """Izin Prinsip Menteri pertama yang diunggah membuka jalur Surat Tugas Pimpinan Unor (PDLN Tipe 2).
     Mengganti Izin Prinsip tidak membuka ulang; Admin BPSDM tidak menunggu Surat Tugas untuk meneruskan.
-    Notifikasi ke Admin Unor menyusul di modul notifikasi."""
+    Admin Unor diberi tahu setelah transaksi selesai."""
     with transaction.atomic():
-        return surat_tugas.buka_jalur(alur.kunci(pengajuan))
+        p = alur.kunci(pengajuan)
+        dibuka = surat_tugas.buka_jalur(p)
+    if dibuka:
+        notify_surat_tugas_dibuka(p)
+    return dibuka
 
 
 def _teruskan(request, pengajuan):
