@@ -186,6 +186,20 @@
       $(this).closest('[data-sidebar-group]').toggleClass('is-open');
     });
 
+    // Panah dropdown berbalik (v -> ^) selama daftar pilihan terbuka. CSS tidak bisa mendeteksi status
+    // dropdown bawaan browser, jadi kelas `is-open` dipasang di sini dan dilepas saat daftar tertutup.
+    // Opt-in per halaman: tambahkan kelas `panah-select` pada blok wrap_extra_class (lihat Manajemen User).
+    function tutupPanah($sel) { $sel.closest('.select').removeClass('is-open'); }
+    $(document)
+      .on('mousedown', '.panah-select .select select', function (e) {
+        if (e.which === 1) { $(this).closest('.select').toggleClass('is-open'); }
+      })
+      .on('change blur', '.panah-select .select select', function () { tutupPanah($(this)); })
+      .on('keydown', '.panah-select .select select', function (e) {
+        if (e.key === 'Escape' || e.key === 'Enter' || e.key === 'Tab') { tutupPanah($(this)); }
+        else if (e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { $(this).closest('.select').toggleClass('is-open'); }
+      });
+
     // Dropdown generik berbasis klik: [data-dropdown] (wadah) +
     // [data-dropdown-toggle] (tombol pemicu) + [data-dropdown-panel]
     // (opsional, panel yang klik di dalamnya tidak boleh ikut menutup
