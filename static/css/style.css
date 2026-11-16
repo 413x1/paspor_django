@@ -419,7 +419,9 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .input:focus, .textarea:focus, .select select:focus {
   border-color: var(--teal); box-shadow: 0 0 0 2px rgba(36, 129, 155, .25);
 }
-.select:not(.is-multiple):not(.is-loading)::after { border-color: var(--teal); }
+.select:not(.is-multiple):not(.is-loading)::after { border-color: var(--teal); transition: transform .15s ease; }
+/* Kelas `is-open` dipasang lewat JS saat daftar pilihan terbuka (panah v menjadi ^). */
+.select.is-open:not(.is-multiple):not(.is-loading)::after { transform: rotate(135deg); margin-top: -.1em; }
 .field:not(:last-child) { margin-bottom: 16px; }
 .column .field, .column .control { width: 100%; }
 .field .help.is-danger, .errorlist { color: var(--red); font-size: 13px; margin: 4px 0 0; padding: 0; list-style: none; }
