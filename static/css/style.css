@@ -998,6 +998,37 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .badge-auto.is-optional { background: var(--neutral-bg); color: var(--slate-600); }
 .tab-bar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
 .tab-bar .button.is-active { background: var(--navy-900); border-color: var(--navy-900); color: var(--white); }
+/* Kartu bertab (gaya map/folder): strip tab di atas, tab aktif menyatu dengan isi.
+   Pakai untuk memecah beberapa form/kartu satu halaman (mis. Manajemen User). */
+.tab-card { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 20px; }
+.tab-card-nav {
+  display: flex; gap: 2px; padding: 8px 8px 0; background: var(--bg);
+  /* Garis bawah strip sebagai inset shadow (bukan border) supaya tertutup tab
+     aktif — border akan ikut terpotong oleh overflow-x. */
+  box-shadow: inset 0 -1px 0 var(--line); border-radius: var(--radius) var(--radius) 0 0;
+  overflow-x: auto; scrollbar-width: thin;
+}
+.tab-card-link {
+  display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; white-space: nowrap;
+  padding: 10px 16px; font: inherit; font-size: 13.5px; font-weight: 600;
+  color: var(--slate-600); background: transparent; cursor: pointer;
+  border: 1px solid transparent; border-bottom: none; border-radius: 10px 10px 0 0;
+  transition: background var(--duration-fast) var(--ease-apple), color var(--duration-fast) var(--ease-apple);
+}
+.tab-card-link svg {
+  width: 18px; height: 18px; flex-shrink: 0;
+  fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.tab-card-link:hover { color: var(--slate-900); background: rgba(255, 255, 255, .6); }
+.tab-card-link.is-active {
+  color: var(--navy-900); background: var(--white); border-color: var(--line);
+}
+.tab-card-link:focus-visible { outline: 2px solid var(--navy-700); outline-offset: -2px; }
+.tab-card-body { padding: 22px; }
+@media (max-width: 640px) {
+  .tab-card-link { padding: 9px 12px; }
+  .tab-card-body { padding: 16px; }
+}
 .summary-grid.is-wide { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 .box.is-danger-soft { background: var(--red-bg); border-color: var(--red-line); }
 .box.is-warning-soft { background: var(--gold-bg); border-color: var(--gold); }

@@ -190,13 +190,13 @@ class TambahPegawaiManualTampilanTests(PegawaiManualBase):
         html = self.client.get(self.url).content.decode()
         self.assertIn("Tambah Pegawai Manual", html)
         self.assertIn('value="tambah_pegawai"', html)
-        # Kotak lama tetap ada: Pra-daftar via NIP (e-HRM) dan Tambah Akun Lokal.
+        # Kotak lama tetap ada: Pra-daftar via NIP (e-HRM) dan Tambah Akun Admin.
         self.assertIn("Pra-daftar Pegawai via NIP", html)
         self.assertIn("Cek di e-HRM", html)
-        self.assertIn("Tambah Akun Lokal", html)
+        self.assertIn("Tambah Akun Admin", html)
 
     def test_dropdown_akun_lokal_tetap_tanpa_pegawai(self):
-        """AB-05: form Tambah Akun Lokal tidak menawarkan peran Pegawai."""
+        """AB-05: form Tambah Akun Admin tidak menawarkan peran Pegawai."""
         pilihan = [nilai for nilai, _ in TambahUserForm().fields["role"].choices]
         self.assertNotIn("pegawai", pilihan)
 
