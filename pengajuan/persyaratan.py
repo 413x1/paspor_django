@@ -20,6 +20,8 @@ TAHAP_MODEL = {
     "bpsdm": DokumenBpsdm,
     "bko": DokumenBko,
     "pakln": DokumenPakln,
+    # Jalur paralel Surat Tugas Pimpinan Unor (PDLN Tipe 2): berkasnya tetap DokumenUnor.
+    "surat_tugas": DokumenUnor,
 }
 
 TAHAP_RELATED = {
@@ -28,6 +30,7 @@ TAHAP_RELATED = {
     "bpsdm": "dokumen_bpsdm",
     "bko": "dokumen_bko",
     "pakln": "dokumen_pakln",
+    "surat_tugas": "dokumen_unor",
 }
 
 TAHAP_LABEL = {
@@ -36,6 +39,7 @@ TAHAP_LABEL = {
     "bpsdm": "Admin BPSDM",
     "bko": "Admin BKO",
     "pakln": "Admin Biro PAKLN",
+    "surat_tugas": "Admin Unor",
 }
 
 
@@ -74,6 +78,13 @@ _PAKLN_PDLN = [
     Syarat("visa", wajib=_perlu_visa,
            keterangan="Wajib bila salah satu negara tujuan memerlukan visa; opsional bila tidak."),
     Syarat("nd_karo_unor", tanggal_surat=True, aksi="generate"),
+]
+
+# Surat Tugas Pimpinan Unor pada PDLN Tipe 2 (T2P dan T2L): diunggah Admin Unor SETELAH Izin Prinsip Menteri
+# diunggah Admin BPSDM, bukan lagi syarat tahap Unor (lihat `pengajuan.surat_tugas`). Tahap "surat_tugas" memakai
+# registri yang sama dengan tahap lain, sehingga unggah/hapus/kelengkapannya lewat `tahap.*` seperti biasa.
+_SURAT_TUGAS_T2 = [
+    Syarat("surat_tugas", "Surat Tugas Pimpinan Unor", tanggal_surat=True, aksi="format"),
 ]
 
 PERSYARATAN = {
@@ -122,11 +133,11 @@ PERSYARATAN = {
     ],
     ("T2P", "unor"): [
         Syarat("nd_sek_bpsdm", tanggal_surat=True, aksi="format"),
-        Syarat("surat_tugas", "Surat Tugas Pimpinan Unor", tanggal_surat=True, aksi="format"),
         Syarat("drh_ttd"),
     ],
+    ("T2P", "surat_tugas"): _SURAT_TUGAS_T2,
     ("T2P", "bpsdm"): [
-        Syarat("izin_prinsip"),
+        Syarat("izin_prinsip", tanggal_surat=True),
         Syarat("ikatan_dinas_ttd", aksi="generate"),
         Syarat("nd_kabiro_pakln", tanggal_surat=True, aksi="format"),
     ],
@@ -144,10 +155,10 @@ PERSYARATAN = {
     ],
     ("T2L", "unor"): [
         Syarat("nd_sek_bpsdm", tanggal_surat=True, aksi="format"),
-        Syarat("surat_tugas", "Surat Tugas Pimpinan Unor", tanggal_surat=True, aksi="format"),
     ],
+    ("T2L", "surat_tugas"): _SURAT_TUGAS_T2,
     ("T2L", "bpsdm"): [
-        Syarat("izin_prinsip"),
+        Syarat("izin_prinsip", tanggal_surat=True),
         Syarat("nd_kabiro_pakln", tanggal_surat=True, aksi="format"),
     ],
     ("T2L", "pakln"): _PAKLN_PDLN,

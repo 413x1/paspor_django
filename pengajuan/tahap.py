@@ -21,12 +21,14 @@ FORM_TAHAP = {
     "bpsdm": DokumenBpsdmForm,
     "bko": DokumenBkoForm,
     "pakln": DokumenPaklnForm,
+    "surat_tugas": DokumenUnorForm,
 }
 
 _FLAG_TEMPLATE = {
     "pegawai": "untuk_pegawai",
     "unor": "untuk_admin_unor",
     "bpsdm": "untuk_admin_bpsdm",
+    "surat_tugas": "untuk_admin_unor",
 }
 
 

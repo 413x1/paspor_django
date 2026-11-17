@@ -10,6 +10,9 @@
 > - **v2 — Lanjutan: Admin BKO** ([§8](#8-versi-lanjutan-v2--sk-tubel-oleh-admin-bko)): **sudah diimplementasikan**
 >   (rencana: [PDLN_T2_PENDIDIKAN_V2_IMPLEMENTATION_PLAN.MD](PDLN_T2_PENDIDIKAN_V2_IMPLEMENTATION_PLAN.MD)).
 >   §1–§7 kini catatan historis v1; bila berbeda, §8 yang berlaku.
+> - **v3 — Surat Tugas Pimpinan Unor setelah Izin Prinsip** ([§9](#9-versi-lanjutan-v3--surat-tugas-pimpinan-unor-setelah-izin-prinsip)):
+>   **sudah diimplementasikan**, berlaku untuk T2P dan T2L. Bagian lama yang menyebut Surat Tugas di tahap Unor
+>   (§3 tahap 2, §4.2, §4.6, §8.5) kini digantikan §9; bila berbeda, **yang terbaru berlaku**.
 >
 > **Sumber kebenaran di kode:**
 > - Urutan tahap: `pengajuan/alur.py` (`ALUR["T2P"]`)
@@ -176,7 +179,7 @@ diunggah (`persyaratan.dokumen_kurang`).
 | # | Kode jenis | Dokumen | Catatan |
 |:-:|---|---|---|
 | 1 | `nd_sek_bpsdm` | Nota Dinas Sekretaris Unor ke Sekretaris BPSDM | TS, F |
-| 2 | `surat_tugas` | Surat Tugas Pimpinan Unor | TS, F |
+| 2 | `surat_tugas` | Surat Tugas Pimpinan Unor | TS, F — **v3: dipindah ke jalur Surat Tugas ([§9](#9-versi-lanjutan-v3--surat-tugas-pimpinan-unor-setelah-izin-prinsip))** |
 | 3 | `drh_ttd` | DRH ttd Pimpinan Unor | |
 
 Dokumen Pendukung Unor (`DokumenUnorPendukung`) **tidak** dipakai untuk PDLN.
@@ -213,7 +216,7 @@ Dokumen Pendukung PAKLN (`DokumenPaklnPendukung`) **tidak** dipakai untuk PDLN.
 | Aktor | Jumlah dokumen | Dokumen |
 |---|:-:|---|
 | Pegawai (sebelum kirim) | 6 | LoA, LoG, Surat Pernyataan, DRH, Perjanjian Ikatan Dinas, ND Pimpinan Unit Kerja |
-| Admin Unor | 3 | ND Sekretaris Unor ke Sekretaris BPSDM, Surat Tugas Pimpinan Unor, DRH ttd Pimpinan Unor |
+| Admin Unor | 3 | ND Sekretaris Unor ke Sekretaris BPSDM, DRH ttd Pimpinan Unor, dan Surat Tugas Pimpinan Unor *(v3: diunggah setelah Izin Prinsip lewat jalur Surat Tugas, [§9](#9-versi-lanjutan-v3--surat-tugas-pimpinan-unor-setelah-izin-prinsip))* |
 | Admin BPSDM | 3 | Izin Prinsip Menteri, Perjanjian Ikatan Dinas ttd full / SK Tubel, ND Sekretaris BPSDM ke Kabiro PAKLN |
 | Admin Biro PAKLN | 5–6 | SP Setneg, Paspor Dinas, Exit Permit, (Rekomendasi Visa), SK Tugas Belajar, ND Karo PAKLN ke Sekretaris Unor |
 | Pegawai (setelah selesai) | 1 | Laporan PDLN |
@@ -410,7 +413,7 @@ berjenjang v1 tidak berubah.
 | Aktor | Dokumen | Perubahan dari v1 |
 |---|---|---|
 | Pegawai | LoA, LoG, Surat Pernyataan, DRH, Perjanjian Ikatan Dinas, ND Pimpinan Unit Kerja | — |
-| Admin Unor | ND Sekretaris Unor ke Sekretaris BPSDM, Surat Tugas Pimpinan Unor, DRH ttd Pimpinan Unor | — |
+| Admin Unor | ND Sekretaris Unor ke Sekretaris BPSDM, Surat Tugas Pimpinan Unor, DRH ttd Pimpinan Unor | v3: Surat Tugas pindah ke jalur paralel setelah Izin Prinsip ([§9](#9-versi-lanjutan-v3--surat-tugas-pimpinan-unor-setelah-izin-prinsip)) |
 | Admin BPSDM | Izin Prinsip Menteri, **Perjanjian Ikatan Dinas ttd full**, ND Sekretaris BPSDM ke Kabiro PAKLN | Label `ikatan_dinas_ttd` tanpa "/ SK Tugas Belajar" |
 | **Admin BKO** *(baru)* | **SK Tugas Belajar** (`sk_tubel`, TS) | Pindah dari Admin Biro PAKLN |
 | Admin Biro PAKLN | SP Setneg, Paspor Dinas, Exit Permit, (Rekomendasi Visa), ND Karo PAKLN ke Sekretaris Unor | `sk_tubel` dihapus dari daftar PAKLN |
@@ -509,3 +512,139 @@ Admin PAKLN hanya tampil bagi Admin Biro PAKLN).
 | 11 | Siapa yang melihat catatan **Lanjutkan tanpa SK Tubel**? | **Hanya Admin Biro PAKLN.** Catatan tetap wajib diisi sebagai jejak internal. |
 
 Tidak ada pertanyaan terbuka tersisa untuk v2.
+
+
+---
+
+## 9. Versi Lanjutan (v3) — Surat Tugas Pimpinan Unor setelah Izin Prinsip
+
+> **Status: sudah diimplementasikan** (`pengajuan/surat_tugas.py`, migrasi `pengajuan`
+> 0031–0032 dan `notifications` 0010). Berlaku **sama untuk T2P dan T2L**. Non-Kedinasan, PDLN Tipe 1, dan Tipe 3
+> tidak berubah. Rancangan:
+> [RANCANGAN_UPDATE_AJUAN_TP2_PENDIDIKAN_TP2_PELATIHAN.md](../perancangan/RANCANGAN_UPDATE_AJUAN_TP2_PENDIDIKAN_TP2_PELATIHAN.md).
+> Peran BPSDM untuk Izin Prinsip dan urutan status **tidak berubah**.
+
+### 9.1 Ringkasan perubahan
+
+| Aspek | v1/v2 (sebelumnya) | v3 (sekarang) |
+|---|---|---|
+| Waktu unggah Surat Tugas Pimpinan Unor | Tahap Admin Unor (`proses`), sebelum diteruskan ke BPSDM | **Setelah** Admin BPSDM mengunggah Izin Prinsip Menteri, selama status `proses_bpsdm` atau `proses_pakln` |
+| Pengunggah / penyimpanan | Admin Unor, `DokumenUnor` | Tetap Admin Unor, tetap `DokumenUnor` jenis `surat_tugas` |
+| Syarat Admin Unor meneruskan ke BPSDM | ND ke Sekretaris BPSDM, Surat Tugas, DRH ttd (T2P) | ND ke Sekretaris BPSDM, DRH ttd (T2P) — **tanpa** Surat Tugas |
+| Syarat Admin BPSDM meneruskan | Dokumen BPSDM lengkap | Sama — **tidak menunggu** Surat Tugas. `izin_prinsip` kini wajib **Tanggal Surat** |
+| Pemeriksa Surat Tugas | Admin BPSDM lalu Biro PAKLN lewat pratinjau | **Biro PAKLN**: dapat **mengembalikan** Surat Tugas ke Admin Unor dengan catatan wajib, tanpa mengubah status pengajuan |
+| Unggah dokumen PAKLN (SP Setneg dst.) dan **Selesai** | Terbuka sejak diteruskan ke Biro PAKLN | **Terkunci** sampai Surat Tugas `dikirim` dan tidak sedang `dikembalikan`; Biro PAKLN tetap dapat meninjau berkas |
+| Format Surat Tugas | Berkas statis (`DokumenTemplate`, Manajemen Template Biro PAKLN) | **Tidak berubah** — format otomatis (PDF) sempat dibuat lalu ditiadakan atas arahan review PR ([§9.5](#95-format-surat-tugas)) |
+| Notifikasi | — | 3 event baru (§9.6) |
+
+Status utama tetap lima tahap (`belum → proses → proses_bpsdm → proses_pakln → selesai`); Surat Tugas berjalan di
+**jalur paralel** `Pengajuan.status_surat_tugas`, sama seperti jalur BKO (§8) — tidak ada status pengajuan baru.
+
+### 9.2 Jalur Surat Tugas (`Pengajuan.status_surat_tugas`)
+
+| Nilai | Arti | Dicapai oleh |
+|---|---|---|
+| *(kosong)* | Jalur belum dibuka (Izin Prinsip belum diunggah) | — |
+| `menunggu` | Menunggu Admin Unor mengunggah dan mengirim | Admin BPSDM mengunggah Izin Prinsip **pertama** |
+| `dikirim` | Sudah dikirim ke Biro PAKLN; berkas terkunci | Admin Unor **Kirim** / **Kirim Ulang** |
+| `dikembalikan` | Dikembalikan Biro PAKLN dengan catatan; berkas terbuka | Biro PAKLN **Kembalikan Surat Tugas** |
+
+```
+(kosong) ──Izin Prinsip diunggah──► menunggu ──Admin Unor kirim──► dikirim
+                                                                      │
+                          dikembalikan ◄──Biro PAKLN kembalikan───────┘
+                               │
+                               └──Admin Unor kirim ulang──► dikirim
+```
+
+Semua perubahan status lewat `pengajuan/surat_tugas.py` (row lock `alur.kunci`, pola `bko.py`). Jalur hanya dapat
+diubah saat `status` = `proses_bpsdm`/`proses_pakln`, dibekukan saat permohonan pembatalan terbuka, dan larangan
+memproses pengajuan sendiri (AB-12) berlaku. Mengganti Izin Prinsip **tidak** membuka ulang jalur.
+
+### 9.3 Langkah per aktor
+
+| Aktor | Tahap | Tindakan |
+|---|---|---|
+| Admin Unor | `proses` | Unggah ND ke Sekretaris BPSDM (+ DRH ttd untuk T2P), **Teruskan** — tanpa Surat Tugas |
+| Admin BPSDM | `proses_bpsdm` | Unggah **Izin Prinsip** + Tanggal Surat → jalur `menunggu`, Admin Unor diberi tahu. **Teruskan** ke Biro PAKLN (dan BKO pada T2P) tanpa menunggu |
+| Admin Unor | `proses_bpsdm`/`proses_pakln` | Halaman **Surat Tugas** (`/admin-unor/<kode>/surat-tugas/`): unduh Template Dokumen (bila ada), unggah/ganti/hapus berkas, **Kirim** |
+| Biro PAKLN | `proses_pakln` | Meninjau berkas. Bila Surat Tugas tidak sesuai: **Kembalikan Surat Tugas** (catatan wajib). Setelah `dikirim`: unggah dokumen PAKLN, lalu **Selesai** |
+
+### 9.4 Penguncian
+
+| Aksi | Syarat |
+|---|---|
+| Admin Unor mengunggah/mengganti/menghapus Surat Tugas | Jalur `menunggu` atau `dikembalikan`, status pengajuan `proses_bpsdm`/`proses_pakln`, tidak dibekukan |
+| Admin Unor mengirim | Berkas ada; jalur `menunggu`/`dikembalikan` |
+| Biro PAKLN mengembalikan | Jalur `dikirim` dan pengajuan di `proses_pakln` |
+| Biro PAKLN mengunggah/menghapus dokumen PAKLN | Jalur `dikirim` (T2P/T2L); dokumen yang sudah ada tetap tersimpan saat dikembalikan |
+| Biro PAKLN **Selesai** / **Lanjutkan tanpa SK Tubel** | Jalur `dikirim` (di samping syarat BKO untuk T2P). **Hentikan pengajuan** tetap dapat dilakukan |
+
+### 9.5 Format Surat Tugas
+
+Format Surat Tugas diambil dari **Template Dokumen** (Manajemen Template Biro PAKLN, `untuk_admin_unor`), seperti dokumen
+berpenanda **F** lainnya; halaman Surat Tugas Admin Unor menampilkan daftar template yang tersedia. Rancangan semula meminta format
+yang **dibangkitkan sistem** (PDF, WeasyPrint) dan terisi Tanggal Izin Prinsip. Fitur itu sempat diimplementasikan lalu **dihapus
+atas arahan review PR**. **Tanggal Surat Izin Prinsip** tetap wajib, tersimpan, dan ditampilkan di halaman Surat Tugas.
+
+### 9.6 Notifikasi
+
+| Kode | Pemicu | Penerima |
+|---|---|---|
+| `NOTIF_09A_SURAT_TUGAS_DIBUKA` | Izin Prinsip pertama diunggah Admin BPSDM | Admin Unor unit pengajuan |
+| `NOTIF_09B_SURAT_TUGAS_DIKIRIM` | Admin Unor mengirim / mengirim ulang | Admin Biro PAKLN |
+| `NOTIF_09C_SURAT_TUGAS_DIKEMBALIKAN` | Biro PAKLN mengembalikan (catatan wajib) | Admin Unor unit pengajuan |
+
+Notifikasi ke peran admin otomatis juga diemailkan. Notifikasi dikirim setelah transaksi selesai.
+
+### 9.7 Timeline, riwayat, dan dasbor
+
+- **Timeline Proses:** teks tahap Unor tidak lagi menyebut Surat Tugas; tahap BPSDM/Biro PAKLN menjelaskan jalurnya. Sub-keterangan
+  "Surat Tugas Pimpinan Unor (Admin Unor): Menunggu… / Dikirim ke Biro PAKLN (tgl) / Dikembalikan Biro PAKLN, menunggu perbaikan"
+  tampil berdampingan dengan keterangan BKO (T2P). Catatan pengembalian **tidak** ditampilkan di timeline (dilihat Pegawai).
+- **Riwayat:** aksi `surat_tugas_dikirim` (→, hijau) dan `surat_tugas_dikembalikan` (↩, kuning). Pegawai melihat label netral
+  dan tidak melihat catatan.
+- **Dasbor** Admin Unor/BPSDM/Biro PAKLN: penanda **"Menunggu Surat Tugas"** dan **"Surat Tugas dikembalikan"**; dasbor Admin Unor
+  juga memiliki tombol **Surat Tugas →** (kuning bila perlu tindakan).
+
+### 9.8 Kasus khusus
+
+| Kasus | Perlakuan |
+|---|---|
+| Biro PAKLN menilai tidak sesuai | Surat Tugas dikembalikan; status tetap `proses_pakln`; dokumen PAKLN terkunci lagi sampai dikirim ulang |
+| Dikembalikan setelah sebagian dokumen PAKLN diunggah | Dokumen tetap tersimpan, tidak dapat diubah sampai dikirim ulang |
+| Admin BPSDM mengembalikan ke Admin Unor | Jalur dan berkasnya tetap; Surat Tugas yang sudah dikirim tetap terkunci |
+| Biro PAKLN mengembalikan ke Admin BPSDM | Jalur tidak terpengaruh |
+| Izin Prinsip diganti sebelum diteruskan | Surat Tugas tidak perlu diunggah ulang; jalur tidak dibuka ulang |
+| Permohonan pembatalan terbuka | Unggah, hapus, kirim, dan kembalikan ditolak (dibekukan) |
+| Admin Unor juga pengaju (role ganda) | Ditolak (AB-12) |
+| Pengajuan lama | Migrasi data `0032`: Surat Tugas yang sudah diunggah di tahap Unor → `dikirim` (memakai `update()`, `updated_at` tidak berubah) |
+
+### 9.9 Dampak ke kode (diimplementasikan)
+
+| Area | Perubahan |
+|---|---|
+| `pengajuan/models.py` + migrasi 0031 | `Pengajuan.status_surat_tugas` (`StatusSuratTugas`), `catatan_surat_tugas`, properti `pakai_surat_tugas_paralel`/`track_surat_tugas_terbuka`; `RiwayatPengajuan.Aksi`: `surat_tugas_dikirim`, `surat_tugas_dikembalikan` |
+| Migrasi 0032 | Data lama → `dikirim` |
+| `pengajuan/surat_tugas.py` *(baru)* | State machine (`buka_jalur`, `kirim`, `kembalikan`), pemeriksaan penguncian, notifikasi, penanda dasbor, keterangan timeline |
+| `pengajuan/persyaratan.py` / `tahap.py` | `surat_tugas` keluar dari `(T2P/T2L, "unor")`; tahap baru `"surat_tugas"` (`DokumenUnor`); `izin_prinsip` ber-`tanggal_surat` |
+| `pengajuan/views_bpsdm.py` | Unggah Izin Prinsip pertama membuka jalur + notifikasi |
+| `pengajuan/views_unor.py`, `urls_unor.py`, `templates/unor/surat_tugas.html` | Halaman Surat Tugas, tombol dasbor |
+| `pengajuan/views_pakln.py`, `templates/pakln/*.html`, `partials/_status_surat_tugas.html` | Kunci unggah/hapus/Selesai, aksi Kembalikan, banner status |
+| `notifications/` + migrasi 0010 | Event 09A–09C |
+| `pengajuan/alur.py`, `riwayat.py`, `partials/_timeline_proses.html`, `static/css/style.css` | Timeline, ikon riwayat, penanda dasbor |
+
+### 9.10 Pengujian
+
+Berkas: `tests_surat_tugas.py` (state machine), `tests_surat_tugas_alur.py` (registri & Izin Prinsip), `tests_surat_tugas_unor.py`
+(halaman Unor), `tests_surat_tugas_pakln.py` (sisi Biro PAKLN), `tests_surat_tugas_notif.py` (notifikasi/email),
+`tests_surat_tugas_tampilan.py` (timeline/riwayat/dasbor), dan
+**`tests_surat_tugas_penerimaan.py`** (perjalanan lengkap T2P/T2L + pengajuan lama). Peta kriteria penerimaan → tes ada pada
+`PETA_KRITERIA` di berkas terakhir. Helper tes lama (`tests_pdln.py`: `surat_tugas_dikirim`) menyesuaikan `pakln_selesai`.
+
+### 9.11 Keputusan
+
+Tujuh pertanyaan terbuka pada rancangan dijawab pemilik proses (10 Nov 2026): dokumen BPSDM tidak menunggu Surat Tugas;
+tidak ada aksi "minta perbaikan" bagi Admin BPSDM; penggantian Izin Prinsip tidak mewajibkan unggah ulang Surat Tugas; format
+memuat **tanggal** Izin Prinsip saja *(format otomatis kemudian ditiadakan atas arahan review PR, §9.5)*; tidak ada batas waktu unggah; Surat Tugas yang dikirim menjadi syarat Selesai;
+unggah dokumen PAKLN menunggu Surat Tugas dikirim (T2P dan T2L). Rinciannya ada di dokumen rancangan.

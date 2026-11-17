@@ -357,10 +357,14 @@ Non-Dinas tetap: `cuti`, `iln`, `notadinas`, `pendukung` (tidak berubah).
 | Kode jenis | Dokumen | T1 | T3 | T2P | T2L |
 |---|---|:-:|:-:|:-:|:-:|
 | `izin_prinsip` | Izin Prinsip Menteri (T3: "Izin Prinsip/Disposisi Menteri") | ✅ | ✅ | | |
-| `surat_tugas` | Surat Tugas / Surat Tugas Pimpinan Unor (F, TS) | ✅ | ✅ | ✅ | ✅ |
+| `surat_tugas` | Surat Tugas / Surat Tugas Pimpinan Unor (F, TS) | ✅ | ✅ | ↗ | ↗ |
 | `nd_kabiro_pakln` | Nota Dinas Sekretaris Unor ke Kepala Biro PAKLN (F, TS) | ✅ | ✅ | | |
 | `nd_sek_bpsdm` | Nota Dinas Sekretaris Unor ke Sekretaris BPSDM (F, TS) | | | ✅ | ✅ |
 | `drh_ttd` | DRH ttd Pimpinan Unor | | | ✅ | |
+
+↗ **T2P/T2L:** `surat_tugas` **bukan** syarat tahap Unor. Admin Unor mengunggahnya lewat jalur paralel Surat Tugas yang
+dibuka oleh unggahan Izin Prinsip BPSDM, dan Biro PAKLN menunggu Surat Tugas dikirim sebelum mengunggah dokumen PAKLN dan
+menyelesaikan pengajuan — lihat [PDLN_TIPE_2_FLOW.MD §9](PDLN_TIPE_2_FLOW.MD#9-versi-lanjutan-v3--surat-tugas-pimpinan-unor-setelah-izin-prinsip).
 
 Non-Dinas tetap: `disposisi`, `iln_pimpinan`, `nd_biropakln` + `DokumenUnorPendukung`.
 
@@ -368,7 +372,7 @@ Non-Dinas tetap: `disposisi`, `iln_pimpinan`, `nd_biropakln` + `DokumenUnorPendu
 
 | Kode jenis | Dokumen | T2P | T2L |
 |---|---|:-:|:-:|
-| `izin_prinsip` | Izin Prinsip Menteri | ✅ | ✅ |
+| `izin_prinsip` | Izin Prinsip Menteri (TS — Tanggal Surat wajib; unggahan pertama membuka jalur Surat Tugas) | ✅ | ✅ |
 | `ikatan_dinas_ttd` | Perjanjian Ikatan Dinas ttd full / SK Tugas Belajar (G) | ✅ | |
 | `nd_kabiro_pakln` | Nota Dinas Sekretaris BPSDM ke Kepala Biro PAKLN (F, TS) | ✅ | ✅ |
 

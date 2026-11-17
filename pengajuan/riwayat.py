@@ -59,6 +59,8 @@ _TONE = {
     Aksi.SK_TUBEL_DIUNGGAH: "success",
     Aksi.DITUTUP_BKO: "warning",
     Aksi.SELESAI_TANPA_SK_TUBEL: "success",
+    Aksi.SURAT_TUGAS_DIKIRIM: "success",
+    Aksi.SURAT_TUGAS_DIKEMBALIKAN: "warning",
     Aksi.LAPORAN_DIKEMBALIKAN: "warning",
     Aksi.LAPORAN_DISETUJUI: "success",
     Aksi.PEMBATALAN_DIAJUKAN: "warning",
@@ -82,6 +84,8 @@ _IKON = {
     Aksi.DITUTUP_BKO: "■",
     Aksi.DIBUKA_ULANG_BKO: "↻",
     Aksi.SELESAI_TANPA_SK_TUBEL: "✓",
+    Aksi.SURAT_TUGAS_DIKIRIM: "→",
+    Aksi.SURAT_TUGAS_DIKEMBALIKAN: "↩",
     Aksi.LAPORAN_DIUNGGAH: "↑",
     Aksi.LAPORAN_DIKEMBALIKAN: "↩",
     Aksi.LAPORAN_DISETUJUI: "✓",
@@ -157,6 +161,8 @@ def _label_aksi(user, r):
         return "Dikembalikan ke Admin Unor untuk perbaikan"
     if r.aksi == Aksi.DITERUSKAN_PAKLN and r.aktor_role == User.Role.ADMIN_BPSDM:
         return "Diteruskan BPSDM ke Biro PAKLN"
+    if r.aksi == Aksi.SURAT_TUGAS_DIKEMBALIKAN and user.role == User.Role.PEGAWAI:
+        return "Surat Tugas dikembalikan untuk perbaikan"
     if r.aksi == Aksi.DIBUKA_ULANG_BKO:
         return f"Pemrosesan BKO dibuka kembali oleh {_LABEL_PERAN.get(r.aktor_role, r.aktor_role)}"
     return r.get_aksi_display()

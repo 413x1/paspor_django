@@ -42,6 +42,7 @@ CRUMBS = {
     "unor:dashboard": ("Dasbor", None),
     "unor:preview": ("Pratinjau {kode}", "unor:dashboard"),
     "unor:upload_dokumen": ("Administrasi Unor", "unor:preview"),
+    "unor:surat_tugas": ("Surat Tugas {kode}", "unor:dashboard"),
     "unor:ajukan_pembatalan": ("Ajukan Pembatalan {kode}", "unor:pembatalan"),
     "unor:pembatalan": ("Pembatalan", "unor:dashboard"),
     "unor:putuskan_pembatalan": ("Putuskan Pembatalan", "unor:pembatalan"),

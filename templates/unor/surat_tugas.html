@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load pengajuan_extras %}
+{% block title %}Surat Tugas Pimpinan Unor{% endblock %}
+{% block wrap_extra_class %} narrow{% endblock %}
+
+{% block content %}
+{% if pengajuan.status_surat_tugas == "dikembalikan" %}
+  <div class="notification paspor-msg is-warning">
+    <strong>⚠ Surat Tugas dikembalikan Biro PAKLN untuk diperbaiki:</strong> {{ pengajuan.catatan_surat_tugas }}
+  </div>
+{% elif pengajuan.status_surat_tugas == "dikirim" %}
+  <div class="notification paspor-msg is-success">
+    ✓ Surat Tugas sudah dikirim ke Biro PAKLN dan terkunci, kecuali dikembalikan oleh Biro PAKLN.
+  </div>
+{% elif terkunci %}
+  <div class="notification paspor-msg is-warning">{{ terkunci }}</div>
+{% endif %}
+
+<div class="box is-info-soft">
+  <div class="section-title" style="font-size:14px;margin-bottom:6px;">Izin Prinsip Menteri</div>
+  {% if izin_prinsip %}
+    <p>✓ Diunggah Admin BPSDM — {{ izin_prinsip.uploaded_at|date:"d M Y H:i" }}
+      {% if izin_prinsip.tanggal_surat %}· Tanggal Surat: <strong>{{ izin_prinsip.tanggal_surat|date:"d M Y" }}</strong>{% endif %}</p>
+    <p class="helptext">Surat Tugas diterbitkan setelah Izin Prinsip Menteri.</p>
+  {% else %}
+    <p>Belum diunggah Admin BPSDM. Surat Tugas baru dapat diunggah setelah Izin Prinsip Menteri ada.</p>
+  {% endif %}
+</div>
+
+{% if templates %}
+<div class="box is-info-soft">
+  <div class="section-title" style="font-size:14px;margin-bottom:10px;">📄 Template Dokumen Tersedia</div>
+  {% for t in templates %}
+    <div class="doc-row" style="padding:10px 14px;background:var(--white);">
+      <div class="info">
+        <h4 style="font-size:13.5px;">{{ t.nama }}</h4>
+        {% if t.keterangan %}<p>{{ t.keterangan }}</p>{% endif %}
+      </div>
+      <div class="actions">
+        <a href="{{ t.file.url }}" target="_blank" rel="noopener" class="button is-small">⬇ Unduh</a>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="box">
+  <div class="section-title">Surat Tugas Pimpinan Unor — {{ pengajuan.kode }}</div>
+  <p class="sub is-title-sub">{{ pengajuan.jenis_label }} · status jalur:
+    <strong>{% if pengajuan.status_surat_tugas %}{{ pengajuan.get_status_surat_tugas_display }}{% else %}Belum dibuka{% endif %}</strong>
+    · pengajuan: {{ pengajuan.get_status_display }}</p>
+
+  {% include "partials/_dokumen_tahap.html" with hapus_url="unor:hapus_surat_tugas" %}
+
+  {% if not terkunci %}
+  <form method="post">
+    {% csrf_token %}
+    <div class="agree-box">
+      <input type="checkbox" id="agree" name="agree" required data-agree {% if not bisa_kirim %}disabled{% endif %}>
+      <label for="agree">Berkas Surat Tugas Pimpinan Unor sudah benar dan siap dikirim ke Biro PAKLN.</label>
+    </div>
+    <button type="submit" name="kirim" class="button is-warning is-fullwidth" data-agree-submit
+      {% if not bisa_kirim %}data-locked{% endif %} disabled>
+      {% if pengajuan.status_surat_tugas == "dikembalikan" %}Kirim Ulang ke Biro PAKLN{% else %}Kirim ke Biro PAKLN{% endif %} →
+    </button>
+    {% if not bisa_kirim %}
+      <p class="helptext">Unggah berkas Surat Tugas untuk dapat mengirim.</p>
+    {% else %}
+      <p class="helptext">Centang pernyataan di atas untuk mengirim. Setelah dikirim, berkas terkunci kecuali dikembalikan Biro PAKLN.</p>
+    {% endif %}
+  </form>
+  {% endif %}
+</div>
+
+{% include "partials/_riwayat_pengajuan.html" %}
+
+<div class="button-row">
+  <a href="{% url 'unor:dashboard' %}" class="button">Kembali ke Dasbor</a>
+</div>
+{% endblock %}

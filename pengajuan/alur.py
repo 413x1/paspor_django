@@ -58,18 +58,20 @@ _DESKRIPSI = {
     },
     "T2P": {
         S.BELUM: "Pengisian Formulir Detail Tugas Belajar dan unggah berkas untuk disampaikan ke Unor.",
-        S.PROSES: "Permohonan Surat Tugas Pimpinan Unor dan penyampaian berkas ke Admin BPSDM.",
-        S.PROSES_BPSDM: "Permohonan Izin Prinsip Menteri, penandatanganan Perjanjian Ikatan Dinas, "
-                        "penyampaian berkas ke Biro PAKLN dan Admin BKO.",
-        S.PROSES_PAKLN: "Proses SP Setneg, Paspor Dinas, Exit Permit, Rekomendasi Visa (jika diperlukan); "
-                        "SK Tugas Belajar oleh Admin BKO.",
+        S.PROSES: "Penyampaian Nota Dinas ke Sekretaris BPSDM dan DRH ttd Pimpinan Unor ke Admin BPSDM.",
+        S.PROSES_BPSDM: "Permohonan Izin Prinsip Menteri (membuka penerbitan Surat Tugas Pimpinan Unor), "
+                        "penandatanganan Perjanjian Ikatan Dinas, penyampaian berkas ke Biro PAKLN dan Admin BKO.",
+        S.PROSES_PAKLN: "Proses SP Setneg, Paspor Dinas, Exit Permit, Rekomendasi Visa (jika diperlukan) setelah "
+                        "Surat Tugas Pimpinan Unor diterima; SK Tugas Belajar oleh Admin BKO.",
         S.SELESAI: "Seluruh proses administrasi PDLN telah rampung — unggah Laporan PDLN setelah perjalanan.",
     },
     "T2L": {
         S.BELUM: "Pengisian Formulir Detail Pelatihan dan unggah berkas untuk disampaikan ke Unor.",
-        S.PROSES: "Permohonan Surat Tugas Pimpinan Unor dan penyampaian berkas ke Admin BPSDM.",
-        S.PROSES_BPSDM: "Permohonan Izin Prinsip Menteri dan penyampaian berkas ke Biro PAKLN.",
-        S.PROSES_PAKLN: "Proses SP Setneg, Paspor Dinas, Exit Permit, dan Rekomendasi Visa (jika diperlukan).",
+        S.PROSES: "Penyampaian Nota Dinas ke Sekretaris BPSDM dan berkas ke Admin BPSDM.",
+        S.PROSES_BPSDM: "Permohonan Izin Prinsip Menteri (membuka penerbitan Surat Tugas Pimpinan Unor) dan "
+                        "penyampaian berkas ke Biro PAKLN.",
+        S.PROSES_PAKLN: "Proses SP Setneg, Paspor Dinas, Exit Permit, dan Rekomendasi Visa (jika diperlukan) "
+                        "setelah Surat Tugas Pimpinan Unor diterima.",
         S.SELESAI: "Seluruh proses administrasi PDLN telah rampung — unggah Laporan PDLN setelah perjalanan.",
     },
 }
@@ -141,6 +143,19 @@ def _sub_bko(pengajuan, status):
     return None, None
 
 
+def _sub_surat_tugas(pengajuan, status):
+    """Sub-keterangan jalur Surat Tugas Pimpinan Unor (T2P/T2L) pada tahap tempat pengajuan berada: BPSDM saat
+    jalur dibuka, lalu Biro PAKLN (termasuk setelah selesai) — tidak ditampilkan dobel di dua tahap."""
+    if not pengajuan.track_surat_tugas_terbuka:
+        return None, None
+    di_bpsdm = status == S.PROSES_BPSDM and pengajuan.status == S.PROSES_BPSDM
+    di_pakln = status == S.PROSES_PAKLN and pengajuan.status in (S.PROSES_PAKLN, S.SELESAI)
+    if di_bpsdm or di_pakln:
+        from .surat_tugas import keterangan_timeline
+        return keterangan_timeline(pengajuan)
+    return None, None
+
+
 def timeline(pengajuan):
     """Tahap Timeline Proses: list dict {status, title, desc, tanggal,
     state}. `state` ∈ done/current/upcoming/cancelled. Pengajuan yang
@@ -172,12 +187,15 @@ def timeline(pengajuan):
             if laporan and laporan.status == LaporanPdln.Status.DISETUJUI:
                 state = "done"
         sub, sub_tone = _sub_bko(pengajuan, status)
+        sub_st, tone_st = _sub_surat_tugas(pengajuan, status)
         hasil.append({
             "status": status,
             "title": _JUDUL[status],
             "desc": desc,
             "sub": sub,
             "sub_tone": sub_tone,
+            # Semua keterangan jalur paralel pada tahap ini (BKO dan Surat Tugas), urut tampil.
+            "subs": [(teks, tone) for teks, tone in ((sub, sub_tone), (sub_st, tone_st)) if teks],
             "tanggal": _tanggal(pengajuan, status),
             "state": state,
         })

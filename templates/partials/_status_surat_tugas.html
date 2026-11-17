@@ -1,0 +1,7 @@
+{# Banner jalur Surat Tugas Pimpinan Unor (PDLN Tipe 2) bagi Biro PAKLN — lihat pengajuan/surat_tugas.py. #}
+{# Context: alasan_menunggu_st (kosong bila Surat Tugas sudah dikirim atau pengajuan bukan Tipe 2). #}
+{% if alasan_menunggu_st %}
+  <div class="notification paspor-msg is-warning">
+    <strong>⏳ Surat Tugas Pimpinan Unor:</strong> {{ alasan_menunggu_st }}
+  </div>
+{% endif %}

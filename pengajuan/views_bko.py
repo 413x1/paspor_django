@@ -65,7 +65,7 @@ def dashboard_data(request):
             escape(detail.perguruan_tinggi if detail and detail.perguruan_tinggi else "—"),
             p.tgl_berangkat.strftime("%d %b %Y") if p.tgl_berangkat else "—",
             p.tgl_masuk_bko.strftime("%d %b %Y") if p.tgl_masuk_bko else "—",
-            status_html(p, dengan_bko=False),
+            status_html(p, dengan_bko=False, dengan_surat_tugas=False),
             format_html('<span class="tag bko-status is-{}">{}</span>', p.status_bko, p.get_status_bko_display()),
             aksi,
         ]

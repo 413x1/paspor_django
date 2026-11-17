@@ -49,6 +49,13 @@ class Pengajuan(models.Model):
         DIUNGGAH = "diunggah", "SK Tubel Diunggah"
         DITUTUP = "ditutup", "Ditutup Admin BKO"
 
+    class StatusSuratTugas(models.TextChoices):
+        """Status jalur paralel Surat Tugas Pimpinan Unor (PDLN Tipe 2: T2P & T2L) — terpisah dari
+        `status`. Kosong = jalur belum dibuka (Izin Prinsip belum diunggah Admin BPSDM)."""
+        MENUNGGU = "menunggu", "Menunggu Surat Tugas"
+        DIKIRIM = "dikirim", "Surat Tugas Dikirim"
+        DIKEMBALIKAN = "dikembalikan", "Surat Tugas Dikembalikan"
+
     kode = models.CharField("Kode Pengajuan", max_length=25, unique=True, blank=True)
     pegawai = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="pengajuan_list"
@@ -120,6 +127,12 @@ class Pengajuan(models.Model):
     # Alasan Admin BKO menutup pemrosesan — terlihat semua pihak terlibat.
     catatan_bko = models.TextField("Catatan Penutupan BKO", blank=True)
     tgl_bko_ditutup = models.DateField(null=True, blank=True)
+
+    # --- Jalur paralel Surat Tugas Pimpinan Unor (PDLN Tipe 2); diubah hanya lewat `pengajuan.surat_tugas`.
+    status_surat_tugas = models.CharField(max_length=15, choices=StatusSuratTugas.choices, blank=True)
+    # Catatan pengembalian terakhir dari Biro PAKLN; dikosongkan saat Admin Unor mengirim ulang
+    # (riwayatnya tetap ada di RiwayatPengajuan).
+    catatan_surat_tugas = models.TextField("Catatan Pengembalian Surat Tugas", blank=True)
 
     # --- Tanggal penting untuk pelaporan / monitor progres ---
     tgl_pengajuan = models.DateField(null=True, blank=True)
@@ -223,6 +236,16 @@ class Pengajuan(models.Model):
     def track_bko_terbuka(self):
         """Sudah diteruskan BPSDM ke Biro PAKLN + Admin BKO."""
         return self.pakai_bko and bool(self.status_bko)
+
+    @property
+    def pakai_surat_tugas_paralel(self):
+        """Surat Tugas Pimpinan Unor berjalan di jalur paralel — PDLN Tipe 2 (T2P dan T2L)."""
+        return self.is_pdln and self.is_tipe2
+
+    @property
+    def track_surat_tugas_terbuka(self):
+        """Izin Prinsip sudah diunggah Admin BPSDM sehingga jalur Surat Tugas sudah dibuka."""
+        return self.pakai_surat_tugas_paralel and bool(self.status_surat_tugas)
 
     @property
     def kunci_alur(self):
@@ -748,6 +771,9 @@ class RiwayatPengajuan(models.Model):
         DITUTUP_BKO = "ditutup_bko", "Pemrosesan ditutup Admin BKO"
         DIBUKA_ULANG_BKO = "dibuka_ulang_bko", "Pemrosesan BKO dibuka kembali"
         SELESAI_TANPA_SK_TUBEL = "selesai_tanpa_sk_tubel", "Selesai diproses tanpa SK Tugas Belajar"
+        # Jalur Surat Tugas Pimpinan Unor (PDLN Tipe 2)
+        SURAT_TUGAS_DIKIRIM = "surat_tugas_dikirim", "Surat Tugas dikirim ke Biro PAKLN"
+        SURAT_TUGAS_DIKEMBALIKAN = "surat_tugas_dikembalikan", "Surat Tugas dikembalikan Biro PAKLN ke Admin Unor"
         # Pelaporan PDLN
         LAPORAN_DIUNGGAH = "laporan_diunggah", "Laporan PDLN diunggah"
         LAPORAN_DIKEMBALIKAN = "laporan_dikembalikan", "Laporan PDLN dikembalikan"

@@ -650,6 +650,59 @@ def notify_bko_dibuka(pengajuan, catatan, aktor_role):
 
 
 # ---------------------------------------------------------------------------
+# Jalur Surat Tugas Pimpinan Unor — PDLN Tipe 2 (pengajuan/surat_tugas.py)
+# ---------------------------------------------------------------------------
+
+def notify_surat_tugas_dibuka(pengajuan):
+    """Event 9A: Admin BPSDM mengunggah Izin Prinsip Menteri — Admin Unor dapat mengunggah dan mengirim Surat Tugas."""
+    _create(
+        _admin_unor_recipients(pengajuan),
+        pengajuan=pengajuan,
+        event=Notification.Event.SURAT_TUGAS_DIBUKA,
+        level=Notification.Level.INFO,
+        title=f"Izin Prinsip Terbit, Unggah Surat Tugas - {pengajuan.kode}",
+        body=(
+            f'Admin BPSDM mengunggah Izin Prinsip Menteri untuk {pengajuan.jenis_label} atas nama '
+            f'{_nama_pegawai(pengajuan)} perihal "{_perihal(pengajuan)}". '
+            "Silakan unggah dan kirim Surat Tugas Pimpinan Unor ke Biro PAKLN."
+        ),
+        redirect_url=reverse("unor:surat_tugas", args=[pengajuan.kode]),
+    )
+
+
+def notify_surat_tugas_dikirim(pengajuan):
+    """Event 9B: Admin Unor mengirim Surat Tugas — Biro PAKLN memeriksa (dan dapat mengembalikannya)."""
+    _create(
+        _admin_pakln_recipients(),
+        pengajuan=pengajuan,
+        event=Notification.Event.SURAT_TUGAS_DIKIRIM,
+        level=Notification.Level.INFO,
+        title=f"Surat Tugas Dikirim - {pengajuan.kode}",
+        body=(
+            f"Admin Unor mengirim Surat Tugas Pimpinan Unor {pengajuan.kode} atas nama {_nama_pegawai(pengajuan)}. "
+            "Mohon diperiksa; bila tidak sesuai, kembalikan kepada Admin Unor dengan catatan."
+        ),
+        redirect_url=reverse("pakln:preview", args=[pengajuan.kode]),
+    )
+
+
+def notify_surat_tugas_dikembalikan(pengajuan, catatan):
+    """Event 9C: Biro PAKLN mengembalikan Surat Tugas — Admin Unor memperbaiki lalu mengirim ulang."""
+    _create(
+        _admin_unor_recipients(pengajuan),
+        pengajuan=pengajuan,
+        event=Notification.Event.SURAT_TUGAS_DIKEMBALIKAN,
+        level=Notification.Level.WARNING,
+        title=f"Surat Tugas Dikembalikan - {pengajuan.kode}",
+        body=(
+            f'Biro PAKLN mengembalikan Surat Tugas {pengajuan.kode} atas nama {_nama_pegawai(pengajuan)}. '
+            f'Catatan: "{catatan}". Silakan perbaiki dan kirim ulang.'
+        ),
+        redirect_url=reverse("unor:surat_tugas", args=[pengajuan.kode]),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Kegiatan PDLN (EVENT_IMPLEMENTATION_PLAN.MD §9) — tanpa pengajuan terkait
 # ---------------------------------------------------------------------------
 

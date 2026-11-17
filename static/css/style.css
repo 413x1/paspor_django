@@ -668,6 +668,9 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .tag.bko-status { font-size: 11.5px; font-weight: 600; background: var(--blue-bg); color: var(--navy-900); }
 .tag.bko-status.is-diunggah { background: var(--green-bg); color: var(--green); }
 .tag.bko-status.is-ditutup { background: var(--gold-bg); color: var(--gold-dark); }
+/* Penanda jalur Surat Tugas Pimpinan Unor (PDLN Tipe 2) pada tabel dasbor. */
+.tag.st-status { font-size: 11.5px; font-weight: 600; background: var(--blue-bg); color: var(--navy-900); }
+.tag.st-status.is-dikembalikan { background: var(--gold-bg); color: var(--gold-dark); }
 
 /* Dua card bersebelahan (halaman Pratinjau Admin Unor / Biro PAKLN) */
 .preview-split {

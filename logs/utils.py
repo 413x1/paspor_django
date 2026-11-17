@@ -130,6 +130,7 @@ def _aktivitas_riwayat():
         "selesai": A.SELESAI_PENGAJUAN, "laporan_disetujui": A.SELESAI_PENGAJUAN,
         "selesai_tanpa_sk_tubel": A.SELESAI_PENGAJUAN,
         "laporan_diunggah": A.UNGGAH_DOKUMEN,
+        "surat_tugas_dikirim": A.TERUSKAN_PENGAJUAN, "surat_tugas_dikembalikan": A.KEMBALIKAN_PENGAJUAN,
     }
 
 
