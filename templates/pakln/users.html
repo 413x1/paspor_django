@@ -16,39 +16,49 @@
   <a href="{% url 'pakln:dashboard' %}" class="button is-small">← Kembali ke Dasbor</a>
 </div>
 
-<div class="box">
-  <div class="section-title is-small is-spaced">Pra-daftar Pegawai via NIP <span class="badge-auto">Data e-HRM</span></div>
-  <p class="helptext" style="margin:-6px 0 12px;">Daftarkan pegawai sebelum login SSO pertama, mis. untuk memberi peran admin. Akun dibuat tanpa password dan tertaut otomatis saat pegawai masuk lewat SSO.</p>
-  <form method="post" novalidate class="filter-bar">
-    {% csrf_token %}
+{% with tab=tab_aktif|default:"daftar" %}
+<div class="tab-card">
+  <div class="tab-card-nav" role="tablist" aria-label="Manajemen User">
+    <button type="button" class="tab-card-link{% if tab == 'daftar' %} is-active{% endif %}" role="tab" id="tab-daftar" aria-controls="panel-daftar" aria-selected="{% if tab == 'daftar' %}true{% else %}false{% endif %}" data-user-tab="daftar">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Daftar User</span>
+    </button>
+    <button type="button" class="tab-card-link{% if tab == 'pegawai' %} is-active{% endif %}" role="tab" id="tab-pegawai" aria-controls="panel-pegawai" aria-selected="{% if tab == 'pegawai' %}true{% else %}false{% endif %}" data-user-tab="pegawai">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg><span>Tambah Pegawai Manual</span>
+    </button>
+    <button type="button" class="tab-card-link{% if tab == 'pra' %} is-active{% endif %}" role="tab" id="tab-pra" aria-controls="panel-pra" aria-selected="{% if tab == 'pra' %}true{% else %}false{% endif %}" data-user-tab="pra">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="8" cy="12" r="2.5"/><line x1="13" y1="10" x2="18" y2="10"/><line x1="13" y1="14" x2="17" y2="14"/></svg><span>Pra-daftar via NIP</span>
+    </button>
+    <button type="button" class="tab-card-link{% if tab == 'lokal' %} is-active{% endif %}" role="tab" id="tab-lokal" aria-controls="panel-lokal" aria-selected="{% if tab == 'lokal' %}true{% else %}false{% endif %}" data-user-tab="lokal">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Tambah Akun Admin</span>
+    </button>
+  </div>
+  <div class="tab-card-body">
+
+<div role="tabpanel" id="panel-daftar" aria-labelledby="tab-daftar" data-user-panel="daftar"{% if tab != 'daftar' %} hidden{% endif %}>
+  <div class="section-title is-small">
+    Daftar User <span class="badge-auto" id="usersCount">{{ users_count }}</span>
+  </div>
+  <div class="filter-bar" style="margin-bottom:12px;">
     <div class="field">
-      <label class="label" for="{{ pra_form.nip.id_for_label }}">NIP</label>
-      <div class="control">{{ pra_form.nip }}</div>
-      {% for e in pra_form.nip.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+      <label class="label" for="filterRole">Peran</label>
+      <div class="select"><select id="filterRole">
+        <option value="">Semua peran</option>
+        {% for v, l in role_choices %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
+      </select></div>
     </div>
-    <button type="submit" name="aksi" value="pra_daftar_cek" class="button">Cek di e-HRM</button>
-  </form>
-  {% if pratinjau %}
-    <div class="pratinjau-ehrm">
-      <dl class="kv-list">
-        <dt>Nama</dt><dd>{{ pratinjau.nama }}</dd>
-        <dt>NIP</dt><dd>{{ pratinjau.nip }}</dd>
-        <dt>Jabatan</dt><dd>{{ pratinjau.jabatan|default:"—" }}</dd>
-        <dt>Pangkat/Golongan</dt><dd>{{ pratinjau.pangkat_golongan|default:"—" }}</dd>
-        <dt>Unit Kerja</dt><dd>{{ pratinjau.unit_kerja|default:"—" }}</dd>
-        <dt>Email</dt><dd>{{ pratinjau.email|default:"—" }}</dd>
-        <dt>No. HP</dt><dd>{% include "partials/_kontak_wa.html" with no_hp=pratinjau.no_hp %}</dd>
-      </dl>
-      <form method="post" style="margin-top:12px;">
-        {% csrf_token %}
-        <input type="hidden" name="nip" value="{{ pratinjau.nip }}">
-        <button type="submit" name="aksi" value="pra_daftar_simpan" class="button is-primary">Daftarkan Pegawai</button>
-      </form>
-    </div>
-  {% endif %}
+    <label class="checkbox filter-check"><input type="checkbox" id="filterTanpaHp"> Tanpa No. HP</label>
+  </div>
+  <div class="table-wrap">
+    <table id="usersTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
+      <thead>
+        <tr><th>Username</th><th>Nama</th><th>Peran</th><th>NIP</th><th>No. HP</th><th>Unit Organisasi</th><th>Sumber Akun</th><th>Status</th><th>Aksi</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
 </div>
 
-<div class="box" id="tambahPegawai">
+<div role="tabpanel" id="panel-pegawai" aria-labelledby="tab-pegawai" data-user-panel="pegawai"{% if tab != 'pegawai' %} hidden{% endif %}>
   <div class="section-title is-small is-spaced">Tambah Pegawai Manual <span class="badge-auto">Selama e-HRM belum berfungsi</span></div>
   <p class="helptext" style="margin:-6px 0 12px;">Membuat akun Pegawai (username &amp; password) beserta data kepegawaiannya. Peran otomatis Pegawai. Saat pegawai kelak masuk lewat SSO, akun tertaut otomatis lewat NIP dan datanya diganti data e-HRM, jadi isi NIP dengan benar.</p>
 
@@ -164,8 +174,40 @@
   </form>
 </div>
 
-<div class="box">
-  <div class="section-title is-small is-spaced">Tambah Akun Lokal <span class="badge-auto">Admin Biro PAKLN / akun admin darurat</span></div>
+<div role="tabpanel" id="panel-pra" aria-labelledby="tab-pra" data-user-panel="pra"{% if tab != 'pra' %} hidden{% endif %}>
+  <div class="section-title is-small is-spaced">Pra-daftar Pegawai via NIP <span class="badge-auto">Data e-HRM</span></div>
+  <p class="helptext" style="margin:-6px 0 12px;">Daftarkan pegawai sebelum login SSO pertama, mis. untuk memberi peran admin. Akun dibuat tanpa password dan tertaut otomatis saat pegawai masuk lewat SSO.</p>
+  <form method="post" novalidate class="filter-bar">
+    {% csrf_token %}
+    <div class="field">
+      <label class="label" for="{{ pra_form.nip.id_for_label }}">NIP</label>
+      <div class="control">{{ pra_form.nip }}</div>
+      {% for e in pra_form.nip.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+    </div>
+    <button type="submit" name="aksi" value="pra_daftar_cek" class="button">Cek di e-HRM</button>
+  </form>
+  {% if pratinjau %}
+    <div class="pratinjau-ehrm">
+      <dl class="kv-list">
+        <dt>Nama</dt><dd>{{ pratinjau.nama }}</dd>
+        <dt>NIP</dt><dd>{{ pratinjau.nip }}</dd>
+        <dt>Jabatan</dt><dd>{{ pratinjau.jabatan|default:"—" }}</dd>
+        <dt>Pangkat/Golongan</dt><dd>{{ pratinjau.pangkat_golongan|default:"—" }}</dd>
+        <dt>Unit Kerja</dt><dd>{{ pratinjau.unit_kerja|default:"—" }}</dd>
+        <dt>Email</dt><dd>{{ pratinjau.email|default:"—" }}</dd>
+        <dt>No. HP</dt><dd>{% include "partials/_kontak_wa.html" with no_hp=pratinjau.no_hp %}</dd>
+      </dl>
+      <form method="post" style="margin-top:12px;">
+        {% csrf_token %}
+        <input type="hidden" name="nip" value="{{ pratinjau.nip }}">
+        <button type="submit" name="aksi" value="pra_daftar_simpan" class="button is-primary">Daftarkan Pegawai</button>
+      </form>
+    </div>
+  {% endif %}
+</div>
+
+<div role="tabpanel" id="panel-lokal" aria-labelledby="tab-lokal" data-user-panel="lokal"{% if tab != 'lokal' %} hidden{% endif %}>
+  <div class="section-title is-small is-spaced">Tambah Akun Admin <span class="badge-auto">Admin Biro PAKLN / akun admin darurat</span></div>
   <p class="helptext" style="margin:-6px 0 12px;">Akun lokal masuk dengan username &amp; password dan tidak memiliki peran Pegawai.</p>
 
   <form method="post" novalidate>
@@ -254,30 +296,9 @@
     <button type="submit" class="button is-primary">Simpan Akun</button>
   </form>
 </div>
-
-<div class="box">
-  <div class="section-title is-small">
-    Daftar User <span class="badge-auto" id="usersCount">{{ users_count }}</span>
-  </div>
-  <div class="filter-bar" style="margin-bottom:12px;">
-    <div class="field">
-      <label class="label" for="filterRole">Peran</label>
-      <div class="select"><select id="filterRole">
-        <option value="">Semua peran</option>
-        {% for v, l in role_choices %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
-      </select></div>
-    </div>
-    <label class="checkbox filter-check"><input type="checkbox" id="filterTanpaHp"> Tanpa No. HP</label>
-  </div>
-  <div class="table-wrap">
-    <table id="usersTable" class="table data-table is-fullwidth is-hoverable" style="width:100%;">
-      <thead>
-        <tr><th>Username</th><th>Nama</th><th>Peran</th><th>NIP</th><th>No. HP</th><th>Unit Organisasi</th><th>Sumber Akun</th><th>Status</th><th>Aksi</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
   </div>
 </div>
+{% endwith %}
 {% endblock %}
 
 {% block extra_js %}
@@ -295,9 +316,27 @@
     var usernameManual = $user.val() !== '' && $user.val() !== $nip.val();
     $user.on('input', function () { usernameManual = $user.val() !== '' && $user.val() !== $nip.val().trim(); });
     $nip.on('input', function () { if (!usernameManual) { $user.val($nip.val().trim()); } });
-{% if pegawai_form.errors %}    document.getElementById('tambahPegawai').scrollIntoView({ block: 'start' });
+
+    // Tab: satu kartu tampil sekaligus. Tab terakhir disimpan di hash URL.
+    var tabel;
+    function bukaTab(key) {
+      var $btn = $('[data-user-tab="' + key + '"]');
+      if (!$btn.length) { return; }
+      $('[data-user-tab]').removeClass('is-active').attr('aria-selected', 'false');
+      $btn.addClass('is-active').attr('aria-selected', 'true');
+      $('[data-user-panel]').prop('hidden', true);
+      $('[data-user-panel="' + key + '"]').prop('hidden', false);
+      if (key === 'daftar' && tabel) { tabel.columns.adjust(); }
+    }
+    $('[data-user-tab]').on('click', function () {
+      var key = $(this).data('user-tab');
+      bukaTab(key);
+      history.replaceState(null, '', '#' + key);
+    });
+{% if not tab_aktif %}    if (location.hash) { bukaTab(location.hash.slice(1)); }
 {% endif %}
-    var tabel = $('#usersTable').DataTable({
+
+    tabel = $('#usersTable').DataTable({
       serverSide: true,
       processing: true,
       autoWidth: false,

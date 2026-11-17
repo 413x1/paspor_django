@@ -606,11 +606,21 @@ def kelola_user(request):
                 return redirect("pakln:edit_user", user_id=user.pk)
             pratinjau = data
 
+    # Tab yang dibuka saat halaman dirender: tab form yang baru dikirim (agar
+    # error/pratinjau langsung terlihat), selain itu "Daftar User".
+    tab_aktif = {
+        "tambah": "lokal",
+        "tambah_pegawai": "pegawai",
+        "pra_daftar_cek": "pra",
+        "pra_daftar_simpan": "pra",
+    }.get(aksi, "")
+
     return render(request, "pakln/users.html", {
         "form": form,
         "pra_form": pra_form,
         "pegawai_form": pegawai_form,
         "pratinjau": pratinjau,
+        "tab_aktif": tab_aktif,
         "users_count": User.objects.count(),
         "role_choices": User.Role.choices,
     })

@@ -509,6 +509,7 @@ Aturan:
 | Kartu cuti | `.cuti-card` | Sisa cuti pegawai |
 | Opsi pilihan | `.jenis-option` (`.active`, `.disabled`) | Modal pilih jenis perjalanan |
 | Tab | `.tab-bar` + `.button.is-small.is-active` | Filter tab |
+| Kartu bertab | `.tab-card` > `.tab-card-nav` (`.tab-card-link` + ikon SVG, `.is-active`) + `.tab-card-body` > panel `[role=tabpanel]` | Memecah beberapa form dalam satu halaman (Manajemen User) |
 | Dropdown aksi | `.table-head-actions` + `.table-head-menu` | Aksi batch di kepala tabel |
 | Baris dasar kegiatan | `.dasar-row` (formset, `templates/kegiatan/_dasar_row.html`) / `.dasar-list` (read-only) | Dasar kegiatan: surat, tautan, PINTAR, lainnya + berkas opsional |
 
