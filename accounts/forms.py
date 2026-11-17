@@ -188,6 +188,143 @@ class TambahUserForm(forms.Form):
         return user
 
 
+class TambahPegawaiForm(forms.Form):
+    """Pembuatan Pegawai SECARA MANUAL oleh Admin Biro PAKLN, selagi integrasi
+    e-HRM belum berfungsi. Hasilnya `User` (peran Pegawai, `sumber_akun=lokal`)
+    + `PegawaiProfile`. Saat orangnya kelak login SSO, akun ditautkan lewat NIP
+    dan datanya diganti data e-HRM (lihat `accounts.sso`). Peran selalu Pegawai;
+    peran admin diberikan terpisah lewat Edit User."""
+
+    # --- Identitas pegawai ---
+    nip = forms.CharField(
+        max_length=20, label="NIP",
+        widget=_input(placeholder="18 digit NIP", inputmode="numeric", id="id_pegawai_nip"),
+    )
+    nama_lengkap = forms.CharField(
+        max_length=150, label="Nama Lengkap",
+        widget=_input(placeholder="cth. Budi Santoso, S.T.", id="id_pegawai_nama"),
+    )
+    jabatan = forms.CharField(
+        max_length=150, label="Jabatan", widget=_input(id="id_pegawai_jabatan"),
+    )
+    pangkat_golongan = forms.CharField(
+        max_length=100, label="Pangkat/Golongan",
+        widget=_input(placeholder="cth. Penata Muda (III/a)", id="id_pegawai_pangkat"),
+    )
+    unit_kerja = forms.CharField(
+        max_length=150, label="Unit Kerja",
+        widget=_input(placeholder="cth. Direktorat Bina Teknik Sumber Daya Air", id="id_pegawai_unit_kerja"),
+    )
+    # Menentukan Admin Unor mana yang berwenang memproses pengajuan pegawai ini.
+    unit_organisasi = forms.ModelChoiceField(
+        queryset=UnitOrganisasi.objects.all(),
+        label="Unit Organisasi",
+        empty_label="— Pilih unit organisasi —",
+        widget=forms.Select(attrs={"id": "id_pegawai_unit_organisasi"}),
+    )
+
+    # --- Kontak ---
+    email = forms.EmailField(
+        label="Email", widget=forms.EmailInput(attrs={"class": "input", "id": "id_pegawai_email"}),
+    )
+    no_hp = forms.CharField(
+        max_length=25, label="Nomor HP (WhatsApp)",
+        widget=_input(placeholder="cth. 0812-3456-7890", inputmode="tel", id="id_pegawai_no_hp"),
+    )
+
+    # --- Akun login ---
+    username = forms.CharField(
+        max_length=150, label="Username",
+        widget=_input(placeholder="Otomatis sama dengan NIP", id="id_pegawai_username"),
+    )
+    password = forms.CharField(
+        label="Password",
+        widget=forms.PasswordInput(attrs={"class": "input", "placeholder": "Minimal 8 karakter", "id": "id_pegawai_password"}),
+    )
+    password_confirm = forms.CharField(
+        label="Konfirmasi Password",
+        widget=forms.PasswordInput(attrs={"class": "input", "id": "id_pegawai_password_confirm"}),
+    )
+
+    # --- Opsional ---
+    sisa_cuti = forms.IntegerField(
+        required=False, min_value=0, initial=12, label="Sisa Cuti Tahun Berjalan (hari)",
+        widget=forms.NumberInput(attrs={"class": "input", "id": "id_pegawai_sisa_cuti"}),
+    )
+
+    def clean_nip(self):
+        nip = self.cleaned_data["nip"].strip()
+        if not nip.isdigit():
+            raise forms.ValidationError("NIP hanya berisi angka.")
+        if PegawaiProfile.objects.filter(nip=nip).exists() or User.objects.filter(username__iexact=nip).exists():
+            raise forms.ValidationError("NIP sudah terdaftar di PASPOR.")
+        return nip
+
+    def clean_username(self):
+        username = self.cleaned_data["username"].strip()
+        if User.objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError("Username sudah digunakan.")
+        return username
+
+    def clean_email(self):
+        return _email_unik(self.cleaned_data["email"])
+
+    def clean_no_hp(self):
+        return _no_hp_wajib(self.cleaned_data["no_hp"])
+
+    def clean(self):
+        cleaned = super().clean()
+        password = cleaned.get("password")
+        konfirmasi = cleaned.get("password_confirm")
+        if password:
+            try:
+                validate_password(password)
+            except forms.ValidationError as exc:
+                self.add_error("password", exc)
+            if konfirmasi and password != konfirmasi:
+                self.add_error("password_confirm", "Konfirmasi password tidak cocok.")
+        return cleaned
+
+    @transaction.atomic
+    def save(self, diberikan_oleh=None):
+        data = self.cleaned_data
+        nama = data["nama_lengkap"].strip()
+        depan, _, belakang = nama.partition(" ")
+        unit = data["unit_organisasi"]
+        unit_kerja = data["unit_kerja"].strip()
+        sisa_cuti = data.get("sisa_cuti")
+
+        user = User(
+            username=data["username"],
+            role=User.Role.PEGAWAI,
+            first_name=depan[:150],
+            last_name=belakang[:150],
+            email=data["email"],
+            no_hp=data["no_hp"],
+            sumber_akun=User.SumberAkun.LOKAL,
+            unit_kerja=unit_kerja,
+            unit_organisasi=unit,
+        )
+        user.set_password(data["password"])
+        user.save()  # signal kompatibilitas membuat PeranUser; dilengkapi di bawah
+        PegawaiProfile.objects.create(
+            user=user,
+            nip=data["nip"],
+            nama=nama,
+            jabatan=data["jabatan"].strip(),
+            pangkat_golongan=data["pangkat_golongan"].strip(),
+            unit_kerja=unit_kerja,
+            unit_organisasi=unit,
+            sisa_cuti_tahun_berjalan=12 if sisa_cuti is None else sisa_cuti,
+        )
+        PeranUser.objects.update_or_create(
+            user=user, role=User.Role.PEGAWAI,
+            defaults={"unit_organisasi": None, "diberikan_oleh": diberikan_oleh, "is_active": True},
+        )
+        user.reset_cache_peran()
+        return user
+
+
 class EditUserForm(forms.Form):
     """Penyuntingan user oleh Admin Biro PAKLN. Role diatur terpisah lewat
     `KelolaPeranForm`. Email & nomor HP yang diubah pada akun yang datanya

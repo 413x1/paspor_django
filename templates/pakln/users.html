@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}Manajemen User{% endblock %}
-{% block wrap_extra_class %} medium{% endblock %}
+{% block wrap_extra_class %} medium panah-select{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
@@ -11,7 +11,7 @@
 <div class="page-head">
   <div>
     <h2>Manajemen User</h2>
-    <p class="sub">Pegawai masuk lewat SSO (data dari e-HRM). Di sini: akun lokal admin, pra-daftar pegawai via NIP, dan pengaturan peran.</p>
+    <p class="sub">Pegawai masuk lewat SSO (data dari e-HRM). Di sini: pra-daftar pegawai via NIP, tambah pegawai manual, akun lokal admin, dan pengaturan peran.</p>
   </div>
   <a href="{% url 'pakln:dashboard' %}" class="button is-small">← Kembali ke Dasbor</a>
 </div>
@@ -46,6 +46,122 @@
       </form>
     </div>
   {% endif %}
+</div>
+
+<div class="box" id="tambahPegawai">
+  <div class="section-title is-small is-spaced">Tambah Pegawai Manual <span class="badge-auto">Selama e-HRM belum berfungsi</span></div>
+  <p class="helptext" style="margin:-6px 0 12px;">Membuat akun Pegawai (username &amp; password) beserta data kepegawaiannya. Peran otomatis Pegawai. Saat pegawai kelak masuk lewat SSO, akun tertaut otomatis lewat NIP dan datanya diganti data e-HRM, jadi isi NIP dengan benar.</p>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="aksi" value="tambah_pegawai">
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ pegawai_form.nip.id_for_label }}">NIP</label>
+          <div class="control">{{ pegawai_form.nip }}</div>
+          {% for e in pegawai_form.nip.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ pegawai_form.nama_lengkap.id_for_label }}">Nama Lengkap</label>
+          <div class="control">{{ pegawai_form.nama_lengkap }}</div>
+          {% for e in pegawai_form.nama_lengkap.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ pegawai_form.jabatan.id_for_label }}">Jabatan</label>
+          <div class="control">{{ pegawai_form.jabatan }}</div>
+          {% for e in pegawai_form.jabatan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ pegawai_form.pangkat_golongan.id_for_label }}">Pangkat/Golongan</label>
+          <div class="control">{{ pegawai_form.pangkat_golongan }}</div>
+          {% for e in pegawai_form.pangkat_golongan.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ pegawai_form.unit_organisasi.id_for_label }}">Unit Organisasi</label>
+          <div class="control"><div class="select is-fullwidth">{{ pegawai_form.unit_organisasi }}</div></div>
+          {% for e in pegawai_form.unit_organisasi.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ pegawai_form.unit_kerja.id_for_label }}">Unit Kerja</label>
+          <div class="control">{{ pegawai_form.unit_kerja }}</div>
+          {% for e in pegawai_form.unit_kerja.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ pegawai_form.email.id_for_label }}">Email</label>
+          <div class="control">{{ pegawai_form.email }}</div>
+          {% for e in pegawai_form.email.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ pegawai_form.no_hp.id_for_label }}">Nomor HP (WhatsApp)</label>
+          <div class="control">{{ pegawai_form.no_hp }}</div>
+          {% for e in pegawai_form.no_hp.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ pegawai_form.username.id_for_label }}">Username</label>
+          <div class="control">{{ pegawai_form.username }}</div>
+          {% for e in pegawai_form.username.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ pegawai_form.sisa_cuti.id_for_label }}">Sisa Cuti Tahun Berjalan (hari)</label>
+          <div class="control">{{ pegawai_form.sisa_cuti }}</div>
+          {% for e in pegawai_form.sisa_cuti.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="columns">
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ pegawai_form.password.id_for_label }}">Password</label>
+          <div class="control">{{ pegawai_form.password }}</div>
+          {% for e in pegawai_form.password.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+      <div class="column">
+        <div class="field">
+          <label class="label" for="{{ pegawai_form.password_confirm.id_for_label }}">Konfirmasi Password</label>
+          <div class="control">{{ pegawai_form.password_confirm }}</div>
+          {% for e in pegawai_form.password_confirm.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {% if pegawai_form.non_field_errors %}<p class="help is-danger">{{ pegawai_form.non_field_errors }}</p>{% endif %}
+
+    <button type="submit" class="button is-primary">Simpan Pegawai</button>
+  </form>
 </div>
 
 <div class="box">
@@ -174,6 +290,13 @@
     $('#id_role').on('change', toggleByRole);
     toggleByRole();
 
+    // Tambah Pegawai Manual: username mengikuti NIP selama belum diubah sendiri.
+    var $nip = $('#id_pegawai_nip'), $user = $('#id_pegawai_username');
+    var usernameManual = $user.val() !== '' && $user.val() !== $nip.val();
+    $user.on('input', function () { usernameManual = $user.val() !== '' && $user.val() !== $nip.val().trim(); });
+    $nip.on('input', function () { if (!usernameManual) { $user.val($nip.val().trim()); } });
+{% if pegawai_form.errors %}    document.getElementById('tambahPegawai').scrollIntoView({ block: 'start' });
+{% endif %}
     var tabel = $('#usersTable').DataTable({
       serverSide: true,
       processing: true,

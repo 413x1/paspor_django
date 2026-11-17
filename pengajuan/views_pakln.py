@@ -16,7 +16,7 @@ from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_POST
 
 from accounts.ehrm_sync import buat_user_dari_ehrm, sinkron_profil
-from accounts.forms import EditUserForm, KelolaPeranForm, PraDaftarForm, TambahUserForm
+from accounts.forms import EditUserForm, KelolaPeranForm, PraDaftarForm, TambahPegawaiForm, TambahUserForm
 from accounts.models import URUTAN_PERAN, PeranUser, User
 from paspor.integrasi import ehrm
 from logs.models import ActivityLog
@@ -552,10 +552,11 @@ def dashboard_data(request):
 @role_required("admin_pakln")
 def kelola_user(request):
     """Manajemen User — Admin Biro PAKLN membuat AKUN LOKAL (Admin Biro PAKLN
-    dan akun admin darurat), atau mendaftarkan pegawai lebih dulu lewat NIP
-    (data e-HRM) agar dapat diberi role admin sebelum login SSO pertama."""
+    dan akun admin darurat), mendaftarkan pegawai lebih dulu lewat NIP (data
+    e-HRM), atau menambah Pegawai secara manual selagi e-HRM belum berfungsi."""
     form = TambahUserForm()
     pra_form = PraDaftarForm()
+    pegawai_form = TambahPegawaiForm()
     pratinjau = None
     aksi = request.POST.get("aksi", "tambah") if request.method == "POST" else ""
 
@@ -571,6 +572,18 @@ def kelola_user(request):
             messages.success(request, f"User {user.username} ({user.get_role_display()}) berhasil dibuat.")
             return redirect("pakln:kelola_user")
         messages.error(request, "Periksa kembali isian formulir.")
+    elif aksi == "tambah_pegawai":
+        pegawai_form = TambahPegawaiForm(request.POST)
+        if pegawai_form.is_valid():
+            user = pegawai_form.save(diberikan_oleh=request.user)
+            record_activity(
+                request, ActivityLog.Aktivitas.UBAH_MASTER,
+                f"Menambah pegawai manual {user.profile.nama} ({user.profile.nip})",
+                target_type="user", target_id=user.pk,
+            )
+            messages.success(request, f"Pegawai {user.profile.nama} ({user.profile.nip}) berhasil ditambahkan.")
+            return redirect("pakln:kelola_user")
+        messages.error(request, "Periksa kembali isian formulir Tambah Pegawai Manual.")
     elif aksi in ("pra_daftar_cek", "pra_daftar_simpan"):
         pra_form = PraDaftarForm(request.POST)
         if pra_form.is_valid():
@@ -596,6 +609,7 @@ def kelola_user(request):
     return render(request, "pakln/users.html", {
         "form": form,
         "pra_form": pra_form,
+        "pegawai_form": pegawai_form,
         "pratinjau": pratinjau,
         "users_count": User.objects.count(),
         "role_choices": User.Role.choices,
