@@ -60,6 +60,7 @@ urlpatterns = [
     path("kegiatan/<int:pk>/toggle/", views_kegiatan.pakln_toggle, name="toggle_kegiatan"),
     path("kegiatan/<int:pk>/hapus/", views_kegiatan.pakln_hapus, name="hapus_kegiatan"),
     path("pelaporan/", views.pelaporan, name="pelaporan"),
+    path("pelaporan/data/", views.pelaporan_data, name="pelaporan_data"),
     path("pembatalan/", views.daftar_pembatalan, name="pembatalan"),
     path("pembatalan/<int:pk>/putuskan/", views.putuskan_pembatalan, name="putuskan_pembatalan"),
     path("<str:kode>/laporan/verifikasi/", views.verifikasi_laporan, name="verifikasi_laporan"),

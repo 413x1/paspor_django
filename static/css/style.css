@@ -302,6 +302,16 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
     box-shadow var(--duration-fast) var(--ease-apple), opacity var(--duration-fast) var(--ease-apple);
 }
 .button:active:not(:disabled) { transform: scale(.96); }
+/* Ikon mata tombol "Lihat"/"Pratinjau" (partials/_ikon_mata.html). Berkedip saat diklik: kelas `is-kedip`
+   dipasang oleh skrip pratinjau dokumen di base.html. */
+.ikon-mata {
+  width: 1.25em; height: 1.25em; margin-right: 6px; flex-shrink: 0; vertical-align: -.25em;
+  fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  transform-origin: center;
+}
+@keyframes kedip-mata { 0%, 100% { transform: scaleY(1); } 40%, 55% { transform: scaleY(.08); } }
+.ikon-mata.is-kedip { animation: kedip-mata 450ms var(--ease-apple-in-out); }
+@media (prefers-reduced-motion: reduce) { .ikon-mata.is-kedip { animation: none; } }
 .checkbox, .radio, a.navbar-item, .navbar-link, .dt-paging-button, .jenis-option {
   transition: transform var(--duration-instant) var(--ease-apple), background-color var(--duration-fast) var(--ease-apple),
     color var(--duration-fast) var(--ease-apple);
@@ -419,7 +429,9 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .input:focus, .textarea:focus, .select select:focus {
   border-color: var(--teal); box-shadow: 0 0 0 2px rgba(36, 129, 155, .25);
 }
-.select:not(.is-multiple):not(.is-loading)::after { border-color: var(--teal); transition: transform .15s ease; }
+.select:not(.is-multiple):not(.is-loading)::after {
+  border-color: var(--teal); transition: transform var(--duration-slow) var(--ease-apple-in-out);
+}
 /* Kelas `is-open` dipasang lewat JS saat daftar pilihan terbuka (panah v menjadi ^). */
 .select.is-open:not(.is-multiple):not(.is-loading)::after { transform: rotate(135deg); margin-top: -.1em; }
 .field:not(:last-child) { margin-bottom: 16px; }
@@ -517,13 +529,29 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 }
 .dt-toolbar .dt-length { font-size: 13px; color: var(--slate-600); }
 .dt-toolbar .dt-length select.dt-input {
-  border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px;
-  font-size: 13px; color: var(--slate-900); margin: 0 4px;
+  border: 1px solid var(--line); border-radius: 8px; padding: 6px 30px 6px 10px;
+  font-size: 13px; color: var(--slate-900); margin: 0 4px; cursor: pointer;
+  /* Panah bawaan browser diganti panah gambar agar bisa berbalik (v -> ^) saat daftar terbuka. */
+  appearance: none; -webkit-appearance: none; background-color: var(--white);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpolyline points='1.5,1.5 6,6 10.5,1.5' fill='none' stroke='%2324819b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpolyline points='1.5,6.5 6,2 10.5,6.5' fill='none' stroke='%2324819b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center, right 10px center;
+  background-size: 11px 7px, 11px 0;   /* hanya panah bawah yang terlihat saat tertutup */
+  transition: background-size var(--duration-slow) var(--ease-apple-in-out);
+}
+/* Kelas `is-open` dipasang lewat JS (base.html) selama daftar pilihan terbuka: panah bawah mengecil,
+   panah atas membesar, sehingga tampak membalik secara halus. */
+.dt-toolbar .dt-length select.dt-input.is-open { background-size: 11px 0, 11px 7px; }
+@media (prefers-reduced-motion: reduce) {
+  .select:not(.is-multiple):not(.is-loading)::after, .dt-toolbar .dt-length select.dt-input { transition: none; }
 }
 .dt-toolbar .dt-search { font-size: 13px; color: var(--slate-600); }
 .dt-toolbar .dt-search input.dt-input {
   border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px;
   font-size: 13.5px; color: var(--slate-900); min-width: 220px; margin-left: 6px;
+}
+.dt-toolbar .dt-search input.dt-input.dt-cari {
+  min-width: 290px; padding-left: 38px;
+  background: var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237a8194' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 13px center / 15px 15px;
 }
 .dt-toolbar .dt-input:focus {
   outline: none; border-color: var(--teal); box-shadow: 0 0 0 2px rgba(36, 129, 155, .25);
@@ -532,6 +560,23 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .table.data-table th .dt-column-order { margin-left: 6px; opacity: .5; }
 .table.data-table th.dt-ordering-asc .dt-column-order,
 .table.data-table th.dt-ordering-desc .dt-column-order { opacity: 1; }
+/* Panah urut yang jelas untuk SEMUA tabel DataTables. Bawaan DataTables hanya ~6% opasitas (0,125 x 0,5 dari aturan di
+   atas) sehingga menyatu dengan latar header. Panah kolom yang bisa diurutkan berwarna teal, panah arah yang sedang
+   aktif navy penuh, dan header memberi umpan balik saat disorot (lapisan transparan, cocok di latar header apa pun).
+   Selector memakai prefix .dt-container agar lebih kuat daripada aturan bawaan dataTables.min.css. */
+.dt-container table.dataTable thead>tr>th .dt-column-order { opacity: 1; }
+.dt-container table.dataTable thead>tr>th.dt-orderable-asc span.dt-column-order::before,
+.dt-container table.dataTable thead>tr>th.dt-orderable-desc span.dt-column-order::after { color: var(--teal); opacity: .6; }
+.dt-container table.dataTable thead>tr>th.dt-ordering-asc span.dt-column-order::before,
+.dt-container table.dataTable thead>tr>th.dt-ordering-desc span.dt-column-order::after { color: var(--navy-900); opacity: 1; }
+.dt-container table.dataTable thead>tr>th.dt-orderable-asc, .dt-container table.dataTable thead>tr>th.dt-orderable-desc {
+  transition: box-shadow var(--duration-fast) var(--ease-apple), color var(--duration-fast) var(--ease-apple);
+}
+.dt-container table.dataTable thead>tr>th.dt-orderable-asc:hover, .dt-container table.dataTable thead>tr>th.dt-orderable-desc:hover {
+  box-shadow: inset 0 0 0 999px rgba(36, 129, 155, .10); color: var(--navy-900);
+}
+.dt-container table.dataTable thead>tr>th.dt-orderable-asc:hover span.dt-column-order::before,
+.dt-container table.dataTable thead>tr>th.dt-orderable-desc:hover span.dt-column-order::after { opacity: 1; }
 .dt-footer {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; flex-wrap: wrap; padding: 16px 18px; border-top: 1px solid var(--line);
@@ -543,8 +588,15 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
   border: 1px solid var(--line); border-radius: 8px; background: var(--white);
   color: var(--slate-600); font-size: 12.5px; font-weight: 700; cursor: pointer;
 }
-.dt-footer .dt-paging-button:hover:not(.disabled):not(.current) { background: var(--bg); color: var(--slate-900); }
-.dt-footer .dt-paging-button.current { background: var(--navy-900); border-color: var(--navy-900); color: var(--white); }
+/* CSS bawaan DataTables (dataTables.min.css, dimuat setelah style.css) memberi teks putih !important + border hitam
+   saat hover, dan menimpa gaya halaman aktif. Selector diperkuat (.dt-container) agar gaya proyek yang menang. */
+.dt-container .dt-footer .dt-paging .dt-paging-button:hover:not(.disabled):not(.current) {
+  background: var(--bg); color: var(--slate-900) !important; border-color: var(--slate-400); box-shadow: none;
+}
+.dt-container .dt-footer .dt-paging .dt-paging-button.current,
+.dt-container .dt-footer .dt-paging .dt-paging-button.current:hover {
+  background: var(--navy-900); border-color: var(--navy-900); color: var(--white) !important;
+}
 .dt-footer .dt-paging-button.disabled { color: var(--slate-400); cursor: default; opacity: .5; }
 .dt-processing { color: var(--slate-600); font-size: 13px; }
 /* Kolom checkbox seleksi batch pada tabel */
@@ -580,7 +632,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .table-head-menu a.navbar-item:hover { background: var(--tab-active-bg); color: var(--navy-900); }
 @media (max-width: 640px) {
   .dt-toolbar, .dt-footer { flex-direction: column; align-items: stretch; }
-  .dt-toolbar .dt-search input.dt-input { min-width: 0; width: 100%; }
+  .dt-toolbar .dt-search input.dt-input, .dt-toolbar .dt-search input.dt-input.dt-cari { min-width: 0; width: 100%; }
 }
 
 /* ---------- Baris dokumen ---------- */

@@ -43,7 +43,7 @@
             </td>
             <td>
               {% if p.laporan.file %}
-                <button type="button" class="button is-small" data-doc-preview="{{ p.laporan.file.url }}" data-doc-title="Laporan {{ p.kode }}">👁 Lihat</button>
+                <button type="button" class="button is-small" data-doc-preview="{{ p.laporan.file.url }}" data-doc-title="Laporan {{ p.kode }}">{% include "partials/_ikon_mata.html" %}Lihat</button>
               {% endif %}
               {% if p.status == "selesai" and not p.pembatalan_terbuka %}
                 {% if not p.laporan or p.laporan.status == "draft" or p.laporan.status == "dikembalikan" %}

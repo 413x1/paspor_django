@@ -307,6 +307,11 @@ class LaporanFormPdfOnlyTests(LaporanFormBase):
 
 
 class LaporanDiAdminDanDaftarTests(LaporanFormBase):
+    def aksi_pelaporan(self):
+        """Kolom Aksi baris pertama tabel Pelaporan PDLN Admin PAKLN (dimuat server-side)."""
+        data = self.client.get(reverse("pakln:pelaporan_data"), {"draw": 1, "start": 0, "length": 10}).json()["data"]
+        return data[0][7]
+
     def test_daftar_pelaporan_memakai_tautan_bukan_modal(self):
         html = self.client.get(reverse("pegawai:pelaporan")).content.decode()
         self.assertIn(f'<a href="{self.url}" class="button is-small is-info">Pelaporan PDLN</a>', html)
@@ -329,12 +334,13 @@ class LaporanDiAdminDanDaftarTests(LaporanFormBase):
         self.kirim()
         self.client.force_login(self.admin_pakln)
         html = self.client.get(reverse("pakln:pelaporan")).content.decode()
-        ringkasan = html.split(f'id="ringkasan-{self.laporan().pk}"')[1].split('id="modal-verifikasi"')[0]
+        aksi = self.aksi_pelaporan()                 # ringkasan ikut kolom Aksi (server-side)
+        ringkasan = aksi.split(f'id="ringkasan-{self.laporan().pk}"')[1]
         self.assertIn(ISI["tujuan_kegiatan"], ringkasan)
         self.assertIn(ISI["dampak_rekomendasi"], ringkasan)
         self.assertIn("Rp 10.000.000", ringkasan)   # biaya berformat Rupiah dengan titik ribuan
         self.assertIn("Rp 9.250.000", ringkasan)
-        self.assertNotIn("Rp 10000000", html)
+        self.assertNotIn("Rp 10000000", aksi)
         self.assertIn("verif-aksi", html)           # tombol aksi dibungkus (wrap), tidak meluber
 
     def test_tombol_aksi_dan_dua_modal_terpisah(self):
@@ -342,16 +348,17 @@ class LaporanDiAdminDanDaftarTests(LaporanFormBase):
         laporan = self.laporan()
         self.client.force_login(self.admin_pakln)
         html = self.client.get(reverse("pakln:pelaporan")).content.decode()
+        aksi = self.aksi_pelaporan()                 # tombol per baris dimuat server-side
         url = reverse("pakln:verifikasi_laporan", args=[self.p.kode])
         # tiga tombol per baris, dengan class Bulma dan data-id sesuai spesifikasi
-        self.assertIn("button is-small is-info", html)                                   # Lihat
-        verifikasi = html.split("btn-verifikasi")[1].split("</button>")[0]
-        self.assertIn("button is-small is-success", html.split("btn-verifikasi")[0].rsplit("<button", 1)[1])
+        self.assertIn("button is-small is-info", aksi)                                   # Lihat
+        verifikasi = aksi.split("btn-verifikasi")[1].split("</button>")[0]
+        self.assertIn("button is-small is-success", aksi.split("btn-verifikasi")[0].rsplit("<button", 1)[1])
         self.assertIn(f'data-id="{laporan.pk}"', verifikasi)
         self.assertIn(f'data-url="{url}"', verifikasi)
-        revisi_awal = html.split("btn-revisi")[0].rsplit("<button", 1)[1]
+        revisi_awal = aksi.split("btn-revisi")[0].rsplit("<button", 1)[1]
         self.assertIn("button is-small is-warning", revisi_awal)
-        self.assertIn(f'data-id="{laporan.pk}"', html.split("btn-revisi")[1].split("</button>")[0])
+        self.assertIn(f'data-id="{laporan.pk}"', aksi.split("btn-revisi")[1].split("</button>")[0])
         # modal 1: verifikasi (tanggal upload ke SIMPEL)
         m1 = html.split('id="modal-verifikasi"')[1].split('id="modal-revisi"')[0]
         self.assertIn("Verifikasi Laporan PDLN", m1)
@@ -378,9 +385,9 @@ class LaporanDiAdminDanDaftarTests(LaporanFormBase):
     def test_tombol_verifikasi_dan_revisi_hanya_untuk_laporan_menunggu(self):
         self.kirim("draft")                          # draft: belum dilaporkan
         self.client.force_login(self.admin_pakln)
-        html = self.client.get(reverse("pakln:pelaporan")).content.decode()
-        self.assertNotIn('class="button is-small is-warning btn-revisi"', html)
-        self.assertNotIn("btn-verifikasi\"", html)
+        aksi = self.aksi_pelaporan()
+        self.assertNotIn('class="button is-small is-warning btn-revisi"', aksi)
+        self.assertNotIn("btn-verifikasi\"", aksi)
 
     def test_admin_unor_hanya_melihat_tanpa_tombol_verifikasi_dan_modal(self):
         self.kirim()
