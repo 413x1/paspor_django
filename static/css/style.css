@@ -543,8 +543,15 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
   border: 1px solid var(--line); border-radius: 8px; background: var(--white);
   color: var(--slate-600); font-size: 12.5px; font-weight: 700; cursor: pointer;
 }
-.dt-footer .dt-paging-button:hover:not(.disabled):not(.current) { background: var(--bg); color: var(--slate-900); }
-.dt-footer .dt-paging-button.current { background: var(--navy-900); border-color: var(--navy-900); color: var(--white); }
+/* CSS bawaan DataTables (dataTables.min.css, dimuat setelah style.css) memberi teks putih !important + border hitam
+   saat hover, dan menimpa gaya halaman aktif. Selector diperkuat (.dt-container) agar gaya proyek yang menang. */
+.dt-container .dt-footer .dt-paging .dt-paging-button:hover:not(.disabled):not(.current) {
+  background: var(--bg); color: var(--slate-900) !important; border-color: var(--slate-400); box-shadow: none;
+}
+.dt-container .dt-footer .dt-paging .dt-paging-button.current,
+.dt-container .dt-footer .dt-paging .dt-paging-button.current:hover {
+  background: var(--navy-900); border-color: var(--navy-900); color: var(--white) !important;
+}
 .dt-footer .dt-paging-button.disabled { color: var(--slate-400); cursor: default; opacity: .5; }
 .dt-processing { color: var(--slate-600); font-size: 13px; }
 /* Kolom checkbox seleksi batch pada tabel */
