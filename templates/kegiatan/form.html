@@ -82,7 +82,7 @@
           <li>
             <span><strong>{{ d.get_jenis_display }}</strong> —
               {% if d.jenis == "tautan" %}<a href="{{ d.tautan }}" target="_blank" rel="noopener">{{ d.tautan }}</a>{% else %}{{ d.ringkas }}{% endif %}</span>
-            {% if d.berkas %}<button type="button" class="button is-small" data-doc-preview="{{ d.berkas.url }}" data-doc-title="Dasar Kegiatan">👁 Lihat</button>{% endif %}
+            {% if d.berkas %}<button type="button" class="button is-small" data-doc-preview="{{ d.berkas.url }}" data-doc-title="Dasar Kegiatan">{% include "partials/_ikon_mata.html" %}Lihat</button>{% endif %}
           </li>
         {% empty %}<li class="cell-muted">Belum ada dasar kegiatan.</li>{% endfor %}
       </ul>

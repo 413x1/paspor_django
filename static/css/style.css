@@ -302,6 +302,16 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
     box-shadow var(--duration-fast) var(--ease-apple), opacity var(--duration-fast) var(--ease-apple);
 }
 .button:active:not(:disabled) { transform: scale(.96); }
+/* Ikon mata tombol "Lihat"/"Pratinjau" (partials/_ikon_mata.html). Berkedip saat diklik: kelas `is-kedip`
+   dipasang oleh skrip pratinjau dokumen di base.html. */
+.ikon-mata {
+  width: 1.25em; height: 1.25em; margin-right: 6px; flex-shrink: 0; vertical-align: -.25em;
+  fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  transform-origin: center;
+}
+@keyframes kedip-mata { 0%, 100% { transform: scaleY(1); } 40%, 55% { transform: scaleY(.08); } }
+.ikon-mata.is-kedip { animation: kedip-mata 450ms var(--ease-apple-in-out); }
+@media (prefers-reduced-motion: reduce) { .ikon-mata.is-kedip { animation: none; } }
 .checkbox, .radio, a.navbar-item, .navbar-link, .dt-paging-button, .jenis-option {
   transition: transform var(--duration-instant) var(--ease-apple), background-color var(--duration-fast) var(--ease-apple),
     color var(--duration-fast) var(--ease-apple);

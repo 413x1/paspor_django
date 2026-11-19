@@ -27,7 +27,7 @@
     {% include "partials/_input_berkas.html" with field=f.berkas %}
     {% if f.instance.berkas %}
       <p class="helptext">Berkas saat ini:
-        <a href="#" data-doc-preview="{{ f.instance.berkas.url }}" data-doc-title="Dasar Kegiatan">👁 Lihat</a> — pilih berkas baru untuk mengganti.</p>
+        <a href="#" data-doc-preview="{{ f.instance.berkas.url }}" data-doc-title="Dasar Kegiatan">{% include "partials/_ikon_mata.html" %}Lihat</a> — pilih berkas baru untuk mengganti.</p>
     {% endif %}
     {% for e in f.berkas.errors %}<p class="help is-danger">{{ e }}</p>{% endfor %}
   </div>

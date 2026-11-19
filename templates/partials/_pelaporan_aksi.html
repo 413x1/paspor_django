@@ -2,7 +2,7 @@
 <div class="aksi-pelaporan">
   {% if laporan and laporan.file %}
     <button type="button" class="button is-small is-info" data-id="{{ laporan.pk }}"
-      data-doc-preview="{{ laporan.file.url }}" data-doc-title="Laporan {{ p.kode }}">👁 Lihat</button>
+      data-doc-preview="{{ laporan.file.url }}" data-doc-title="Laporan {{ p.kode }}">{% include "partials/_ikon_mata.html" %}Lihat</button>
   {% endif %}
   {% if status == "menunggu" %}
     <button type="button" class="button is-small is-success btn-verifikasi"
@@ -31,7 +31,7 @@
   <div class="verif-dokumen">
     <span class="verif-label" style="margin:0;">Dokumen Laporan</span>
     {# Tanpa berkas, `file.url` melempar ValueError dan menggagalkan seluruh respons tabel. #}
-    {% if laporan.file %}<button type="button" class="button is-small" data-doc-preview="{{ laporan.file.url }}" data-doc-title="Laporan {{ p.kode }}">👁 Lihat dokumen laporan</button>
+    {% if laporan.file %}<button type="button" class="button is-small" data-doc-preview="{{ laporan.file.url }}" data-doc-title="Laporan {{ p.kode }}">{% include "partials/_ikon_mata.html" %}Lihat dokumen laporan</button>
     {% else %}<span class="cell-muted">Tidak ada berkas</span>{% endif %}
   </div>
 </div>

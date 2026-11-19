@@ -54,7 +54,7 @@
     </div>
     <div class="actions">
       {% if surat_tugas_berkas %}
-        <button type="button" class="button is-small" data-doc-preview="{{ surat_tugas_berkas.file.url }}" data-doc-title="Surat Tugas Pimpinan Unor">👁 Pratinjau</button>
+        <button type="button" class="button is-small" data-doc-preview="{{ surat_tugas_berkas.file.url }}" data-doc-title="Surat Tugas Pimpinan Unor">{% include "partials/_ikon_mata.html" %}Pratinjau</button>
       {% endif %}
     </div>
   </div>
@@ -87,7 +87,7 @@
     </div>
     <div class="actions">
       {% if sk_tubel %}
-        <button type="button" class="button is-small" data-doc-preview="{{ sk_tubel.file.url }}" data-doc-title="SK Tugas Belajar">👁 Pratinjau</button>
+        <button type="button" class="button is-small" data-doc-preview="{{ sk_tubel.file.url }}" data-doc-title="SK Tugas Belajar">{% include "partials/_ikon_mata.html" %}Pratinjau</button>
       {% endif %}
     </div>
   </div>
@@ -112,7 +112,7 @@
     </div>
     <div class="actions">
       {% if pendukung.file %}
-        <button type="button" class="button is-small" data-doc-preview="{{ pendukung.file.url }}" data-doc-title="Dokumen Lainnya">👁 Pratinjau</button>
+        <button type="button" class="button is-small" data-doc-preview="{{ pendukung.file.url }}" data-doc-title="Dokumen Lainnya">{% include "partials/_ikon_mata.html" %}Pratinjau</button>
       {% endif %}
       {% if dapat_diubah %}
         {% if pendukung.file %}

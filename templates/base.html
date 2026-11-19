@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}PASPOR{% endblock %} — Kementerian PU</title>
   <link rel="stylesheet" href="{% static 'vendors/bulma/css/versions/bulma-no-dark-mode.min.css' %}">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20261119c">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20261119d">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -308,17 +308,32 @@
     }
 
     // Pratinjau dokumen di dalam modal (tanpa membuka tab baru)
+    // Ikon mata pada tombol "Lihat"/"Pratinjau" berkedip saat diklik sebagai tanda dokumen sedang dibuka;
+    // pratinjau dibuka sesaat kemudian agar kedipannya sempat terlihat.
+    $(document).on('animationend', '.ikon-mata', function () { this.classList.remove('is-kedip'); });
     $(document).on('click', '[data-doc-preview]', function (e) {
       e.preventDefault();
-      var url = $(this).data('doc-preview');
+      var $pemicu = $(this);
+      var ikon = $pemicu.find('.ikon-mata').get(0);
+      var url = $pemicu.data('doc-preview');
       // Untuk PDF: sembunyikan panel thumbnail/bookmark bawaan viewer.
       var frameUrl = /\.pdf($|\?)/i.test(url)
         ? url + (url.indexOf('#') === -1 ? '#' : '&') + 'toolbar=1&navpanes=0&statusbar=0&view=FitH'
         : url;
-      $('#docPreviewTitle').text($(this).data('doc-title') || 'Pratinjau Dokumen');
-      $('#docPreviewFrame').attr('src', frameUrl);
-      $('#docPreviewOpen').attr('href', url);
-      $('#docPreviewModal').addClass('is-active');
+      function bukaPratinjau() {
+        $('#docPreviewTitle').text($pemicu.data('doc-title') || 'Pratinjau Dokumen');
+        $('#docPreviewFrame').attr('src', frameUrl);
+        $('#docPreviewOpen').attr('href', url);
+        $('#docPreviewModal').addClass('is-active');
+      }
+      if (ikon && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        ikon.classList.remove('is-kedip');
+        void ikon.getBoundingClientRect();   // mulai ulang animasi bila diklik berulang
+        ikon.classList.add('is-kedip');
+        setTimeout(bukaPratinjau, 220);
+      } else {
+        bukaPratinjau();
+      }
     });
 
     // Unggah dokumen otomatis begitu berkas dipilih (halaman Unggah Dokumen
