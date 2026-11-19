@@ -261,6 +261,9 @@ class HalamanDanAksesTests(PelaporanServerSideBase):
         # kolom cari: placeholder ringkas (tidak terpotong), ikon, dan keterangan cakupan pencarian
         self.assertIn("searchPlaceholder: 'Cari pegawai, NIP, kode…'", html)
         self.assertIn("addClass('dt-cari')", html)
+        # panah urut dibuat jelas + petunjuk pada header kolom yang bisa diurutkan
+        self.assertIn("class=\"table data-table sortir-jelas is-fullwidth is-hoverable\"", html)
+        self.assertIn("Klik untuk mengurutkan", html)
         self.assertIn("Pencarian mencakup nama pegawai, NIP, kode pengajuan, unor, dan negara tujuan.", html)
         # tombol aksi dibuat ulang tiap tabel digambar: event delegation
         self.assertIn("$(document).on('click', '.btn-verifikasi'", html)
@@ -272,7 +275,7 @@ class HalamanDanAksesTests(PelaporanServerSideBase):
         self.client.force_login(self.admin_unor)
         html = self.client.get(reverse("unor:pelaporan")).content.decode()
         self.assertIn(self.p.kode, html)                    # baris dirender langsung
-        for tidak_ada in ('id="tabelPelaporan"', "serverSide", "dataTables.min.js", "pelaporan/data/", "Pencarian mencakup"):
+        for tidak_ada in ('id="tabelPelaporan"', "serverSide", "dataTables.min.js", "pelaporan/data/", "Pencarian mencakup", "sortir-jelas"):
             self.assertNotIn(tidak_ada, html)
 
     def test_endpoint_hanya_untuk_admin_pakln(self):

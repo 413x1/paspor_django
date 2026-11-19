@@ -560,6 +560,22 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .table.data-table th .dt-column-order { margin-left: 6px; opacity: .5; }
 .table.data-table th.dt-ordering-asc .dt-column-order,
 .table.data-table th.dt-ordering-desc .dt-column-order { opacity: 1; }
+/* Panah urut yang jelas (opt-in lewat kelas `sortir-jelas` pada tabel). Bawaan DataTables hanya ~6% opasitas
+   (0,125 x 0,5 dari aturan di atas) sehingga menyatu dengan latar header. Di sini: panah kolom yang bisa diurutkan
+   berwarna teal, panah arah yang sedang aktif berwarna navy penuh, dan header memberi umpan balik saat disorot. */
+.table.data-table.sortir-jelas th .dt-column-order { opacity: 1; }
+.table.data-table.sortir-jelas th.dt-orderable-asc span.dt-column-order::before,
+.table.data-table.sortir-jelas th.dt-orderable-desc span.dt-column-order::after { color: var(--teal); opacity: .6; }
+.table.data-table.sortir-jelas th.dt-ordering-asc span.dt-column-order::before,
+.table.data-table.sortir-jelas th.dt-ordering-desc span.dt-column-order::after { color: var(--navy-900); opacity: 1; }
+.table.data-table.sortir-jelas th.dt-orderable-asc, .table.data-table.sortir-jelas th.dt-orderable-desc {
+  transition: background-color var(--duration-fast) var(--ease-apple), color var(--duration-fast) var(--ease-apple);
+}
+.table.data-table.sortir-jelas th.dt-orderable-asc:hover, .table.data-table.sortir-jelas th.dt-orderable-desc:hover {
+  background: var(--blue-bg); color: var(--navy-900);
+}
+.table.data-table.sortir-jelas th.dt-orderable-asc:hover span.dt-column-order::before,
+.table.data-table.sortir-jelas th.dt-orderable-desc:hover span.dt-column-order::after { opacity: 1; }
 .dt-footer {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; flex-wrap: wrap; padding: 16px 18px; border-top: 1px solid var(--line);
