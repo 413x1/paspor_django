@@ -1,0 +1,38 @@
+{% load pengajuan_extras %}{# Kolom Aksi tabel Pelaporan PDLN (Admin PAKLN) — dirender per baris oleh `views_pakln.pelaporan_data`. #}
+<div class="aksi-pelaporan">
+  {% if laporan and laporan.file %}
+    <button type="button" class="button is-small is-info" data-id="{{ laporan.pk }}"
+      data-doc-preview="{{ laporan.file.url }}" data-doc-title="Laporan {{ p.kode }}">👁 Lihat</button>
+  {% endif %}
+  {% if status == "menunggu" %}
+    <button type="button" class="button is-small is-success btn-verifikasi"
+      data-id="{{ laporan.pk }}" data-kode="{{ p.kode }}" data-pegawai="{{ p.pegawai.profile.nama }}"
+      data-url="{{ verifikasi_url }}">✓ Verifikasi</button>
+    <button type="button" class="button is-small is-warning btn-revisi"
+      data-id="{{ laporan.pk }}" data-kode="{{ p.kode }}" data-pegawai="{{ p.pegawai.profile.nama }}"
+      data-url="{{ verifikasi_url }}">↩ Request Perbaikan</button>
+  {% endif %}
+</div>
+{% if status == "menunggu" %}
+{# Ringkasan isi laporan (disembunyikan); disalin ke modal Verifikasi saat tombol diklik. #}
+<div hidden id="ringkasan-{{ laporan.pk }}">
+  <div class="verif-isi">
+    {% for judul, isi in uraian %}
+      <div class="verif-item">
+        <div class="verif-label">{{ judul }}</div>
+        <div class="verif-teks">{{ isi|default:"—" }}</div>
+      </div>
+    {% endfor %}
+  </div>
+  <div class="verif-biaya">
+    <div class="verif-kotak"><div class="verif-label">Estimasi Biaya</div><div class="verif-nilai">{{ laporan.estimasi_biaya|rupiah }}</div></div>
+    <div class="verif-kotak"><div class="verif-label">Realisasi Biaya</div><div class="verif-nilai">{{ laporan.realisasi_biaya|rupiah }}</div></div>
+  </div>
+  <div class="verif-dokumen">
+    <span class="verif-label" style="margin:0;">Dokumen Laporan</span>
+    {# Tanpa berkas, `file.url` melempar ValueError dan menggagalkan seluruh respons tabel. #}
+    {% if laporan.file %}<button type="button" class="button is-small" data-doc-preview="{{ laporan.file.url }}" data-doc-title="Laporan {{ p.kode }}">👁 Lihat dokumen laporan</button>
+    {% else %}<span class="cell-muted">Tidak ada berkas</span>{% endif %}
+  </div>
+</div>
+{% endif %}
