@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}PASPOR{% endblock %} — Kementerian PU</title>
   <link rel="stylesheet" href="{% static 'vendors/bulma/css/versions/bulma-no-dark-mode.min.css' %}">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20261119f">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20261119g">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -201,6 +201,11 @@
         if (e.key === 'Escape' || e.key === 'Enter' || e.key === 'Tab') { targetPanah(this).removeClass('is-open'); }
         else if (e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { targetPanah(this).toggleClass('is-open'); }
       });
+
+    // Semua tabel DataTables: header kolom yang bisa diurutkan diberi tooltip petunjuk.
+    $(document).on('init.dt', function (e, settings) {
+      $(settings.nTable).find('thead th.dt-orderable-asc, thead th.dt-orderable-desc').not('[title]').attr('title', 'Klik untuk mengurutkan');
+    });
 
     // Dropdown generik berbasis klik: [data-dropdown] (wadah) +
     // [data-dropdown-toggle] (tombol pemicu) + [data-dropdown-panel]

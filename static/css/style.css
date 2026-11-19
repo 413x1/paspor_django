@@ -560,22 +560,23 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .table.data-table th .dt-column-order { margin-left: 6px; opacity: .5; }
 .table.data-table th.dt-ordering-asc .dt-column-order,
 .table.data-table th.dt-ordering-desc .dt-column-order { opacity: 1; }
-/* Panah urut yang jelas (opt-in lewat kelas `sortir-jelas` pada tabel). Bawaan DataTables hanya ~6% opasitas
-   (0,125 x 0,5 dari aturan di atas) sehingga menyatu dengan latar header. Di sini: panah kolom yang bisa diurutkan
-   berwarna teal, panah arah yang sedang aktif berwarna navy penuh, dan header memberi umpan balik saat disorot. */
-.table.data-table.sortir-jelas th .dt-column-order { opacity: 1; }
-.table.data-table.sortir-jelas th.dt-orderable-asc span.dt-column-order::before,
-.table.data-table.sortir-jelas th.dt-orderable-desc span.dt-column-order::after { color: var(--teal); opacity: .6; }
-.table.data-table.sortir-jelas th.dt-ordering-asc span.dt-column-order::before,
-.table.data-table.sortir-jelas th.dt-ordering-desc span.dt-column-order::after { color: var(--navy-900); opacity: 1; }
-.table.data-table.sortir-jelas th.dt-orderable-asc, .table.data-table.sortir-jelas th.dt-orderable-desc {
-  transition: background-color var(--duration-fast) var(--ease-apple), color var(--duration-fast) var(--ease-apple);
+/* Panah urut yang jelas untuk SEMUA tabel DataTables. Bawaan DataTables hanya ~6% opasitas (0,125 x 0,5 dari aturan di
+   atas) sehingga menyatu dengan latar header. Panah kolom yang bisa diurutkan berwarna teal, panah arah yang sedang
+   aktif navy penuh, dan header memberi umpan balik saat disorot (lapisan transparan, cocok di latar header apa pun).
+   Selector memakai prefix .dt-container agar lebih kuat daripada aturan bawaan dataTables.min.css. */
+.dt-container table.dataTable thead>tr>th .dt-column-order { opacity: 1; }
+.dt-container table.dataTable thead>tr>th.dt-orderable-asc span.dt-column-order::before,
+.dt-container table.dataTable thead>tr>th.dt-orderable-desc span.dt-column-order::after { color: var(--teal); opacity: .6; }
+.dt-container table.dataTable thead>tr>th.dt-ordering-asc span.dt-column-order::before,
+.dt-container table.dataTable thead>tr>th.dt-ordering-desc span.dt-column-order::after { color: var(--navy-900); opacity: 1; }
+.dt-container table.dataTable thead>tr>th.dt-orderable-asc, .dt-container table.dataTable thead>tr>th.dt-orderable-desc {
+  transition: box-shadow var(--duration-fast) var(--ease-apple), color var(--duration-fast) var(--ease-apple);
 }
-.table.data-table.sortir-jelas th.dt-orderable-asc:hover, .table.data-table.sortir-jelas th.dt-orderable-desc:hover {
-  background: var(--blue-bg); color: var(--navy-900);
+.dt-container table.dataTable thead>tr>th.dt-orderable-asc:hover, .dt-container table.dataTable thead>tr>th.dt-orderable-desc:hover {
+  box-shadow: inset 0 0 0 999px rgba(36, 129, 155, .10); color: var(--navy-900);
 }
-.table.data-table.sortir-jelas th.dt-orderable-asc:hover span.dt-column-order::before,
-.table.data-table.sortir-jelas th.dt-orderable-desc:hover span.dt-column-order::after { opacity: 1; }
+.dt-container table.dataTable thead>tr>th.dt-orderable-asc:hover span.dt-column-order::before,
+.dt-container table.dataTable thead>tr>th.dt-orderable-desc:hover span.dt-column-order::after { opacity: 1; }
 .dt-footer {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; flex-wrap: wrap; padding: 16px 18px; border-top: 1px solid var(--line);
