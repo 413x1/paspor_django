@@ -70,6 +70,7 @@
       </tbody>
     </table>
   </div>
+  {% if serverside_url %}<p class="helptext">Pencarian mencakup nama pegawai, NIP, kode pengajuan, unor, dan negara tujuan.</p>{% endif %}
 </div>
 
 {% if dapat_verifikasi %}
@@ -147,12 +148,19 @@
         { data: 6, searchable: true, orderable: true },    // Tgl Unggah
         { data: 7, searchable: false, orderable: false },  // Aksi
       ],
+      initComplete: function () {
+        // Kolom cari: ikon kaca pembesar, serta penjelasan lengkap cakupan pencarian (tooltip & pembaca layar).
+        $(this.api().table().container()).find('.dt-search input').addClass('dt-cari').attr({
+          'aria-label': 'Cari berdasarkan nama pegawai, NIP, kode pengajuan, unor, atau negara tujuan',
+          title: 'Cari berdasarkan nama pegawai, NIP, kode pengajuan, unor, atau negara tujuan'
+        });
+      },
       pageLength: 10,
       lengthMenu: [10, 25, 50, 100],
       dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
       language: {
         search: '',
-        searchPlaceholder: 'Cari pegawai, NIP, kode, negara, unor...',
+        searchPlaceholder: 'Cari pegawai, NIP, kode…',
         lengthMenu: 'Tampilkan _MENU_ baris',
         info: 'Menampilkan _START_–_END_ dari _TOTAL_ PDLN',
         infoEmpty: 'Tidak ada data',

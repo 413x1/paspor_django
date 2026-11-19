@@ -258,6 +258,10 @@ class HalamanDanAksesTests(PelaporanServerSideBase):
         self.assertIn(self.url_data, html)
         self.assertIn("dataTables.min.js", html)
         self.assertNotIn(self.p.kode, html)                 # baris tidak dirender di HTML
+        # kolom cari: placeholder ringkas (tidak terpotong), ikon, dan keterangan cakupan pencarian
+        self.assertIn("searchPlaceholder: 'Cari pegawai, NIP, kode…'", html)
+        self.assertIn("addClass('dt-cari')", html)
+        self.assertIn("Pencarian mencakup nama pegawai, NIP, kode pengajuan, unor, dan negara tujuan.", html)
         # tombol aksi dibuat ulang tiap tabel digambar: event delegation
         self.assertIn("$(document).on('click', '.btn-verifikasi'", html)
         self.assertIn("$(document).on('click', '.btn-revisi'", html)
@@ -268,7 +272,7 @@ class HalamanDanAksesTests(PelaporanServerSideBase):
         self.client.force_login(self.admin_unor)
         html = self.client.get(reverse("unor:pelaporan")).content.decode()
         self.assertIn(self.p.kode, html)                    # baris dirender langsung
-        for tidak_ada in ('id="tabelPelaporan"', "serverSide", "dataTables.min.js", "pelaporan/data/"):
+        for tidak_ada in ('id="tabelPelaporan"', "serverSide", "dataTables.min.js", "pelaporan/data/", "Pencarian mencakup"):
             self.assertNotIn(tidak_ada, html)
 
     def test_endpoint_hanya_untuk_admin_pakln(self):
