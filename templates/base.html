@@ -321,9 +321,11 @@
       var $pemicu = $(this);
       var ikon = $pemicu.find('.ikon-mata').get(0);
       var url = $pemicu.data('doc-preview');
-      // Untuk PDF: sembunyikan panel thumbnail/bookmark bawaan viewer.
+      // Untuk PDF: pratinjau hanya-lihat. Sembunyikan toolbar bawaan penampil (di Edge toolbar memuat alat
+      // gambar, sorot, dan teks yang membuat dokumen tampak bisa diedit), panel thumbnail/bookmark, dan status bar.
+      // Pengguna tetap dapat membuka dokumen utuh lewat tombol "Buka di tab baru".
       var frameUrl = /\.pdf($|\?)/i.test(url)
-        ? url + (url.indexOf('#') === -1 ? '#' : '&') + 'toolbar=1&navpanes=0&statusbar=0&view=FitH'
+        ? url + (url.indexOf('#') === -1 ? '#' : '&') + 'toolbar=0&navpanes=0&statusbar=0&view=FitH'
         : url;
       function bukaPratinjau() {
         $('#docPreviewTitle').text($pemicu.data('doc-title') || 'Pratinjau Dokumen');
@@ -355,11 +357,35 @@
       // Jangan disable input file sebelum submit — browser tidak akan
       // menyertakan field yang disabled ke body POST, sehingga upload
       // gagal validasi (field "file" kosong).
-      $form.find('.doc-upload-submit').text('Mengunggah…').prop('disabled', true);
-      $form.find('.file-cta .file-label').text('Mengunggah…');
+      var $tombol = $form.find('.doc-upload-submit'), $label = $form.find('.file-cta .file-label');
+      if ($tombol.data('teks-awal') === undefined) { $tombol.data('teks-awal', $tombol.text()); }
+      if ($label.data('teks-awal') === undefined) { $label.data('teks-awal', $label.text()); }
+      $tombol.text('Mengunggah…').prop('disabled', true);
+      $label.text('Mengunggah…');
       $fileInput.prop('readonly', true);
       $form.trigger('submit');
     }
+
+    // Kembalikan komponen unggah ke keadaan semula: dipakai saat halaman dipulihkan dari cache Back/Forward
+    // (Edge/Chrome memulihkan DOM apa adanya, termasuk label "Mengunggah…" yang menggantung) dan saat berkas batal.
+    function pulihkanFormUnggah($form) {
+      var $tombol = $form.find('.doc-upload-submit'), $label = $form.find('.file-cta .file-label');
+      if ($tombol.data('teks-awal') !== undefined) { $tombol.text($tombol.data('teks-awal')); }
+      if ($label.data('teks-awal') !== undefined) { $label.text($label.data('teks-awal')); }
+      $tombol.prop('disabled', false);
+      $form.find('.doc-file-input').prop('readonly', false).val('');
+      var $info = $form.closest('.doc-row').find('.info p').first();
+      if ($info.data('html-awal') !== undefined) { $info.html($info.data('html-awal')); }
+    }
+    window.addEventListener('pageshow', function (e) {
+      if (e.persisted) { $('.doc-upload-form').each(function () { pulihkanFormUnggah($(this)); }); }
+    });
+
+    // Kosongkan pilihan berkas SEBELUM dialog pilih berkas dibuka (tombol "Ganti"/"Unggah" maupun papan ketik).
+    // Event `change` hanya terpicu bila nilai input berubah; tanpa pengosongan ini, memilih ulang berkas yang
+    // SAMA (mis. setelah unggahan sebelumnya tertahan atau dibatalkan) tidak memicu apa pun, sehingga
+    // pengguna merasa tombol "Ganti" tidak berfungsi (paling sering terlihat di Edge/Chromium).
+    $(document).on('click', '.doc-file-input', function () { this.value = ''; });
 
     // Unggahan hanya PDF: periksa ekstensi dan tipe berkas SEBELUM apa pun diproses. Berkas
     // yang salah dibatalkan (input dikosongkan) disertai pemberitahuan. Server tetap
@@ -423,6 +449,14 @@
       if (!this.files || !this.files.length) { return; }
       if (!berkasPdfValid(this)) { return; }
 
+      // Tampilkan segera nama dan ukuran berkas yang dipilih pada keterangan baris dokumen.
+      var $info = $form.closest('.doc-row').find('.info p').first();
+      if ($info.length) {
+        if ($info.data('html-awal') === undefined) { $info.data('html-awal', $info.html()); }
+        var kb = Math.max(1, Math.round(this.files[0].size / 1024));
+        $info.text('Berkas dipilih: ' + this.files[0].name + ' (' + kb + ' KB)');
+      }
+
       var jenis = $form.find('input[name="jenis"]').val();
       // Registri persyaratan menandai baris yang butuh Tanggal Surat lewat
       // atribut data-tanggal-surat (partials/_dokumen_tahap.html); daftar
@@ -452,7 +486,7 @@
     // padahal belum diunggah.
     function batalTanggalSurat() {
       if (!$formMenungguTanggalSurat) { return; }
-      $formMenungguTanggalSurat.find('.doc-file-input').val('').prop('readonly', false);
+      pulihkanFormUnggah($formMenungguTanggalSurat);
       $formMenungguTanggalSurat = null;
     }
     $(document).on('click', '#tanggalSuratModal .modal-background, #tanggalSuratModal [data-modal-close]', batalTanggalSurat);

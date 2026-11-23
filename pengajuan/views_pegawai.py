@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import date
 
@@ -784,6 +785,41 @@ def _context_profil(request, form_akun=None, aksi_terbuka=""):
     }
 
 
+logger = logging.getLogger(__name__)
+
+
+def simpan_dokumen_profil(user, jenis, berkas):
+    """Simpan dokumen Profil (satu berkas per jenis per user) dengan aman.
+
+    Berkas BARU disimpan lebih dulu; berkas LAMA baru dihapus sesudahnya. Dengan urutan ini kegagalan
+    menyimpan (disk/penyimpanan) tidak membuat dokumen lama hilang, dan berkas lama yang tidak bisa
+    dihapus (mis. sedang terkunci di Windows) tidak menggagalkan unggahan. Nama berkas yang sama dengan
+    yang lama aman: penyimpanan memberi nama unik untuk berkas baru."""
+    with transaction.atomic():
+        dok = DokumenKepegawaian.objects.select_for_update().filter(user=user, jenis=jenis).first()
+        if dok is None:
+            DokumenKepegawaian.objects.create(user=user, jenis=jenis, file=berkas)
+            return
+        nama_lama, penyimpanan = dok.file.name, dok.file.storage
+        dok.file = berkas
+        try:
+            dok.save()
+        except Exception:
+            # Berkas baru mungkin sudah tertulis walau pembaruan basis data gagal: bersihkan. Hanya bila memang
+            # sudah tersimpan (`_committed`), supaya tidak menghapus berkas lain yang kebetulan senama.
+            if getattr(dok.file, "_committed", False) and dok.file.name and dok.file.name != nama_lama:
+                try:
+                    penyimpanan.delete(dok.file.name)
+                except Exception:
+                    logger.warning("Berkas baru %s tidak dapat dibersihkan", dok.file.name, exc_info=True)
+            raise
+    if nama_lama and nama_lama != dok.file.name:
+        try:
+            penyimpanan.delete(nama_lama)
+        except Exception:
+            logger.warning("Berkas lama %s tidak dapat dihapus; dibiarkan", nama_lama, exc_info=True)
+
+
 @role_required("pegawai", "admin_unor", "admin_bpsdm", "admin_bko", "admin_pakln")
 def profil(request):
     user = request.user
@@ -814,19 +850,21 @@ def profil(request):
         elif aksi == "unggah_dokumen":
             jenis = request.POST.get("jenis", "")
             berkas = request.FILES.get("file")
-            if jenis not in dict(jenis_dokumen) or not berkas:
-                messages.error(request, "Pilih jenis dokumen dan berkasnya.")
+            if jenis not in dict(jenis_dokumen):
+                messages.error(request, "Jenis dokumen tidak dikenali.")
+            elif not berkas:
+                # Tidak ada berkas baru yang dipilih: dokumen yang sudah ada dibiarkan apa adanya.
+                messages.error(request, "Pilih berkas PDF terlebih dahulu. Dokumen yang sudah diunggah tidak diubah.")
             elif (galat := periksa_pdf(request, berkas)):
                 messages.error(request, galat)
             else:
-                dok = DokumenKepegawaian.objects.filter(user=user, jenis=jenis).first()
-                if dok:
-                    dok.file.delete(save=False)
-                    dok.file = berkas
-                    dok.save()
+                try:
+                    simpan_dokumen_profil(user, jenis, berkas)
+                except Exception:
+                    logger.exception("Gagal menyimpan dokumen profil %s untuk user %s", jenis, user.pk)
+                    messages.error(request, "Dokumen gagal disimpan. Dokumen sebelumnya tetap dipertahankan; silakan coba lagi.")
                 else:
-                    DokumenKepegawaian.objects.create(user=user, jenis=jenis, file=berkas)
-                messages.success(request, "Dokumen berhasil diunggah.")
+                    messages.success(request, "Dokumen berhasil diunggah.")
         return redirect("profil")
 
     return render(request, "akun/profil.html", _context_profil(request))
