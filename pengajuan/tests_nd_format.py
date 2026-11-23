@@ -61,13 +61,17 @@ class KopSuratTests(SimpleTestCase):
                 garis = [c for c in alamat[0].children if isinstance(c, boxes.LineBox)]
                 self.assertEqual(len(garis), 1, "alamat kop pecah menjadi lebih dari satu baris")
 
-    def test_alamat_memakai_lebar_penuh_halaman_bukan_kolom_teks(self):
+    def test_alamat_di_kolom_teks_sebelah_logo_dengan_jarak_ke_garis(self):
+        """Alamat rata tengah di bawah nama instansi (di dalam kolom teks), bukan melebar sampai bawah logo."""
         for template in (KARO, KABAG):
             with self.subTest(template=template):
                 _, dok = render(template)
-                alamat = cari(dok.pages[0]._page_box, "nd-addr")[0]
-                kolom = cari(dok.pages[0]._page_box, "nd-head-text")[0]
-                self.assertGreater(alamat.width, kolom.width + 50)
+                halaman = dok.pages[0]._page_box
+                kolom = cari(halaman, "nd-head-text")[0]
+                alamat = cari(kolom, "nd-addr")                       # berada DI DALAM kolom teks
+                self.assertEqual(len(alamat), 1)
+                self.assertLessEqual(alamat[0].width, kolom.width + 0.5)
+                self.assertGreaterEqual(alamat[0].style["margin_bottom"].value, 6)      # jarak ke garis di bawahnya
 
     def test_nama_instansi_di_kop_tetap_tebal(self):
         for template in (KARO, KABAG):
@@ -206,13 +210,12 @@ class PratinjauGenerateNdTests(TestCase):
                 self.assertIn(".nd-sign-block .nd-sign-name { margin-top: 48px; font-weight: 400; text-decoration: none; }", html)
                 self.assertNotIn("text-decoration: underline", html)
 
-    def test_alamat_kop_di_bawah_logo_satu_baris(self):
+    def test_alamat_kop_satu_baris_di_kolom_teks_dengan_jarak(self):
         for rute in ("pakln:generate_nd_karo", "pakln:generate_nd_kabag"):
             with self.subTest(rute=rute):
                 html = self.halaman(rute)
                 self.assertEqual(html.count('class="nd-addr"'), 1)
-                self.assertNotIn(".nd-head-text .nd-addr", html)           # tidak lagi terjepit di kolom teks
-                self.assertIn(".nd-addr { text-align: center; font-size: 1.9cqw;", html)
+                self.assertIn(".nd-head-text .nd-addr { font-size: 1.6cqw; margin-top: 3px; margin-bottom: 6px;", html)
                 self.assertIn("white-space: nowrap", html.split(".nd-addr {")[1].split("}")[0])
                 self.assertIn("container-type: inline-size", html)
 
