@@ -120,22 +120,13 @@ def riwayat_data(request):
 
     data = []
     for p in page:
-        if p.pernah_dikirim or p.status == S.DIBATALKAN:
-            aksi_html = format_html(
-                '<a href="{}" class="button is-small">Lihat</a>',
-                reverse("pegawai:monitor_progres", args=[p.kode]),
-            )
-        else:
-            aksi_html = format_html(
-                '<a href="{}" class="button is-small">Lanjutkan</a>',
-                _url_formulir_draft(p),
-            )
+        # Riwayat hanya memuat pengajuan yang sudah tuntas atau dibatalkan (pengajuan_aktif dikecualikan di atas:
+        # draft, sedang diproses, dan PDLN selesai yang menunggu laporan ada di tabel "Pengajuan Aktif").
+        aksi_html = format_html(
+            '<a href="{}" class="button is-small">Lihat</a>',
+            reverse("pegawai:monitor_progres", args=[p.kode]),
+        )
         laporan = p.laporan if p.is_pdln else None
-        if p.is_pdln and p.status == S.SELESAI and not p.tuntas:
-            aksi_html = format_html(
-                '{} <a href="{}" class="button is-small is-info btn-pelaporan-info">Pelaporan PDLN</a>',
-                aksi_html, reverse("pegawai:laporan_form", args=[p.kode]),
-            )
         if not p.is_pdln:
             laporan_html = "—"
         elif p.status != S.SELESAI:

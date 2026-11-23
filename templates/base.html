@@ -378,7 +378,7 @@
       if ($info.data('html-awal') !== undefined) { $info.html($info.data('html-awal')); }
     }
     window.addEventListener('pageshow', function (e) {
-      if (e.persisted) { $('.doc-upload-form').each(function () { pulihkanFormUnggah($(this)); }); }
+      if (e.persisted) { $('form:has(.doc-file-input)').each(function () { pulihkanFormUnggah($(this)); }); }
     });
 
     // Kosongkan pilihan berkas SEBELUM dialog pilih berkas dibuka (tombol "Ganti"/"Unggah" maupun papan ketik).
