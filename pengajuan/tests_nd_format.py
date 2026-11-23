@@ -185,3 +185,45 @@ class UnduhPdfTests(TestCase):
                 isi = b"".join(resp.streaming_content) if resp.streaming else resp.content
                 self.assertTrue(isi.startswith(b"%PDF"))
                 self.assertGreater(len(isi), 2000)                    # PDF terisi (halaman dihitung di KopSuratTests)
+
+
+class PratinjauGenerateNdTests(TestCase):
+    """Halaman Generate ND memuat pratinjau HTML dengan CSS sendiri; harus sama dengan hasil PDF-nya."""
+
+    def setUp(self):
+        from accounts.models import User
+
+        self.client.force_login(User.objects.create_user("pakln2", password="x", role="admin_pakln", no_hp="6281100000002"))
+
+    def halaman(self, rute):
+        return self.client.get(reverse(rute)).content.decode()
+
+    def test_judul_dan_nama_pejabat_reguler_tanpa_garis_bawah_jarak_48px(self):
+        for rute in ("pakln:generate_nd_karo", "pakln:generate_nd_kabag"):
+            with self.subTest(rute=rute):
+                html = self.halaman(rute)
+                self.assertIn(".nd-title { text-align: center; font-weight: 400; text-decoration: none;", html)
+                self.assertIn(".nd-sign-block .nd-sign-name { margin-top: 48px; font-weight: 400; text-decoration: none; }", html)
+                self.assertNotIn("text-decoration: underline", html)
+
+    def test_alamat_kop_di_bawah_logo_satu_baris(self):
+        for rute in ("pakln:generate_nd_karo", "pakln:generate_nd_kabag"):
+            with self.subTest(rute=rute):
+                html = self.halaman(rute)
+                self.assertEqual(html.count('class="nd-addr"'), 1)
+                self.assertNotIn(".nd-head-text .nd-addr", html)           # tidak lagi terjepit di kolom teks
+                self.assertIn(".nd-addr { text-align: center; font-size: 1.9cqw;", html)
+                self.assertIn("white-space: nowrap", html.split(".nd-addr {")[1].split("}")[0])
+                self.assertIn("container-type: inline-size", html)
+
+    def test_nilai_isian_karo_reguler(self):
+        html = self.halaman("pakln:generate_nd_karo")
+        self.assertIn("  .nd-dyn { font-weight: 400; }", html)
+        self.assertNotIn(".nd-dyn { font-weight: 700; }", html)
+        self.assertIn(".nd-pegawai-table tbody td { font-weight: 400; }", html)
+
+    def test_nilai_hal_dan_tanggal_kabag_reguler_tetapi_paragraf_isi_tidak_berubah(self):
+        html = self.halaman("pakln:generate_nd_kabag")
+        self.assertIn(".nd-meta .nd-dyn { font-weight: 400; }", html)
+        self.assertIn("  .nd-dyn { font-weight: 700; }", html)              # paragraf isi: tetap tebal seperti PDF
+        self.assertIn(".nd-sign-block > div:first-child .nd-dyn { font-weight: 400; }", html)

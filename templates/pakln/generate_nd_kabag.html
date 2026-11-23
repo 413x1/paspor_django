@@ -33,6 +33,7 @@
     font-size: 14px;
     line-height: 1.55;
     color: #111111;
+    container-type: inline-size;   /* sumber satuan cqw untuk baris alamat kop */
   }
   .nd-paper * { box-sizing: border-box; }
   .nd-head { display: flex; align-items: flex-start; gap: 14px; }
@@ -40,9 +41,11 @@
   .nd-head-text { flex: 1 1 auto; text-align: center; }
   .nd-head-text .nd-org1 { font-size: 17px; font-weight: 700; letter-spacing: .3px; }
   .nd-head-text .nd-org2 { font-size: 15px; font-weight: 700; margin-top: 1px; }
-  .nd-head-text .nd-addr { font-size: 10.5px; margin-top: 3px; }
+  /* Alamat di bawah logo, lebar penuh kertas, satu baris. Ukuran font mengikuti lebar kertas (cqw) agar tetap
+     satu baris walau kertas mengecil di layar sempit. */
+  .nd-addr { text-align: center; font-size: 1.9cqw; margin-top: 5px; white-space: nowrap; }
   .nd-rule { border: none; border-top: 2px solid #111111; margin: 8px 0 22px; }
-  .nd-title { text-align: center; font-weight: 700; text-decoration: underline; font-size: 14px; margin-bottom: 18px; }
+  .nd-title { text-align: center; font-weight: 400; text-decoration: none; font-size: 14px; margin-bottom: 18px; }
   .nd-meta { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
   .nd-meta td { padding: 1px 0; vertical-align: top; font-size: 14px; }
   .nd-meta td.nd-meta-label { width: 78px; white-space: nowrap; }
@@ -55,9 +58,11 @@
   .nd-sign-box .nd-sign-box-head { border-bottom: 1px solid #111111; padding: 4px 2px; }
   .nd-sign-box .nd-sign-box-body { height: 46px; }
   .nd-sign-block { text-align: left; }
-  .nd-sign-block .nd-sign-name { margin-top: 56px; font-weight: 700; text-decoration: underline; }
+  .nd-sign-block .nd-sign-name { margin-top: 48px; font-weight: 400; text-decoration: none; }
+  .nd-sign-block .nd-sign-name .nd-dyn { font-weight: 400; }
   .nd-sign-block > div:first-child .nd-dyn { font-weight: 400; }
   .nd-dyn { font-weight: 700; }
+  .nd-meta .nd-dyn { font-weight: 400; }
   .nd-dyn.is-placeholder { font-weight: 400; font-style: italic; color: #8a8f9a; }
 
   /* ---------- Panel form (Bulma tetap dipakai di sini) ---------- */
@@ -85,9 +90,9 @@
             <div class="nd-head-text">
               <div class="nd-org1">KEMENTERIAN PEKERJAAN UMUM</div>
               <div class="nd-org2">SEKRETARIAT JENDERAL</div>
-              <div class="nd-addr">Jalan Pattimura Nomor 20, Kebayoran Baru, Jakarta Selatan 12110, Telepon (021)7392681, Surel: bpakln@pu.go.id</div>
             </div>
           </div>
+          <div class="nd-addr">Jalan Pattimura Nomor 20, Kebayoran Baru, Jakarta Selatan 12110, Telepon (021)7392681, Surel: bpakln@pu.go.id</div>
           <hr class="nd-rule">
 
           <div class="nd-title">NOTA DINAS</div>
