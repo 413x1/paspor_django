@@ -66,9 +66,20 @@
         untuk selanjutnya dikirimkan kepada Admin Unor.
       </label>
     </div>
-    <button type="submit" name="kirim" class="button is-primary" {% if not lengkap or dibekukan %}disabled{% endif %}>
-      Kirim ke Admin Unor →
-    </button>
+    <div class="field is-grouped">
+      {% if not dibekukan %}
+        {# Kembali ke formulir pengajuan: isiannya tersimpan di draft (database), jadi tampil utuh saat dibuka lagi. #}
+        <div class="control">
+          <a href="{% url 'pegawai:formulir_pengajuan' %}" class="button is-light"
+            title="Kembali ke formulir pengajuan. Isian formulir tetap tersimpan.">Kembali</a>
+        </div>
+      {% endif %}
+      <div class="control">
+        <button type="submit" name="kirim" class="button is-primary" {% if not lengkap or dibekukan %}disabled{% endif %}>
+          Kirim ke Admin Unor →
+        </button>
+      </div>
+    </div>
     {% if not lengkap %}
       <p class="helptext">Lengkapi dokumen wajib untuk melanjutkan: {{ dokumen_kurang|join:", " }}.</p>
     {% endif %}
