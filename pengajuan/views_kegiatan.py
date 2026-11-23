@@ -7,6 +7,8 @@ Kegiatan PDLN — wiki/instructions/EVENT_IMPLEMENTATION_PLAN.MD §5 & §8.
 - Pegawai          : usulkan kegiatan (B10) dari Formulir PDLN.
 """
 
+from urllib.parse import urlencode
+
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
@@ -342,9 +344,18 @@ def bpsdm_edit(request, pk):
 # Pegawai (B10)
 # ---------------------------------------------------------------------------
 
+def _kode_pengajuan(request):
+    """Kode draft yang sedang diisi pegawai (bila ada), supaya setelah mengusulkan kegiatan formulir yang sama
+    dibuka lagi — pegawai boleh memiliki beberapa pengajuan sekaligus."""
+    return (request.GET.get("kode") or request.POST.get("kode") or "").strip()
+
+
 def _url_formulir(request):
     tipe = request.GET.get("tipe") or request.POST.get("tipe") or ""
     url = reverse("pegawai:formulir_pengajuan")
+    kode = _kode_pengajuan(request)
+    if kode:
+        return f"{url}?{urlencode({'kode': kode})}"
     return f"{url}?jenis=pdln&tipe={tipe}" if tipe in Pengajuan.TipePdln.values else url
 
 
@@ -365,7 +376,7 @@ def pegawai_usulkan(request):
     return render(request, "kegiatan/form.html", {
         "peran": "pegawai", "judul": "Usulkan Kegiatan Baru", "form": form, "formset": formset,
         "kembali_url": _url_formulir(request), "kembali_label": "Formulir Pengajuan",
-        "tombol_simpan": "Kirim Usulan →", "tipe": request.GET.get("tipe", ""),
+        "tombol_simpan": "Kirim Usulan →", "tipe": request.GET.get("tipe", ""), "kode_pengajuan": _kode_pengajuan(request),
         "info": "Usulan kegiatan baru dapat dipilih setelah disetujui Admin Biro PAKLN. Periksa dulu daftar "
                 "kegiatan pada formulir agar tidak terjadi duplikat.",
         "mirip": layanan.mirip(nama) if nama else [],

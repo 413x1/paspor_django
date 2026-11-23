@@ -177,7 +177,8 @@ class AlurTipe1Tests(_Basis, TestCase):
         # PDLN tidak memotong cuti.
         self.assertEqual(self.pegawai.profile.__class__.objects.get(user=self.pegawai).sisa_cuti_tahun_berjalan, 12)
         self.assertFalse(p.tuntas)
-        self.assertEqual(alur.pengajuan_belum_tuntas(self.pegawai), p)
+        self.assertEqual(alur.penahan_pengajuan_baru(self.pegawai), p)       # PDLN selesai, laporan belum disetujui
+        self.assertEqual(alur.pengajuan_aktif(self.pegawai), [p])
 
         self.unggah_laporan(p)
         self.assertEqual(self.refresh(p).laporan.status, LaporanPdln.Status.MENUNGGU)
@@ -185,7 +186,8 @@ class AlurTipe1Tests(_Basis, TestCase):
         self.refresh(p)
         self.assertEqual(p.laporan.status, LaporanPdln.Status.DISETUJUI)
         self.assertTrue(p.tuntas)
-        self.assertIsNone(alur.pengajuan_belum_tuntas(self.pegawai))
+        self.assertIsNone(alur.penahan_pengajuan_baru(self.pegawai))
+        self.assertEqual(alur.pengajuan_aktif(self.pegawai), [])
         self.assertTrue(Notification.objects.filter(recipient=self.pegawai, event=Notification.Event.LAPORAN_DISETUJUI).exists())
 
     def test_visa_wajib_bila_negara_memerlukan_visa(self):
@@ -501,16 +503,7 @@ class AlurT2PBkoTests(_Basis, TestCase):
         self.assertFalse(DokumenPakln.objects.filter(pengajuan=p, jenis="sk_tubel").exists())
 
 
-class SatuPengajuanAktifTests(_Basis, TestCase):
-    def test_tidak_bisa_mengajukan_baru_sampai_tuntas(self):
-        p = self.isi_formulir("T3")
-        self.kirim(p)
-        resp = self.get(self.pegawai, "pegawai:formulir_pengajuan", query="?jenis=nondinas")
-        self.assertRedirects(resp, reverse("pegawai:beranda"))
-        self.assertEqual(Pengajuan.objects.filter(pegawai=self.pegawai).count(), 1)
-
-        beranda = self.get(self.pegawai, "pegawai:beranda")
-        self.assertContains(beranda, "belum dapat mengajukan perjalanan baru")
+# Aturan "satu pengajuan aktif" sudah dihapus (ILN dan PDLN boleh paralel): lihat tests_pengajuan_paralel.py.
 
 
 class PembatalanTests(_Basis, TestCase):
@@ -545,7 +538,8 @@ class PembatalanTests(_Basis, TestCase):
         self.assertEqual(m.status, PermohonanPembatalan.Status.DISETUJUI)
         self.assertEqual(self.refresh(p).status, S.DIBATALKAN)
         self.assertTrue(p.tuntas)
-        self.assertIsNone(alur.pengajuan_belum_tuntas(self.pegawai))
+        self.assertIsNone(alur.penahan_pengajuan_baru(self.pegawai))
+        self.assertEqual(alur.pengajuan_aktif(self.pegawai), [])
         self.assertEqual(p.timeline[-1]["state"], "cancelled")
         # Alasan pembatalan terbaca pegawai.
         pesan = {e["aksi"]: e["catatan"] for e in riwayat.riwayat_untuk(p, self.pegawai)}

@@ -82,12 +82,22 @@ Pelaporan PDLN). Prinsip integrasinya:
   1. Pilih **PDLN** atau **Perjalanan Luar Negeri Non-Kedinasan**.
   2. Jika PDLN → pilih **Tipe 1 / Tipe 2 Pendidikan / Tipe 2 Pelatihan / Tipe 3**.
 
-### 2.1 Aturan satu pengajuan aktif
+<a id="21-aturan-satu-pengajuan-aktif"></a>
 
-Pegawai hanya boleh memiliki **satu pengajuan perjalanan luar negeri
-aktif** pada satu waktu — **lintas jenis dan tipe** (PDLN maupun
-Non-Dinas). Pengajuan baru baru bisa dibuat setelah pengajuan sebelumnya
-mencapai **tahap akhir**:
+### 2.1 Pengajuan paralel (ILN dan PDLN)
+
+> **Berubah (revisi Pegawai Poin 4, tiket "Pengajuan ILN dan PDLN secara paralel").** Aturan lama "Pegawai hanya
+> boleh memiliki satu pengajuan aktif, lintas jenis dan tipe" **dihapus**. Anchor lama tetap berlaku agar tautan
+> dari bagian lain tidak putus.
+
+Pegawai **boleh memiliki banyak pengajuan sekaligus**, baik Non-Dinas (ILN) maupun PDLN (semua tipe). **Draft dan
+pengajuan yang sedang diproses tidak menahan pengajuan baru**; setiap pengajuan berdiri sendiri dan memiliki kode,
+dokumen, dan alur sendiri.
+
+**Satu-satunya penahan pengajuan baru adalah kewajiban lapor** ([§4.4](#44-pelaporan-pdln)): selama pegawai memiliki
+PDLN berstatus `selesai` yang **Laporan PDLN-nya belum disetujui** Admin Biro PAKLN, pengajuan baru belum dapat
+dibuat. Beranda menonaktifkan tombol "Tambah Usulan Baru" disertai alasannya, dan server menolak penyimpanan
+pengajuan baru. **Draft yang sudah ada tetap dapat dilanjutkan.**
 
 | Jenis | Tahap akhir (pengajuan dianggap tuntas) |
 |---|---|
@@ -95,25 +105,27 @@ mencapai **tahap akhir**:
 | PDLN (semua tipe) | `status = selesai` **dan** Laporan PDLN telah **disetujui** Admin Biro PAKLN ([§4.4](#44-pelaporan-pdln)). |
 | Semua | `status = dibatalkan` — permohonan pembatalan telah disetujui Admin Biro PAKLN ([§4.5](#45-pembatalan-perjalanan-mekanisme-sementara)). |
 
-Implementasi: ganti `_active_pengajuan` di
-[views_pegawai.py](../../pengajuan/views_pegawai.py) dengan satu helper
-`pengajuan_belum_tuntas(pegawai)` yang dipakai Beranda (tombol "Tambah
-Usulan Baru" dinonaktifkan dengan keterangan alasannya) **dan**
-divalidasi ulang di server saat formulir baru disimpan:
+Pengajuan yang belum mencapai tahap akhir tampil di tabel **Pengajuan Aktif** pada Beranda (semuanya, bukan hanya
+satu); yang sudah tuntas atau dibatalkan masuk **Riwayat**.
 
-```python
-def pengajuan_belum_tuntas(pegawai):
-    """Pengajuan terbaru pegawai yang belum mencapai tahap akhir, atau None."""
-    qs = Pengajuan.objects.filter(pegawai=pegawai).exclude(status="dibatalkan")
-    nondinas = qs.filter(jenis_perjalanan="nondinas").exclude(status="selesai")
-    pdln = qs.filter(jenis_perjalanan="pdln").exclude(
-        status="selesai", laporan_pdln__status="disetujui",
-    )
-    return (nondinas | pdln).order_by("-created_at").first()
-```
+**Memilih draft.** Karena draft bisa lebih dari satu, formulir memakai parameter `kode`:
 
-Draft (`status = belum`) juga dihitung aktif — pegawai melanjutkan draft
-tersebut alih-alih membuat yang baru (perilaku yang sama dengan sekarang).
+| Alamat | Perilaku |
+|---|---|
+| `/pegawai/formulir/?jenis=nondinas` atau `?jenis=pdln&tipe=T1` | Selalu membuat pengajuan **baru**. |
+| `/pegawai/formulir/?kode=PLN01-231126-005` | Melanjutkan/mengubah draft (atau pengajuan yang dikembalikan Admin Unor) bernama itu; 404 bila bukan milik pegawai. |
+
+Tombol "Lanjutkan", tombol "Kembali" pada Unggah Dokumen, dan tautan "Usulkan kegiatan baru" membawa `kode` draft
+yang sedang dibuka.
+
+Implementasi: `alur.pengajuan_aktif(pegawai)` (daftar semua pengajuan belum tuntas) dan
+`alur.penahan_pengajuan_baru(pegawai)` (PDLN selesai yang laporannya belum disetujui, atau `None`) di
+[alur.py](../../pengajuan/alur.py); dipakai Beranda dan divalidasi ulang di server oleh `formulir_pengajuan` di
+[views_pegawai.py](../../pengajuan/views_pegawai.py). Semua halaman per pengajuan memakai `get_object_or_404(...,
+kode=kode)`, sehingga banyak pengajuan sekaligus tidak memicu `MultipleObjectsReturned`.
+
+Catatan: sisa cuti tahun berjalan divalidasi per pengajuan Non-Dinas saat disimpan; beberapa pengajuan Non-Dinas yang
+berjalan bersamaan masing-masing dapat memakai sisa cuti penuh dan baru memotongnya saat selesai.
 
 ---
 
@@ -875,7 +887,7 @@ pembekuan aksi alur utama, maksimal satu permohonan terbuka).
 | 6 | ~~Kode Non-Dinas tetap `PSP-…`, PDLN memakai prefiks per tipe~~ → diganti format `PLN…`/`PDLN…` dengan Kode Unor & rotasi tahunan | Lihat [PENGKODEAN_AJUAN.MD](PENGKODEAN_AJUAN.MD); kode lama tetap valid |
 | 7 | **PDLN Tipe 3 diajukan oleh Pegawai**, alur sama dengan Tipe 1 *(dikonfirmasi pemilik proses)* | Menyelesaikan inkonsistensi mockup (sebagian teks menyebut "diajukan oleh Admin Unor") |
 | 8 | **Rekomendasi Visa wajib** bila negara tujuan memerlukan visa, **opsional** bila tidak; ditentukan master `Negara.perlu_visa` *(dikonfirmasi)* | [§6.4](#64-tahap-admin-biro-pakln) |
-| 9 | **Satu pengajuan aktif lintas jenis**; pengajuan baru hanya setelah tahap akhir — Non-Dinas: disetujui Admin PAKLN (`selesai`); PDLN: Laporan PDLN disetujui Admin PAKLN *(dikonfirmasi)* | [§2.1](#21-aturan-satu-pengajuan-aktif), [§4.4](#44-pelaporan-pdln) |
+| 9 | ~~Satu pengajuan aktif lintas jenis~~ **diganti pengajuan paralel (ILN dan PDLN)**: draft dan pengajuan diproses tidak menahan; hanya PDLN selesai dengan Laporan belum disetujui yang menahan pengajuan baru *(revisi Pegawai Poin 4)* | [§2.1](#21-aturan-satu-pengajuan-aktif), [§4.4](#44-pelaporan-pdln) |
 | 10 | **Pembatalan (interim)**: dapat diajukan Pegawai atau Admin Unor, alasan wajib, persetujuan berjenjang Admin Unor → Admin PAKLN; berlaku untuk Dinas & Non-Dinas; disetujui ⇒ `dibatalkan` dan dianggap tuntas *(dikonfirmasi; rumusan final menyusul)* | [§4.5](#45-pembatalan-perjalanan-mekanisme-sementara) |
 
 ### Pertanyaan terbuka (default dipakai sampai dijawab)

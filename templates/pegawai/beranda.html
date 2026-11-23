@@ -14,32 +14,29 @@
     <h2>Beranda</h2>
     <p class="sub">Halo, {{ profile.nama|default:user.get_full_name }} — kelola pengajuan perjalanan luar negeri Anda di sini.</p>
   </div>
-  {% if not aktif %}
+  {% if not penahan %}
     <button type="button" class="button is-warning" data-modal-open="jenisModal">✚ Tambah Usulan Baru</button>
-  {% elif aktif.status == "belum" and not aktif.pernah_dikirim %}
-    <a href="{% url 'pegawai:formulir_pengajuan' %}" class="button is-warning">✎ Lanjutkan Draft</a>
   {% else %}
     <button type="button" class="button is-warning" disabled title="{{ alasan_blokir }}">✚ Tambah Usulan Baru</button>
   {% endif %}
 </div>
 
-{% if aktif and aktif.status != "belum" %}
+{# Pengajuan boleh paralel (ILN dan PDLN): hanya PDLN selesai yang laporannya belum disetujui yang menahan usulan baru. #}
+{% if penahan %}
   <div class="notification paspor-msg is-info">
     <strong>ⓘ Anda belum dapat mengajukan perjalanan baru:</strong> {{ alasan_blokir }}
-    {% if aktif.status == "selesai" and aktif.is_pdln %}
-      <a href="{% url 'pegawai:pelaporan' %}">Ke Pelaporan PDLN →</a>
-    {% endif %}
+    <a href="{% url 'pegawai:pelaporan' %}">Ke Pelaporan PDLN →</a>
   </div>
 {% endif %}
 
-{% if aktif.catatan_unor %}
+{% for p in aktif_list %}{% if p.catatan_unor %}
   <div class="notification paspor-msg is-warning">
-    <strong>⚠ Dikembalikan oleh Admin Unor untuk diperbaiki:</strong> {{ aktif.catatan_unor }}
+    <strong>⚠ Dikembalikan oleh Admin Unor untuk diperbaiki ({{ p.kode }}):</strong> {{ p.catatan_unor }}
   </div>
-{% endif %}
+{% endif %}{% endfor %}
 
-{% if aktif %}
-<div class="section-title is-small">Pengajuan Aktif</div>
+{% if aktif_list %}
+<div class="section-title is-small">Pengajuan Aktif <span class="badge-auto">{{ aktif_list|length }}</span></div>
 <div class="table-wrap" style="margin-bottom:20px;">
   <table class="table data-table is-fullwidth is-hoverable">
     <thead>
@@ -48,24 +45,26 @@
       </tr>
     </thead>
     <tbody>
+      {% for p in aktif_list %}
       <tr>
-        <td><strong>{{ aktif.jenis_label }}</strong><br><span class="cell-muted">{{ aktif.kode }}</span></td>
-        <td><strong>{{ aktif.tujuan_negara_display|default:"Belum diisi" }}</strong></td>
-        <td>{{ aktif.kategori|default:"—" }}</td>
-        <td>{{ aktif.tgl_pengajuan|date:"d M Y"|default:"—" }}</td>
-        <td><span class="tag paspor-status is-{{ aktif.status }}"><span class="dot"></span>{{ aktif.get_status_display }}</span></td>
+        <td><strong>{{ p.jenis_label }}</strong><br><span class="cell-muted">{{ p.kode }}</span></td>
+        <td><strong>{{ p.tujuan_negara_display|default:"Belum diisi" }}</strong></td>
+        <td>{{ p.kategori|default:"—" }}</td>
+        <td>{{ p.tgl_pengajuan|date:"d M Y"|default:"—" }}</td>
+        <td><span class="tag paspor-status is-{{ p.status }}"><span class="dot"></span>{{ p.get_status_display }}</span></td>
         <td>
-          {% if aktif.status == "belum" and not aktif.form_saved %}
-            <a href="{% url 'pegawai:formulir_pengajuan' %}" class="button is-small">Lanjutkan Formulir</a>
-          {% elif aktif.status == "belum" %}
-            <a href="{% url 'pegawai:upload_dokumen' kode=aktif.kode %}" class="button is-small">Lanjutkan Unggah</a>
-          {% elif aktif.status == "selesai" and aktif.is_pdln %}
-            <a href="{% url 'pegawai:laporan_form' kode=aktif.kode %}" class="button is-small is-info">Pelaporan PDLN</a>
+          {% if p.status == "belum" and not p.form_saved %}
+            <a href="{% url 'pegawai:formulir_pengajuan' %}?kode={{ p.kode }}" class="button is-small">Lanjutkan Formulir</a>
+          {% elif p.status == "belum" %}
+            <a href="{% url 'pegawai:upload_dokumen' kode=p.kode %}" class="button is-small">Lanjutkan Unggah</a>
+          {% elif p.status == "selesai" and p.is_pdln %}
+            <a href="{% url 'pegawai:laporan_form' kode=p.kode %}" class="button is-small is-info">Pelaporan PDLN</a>
           {% else %}
-            <a href="{% url 'pegawai:monitor_progres' kode=aktif.kode %}" class="button is-small">Lihat Progres</a>
+            <a href="{% url 'pegawai:monitor_progres' kode=p.kode %}" class="button is-small">Lihat Progres</a>
           {% endif %}
         </td>
       </tr>
+      {% endfor %}
     </tbody>
   </table>
 </div>
@@ -105,7 +104,7 @@
   </table>
 </div>
 
-{% if not aktif %}
+{% if not penahan %}
 <div id="jenisModal" class="modal paspor-modal">
   <div class="modal-background"></div>
   <div class="modal-card">

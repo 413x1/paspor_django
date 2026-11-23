@@ -71,7 +71,7 @@
             <div class="multiselect-native">{{ form.kegiatan }}</div>
           </div>
           <p class="helptext">Hanya kegiatan yang disetujui Admin Biro PAKLN, masih aktif, dan sesuai kategori.
-            Kegiatan belum ada? <a href="{% url 'pegawai:usulkan_kegiatan' %}?tipe={{ tipe }}">Usulkan kegiatan baru</a>.</p>
+            Kegiatan belum ada? <a href="{% url 'pegawai:usulkan_kegiatan' %}?tipe={{ tipe }}{% if pengajuan.kode %}&amp;kode={{ pengajuan.kode }}{% endif %}">Usulkan kegiatan baru</a>.</p>
           {% for error in form.kegiatan.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
         </div>
       </div>

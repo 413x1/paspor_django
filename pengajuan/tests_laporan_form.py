@@ -321,14 +321,18 @@ class LaporanDiAdminDanDaftarTests(LaporanFormBase):
         html = self.client.get(reverse("pegawai:pelaporan")).content.decode()
         self.assertIn("Lihat Laporan", html)       # menunggu verifikasi: hanya lihat
 
-    def test_tabel_riwayat_beranda_memuat_tautan_pelaporan(self):
-        # Pengajuan baru (aktif) di atas PDLN lama supaya PDLN lama masuk tabel riwayat.
+    def test_pdln_selesai_menunggu_laporan_ada_di_pengajuan_aktif_dengan_tautan_pelaporan(self):
+        """Pengajuan boleh paralel: PDLN selesai yang laporannya belum disetujui tampil di tabel Pengajuan Aktif
+        (bukan Riwayat), lengkap dengan tombol Pelaporan PDLN, walau pegawai punya pengajuan lain."""
         Pengajuan.objects.create(pegawai=self.pegawai, form_saved=True, jenis_perjalanan="pdln", tipe_pdln="T1",
                                  status=Pengajuan.Status.PROSES, tgl_pengajuan=date(2026, 10, 9))
+        html = self.client.get(reverse("pegawai:beranda")).content.decode()
+        aktif = html.split("Pengajuan Aktif")[1]
+        self.assertIn(self.p.kode, aktif)
+        self.assertIn(f'href="{self.url}"', aktif)
+        self.assertIn("Pelaporan PDLN", aktif)
         data = self.client.get(reverse("pegawai:riwayat_data"), {"jenis": "pdln", "length": 10}).json()["data"]
-        baris = next(b for b in data if self.p.kode in b[0])
-        self.assertIn(self.url, baris[6])
-        self.assertIn("Pelaporan PDLN", baris[6])
+        self.assertFalse(any(self.p.kode in b[0] for b in data))           # tidak ganda di Riwayat
 
     def test_admin_pakln_melihat_isi_laporan_untuk_verifikasi(self):
         self.kirim()

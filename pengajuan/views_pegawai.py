@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import date
 
@@ -42,10 +43,10 @@ _UNDUH_HASIL_PDLN = {
 _UNDUH_HASIL_BKO = {DokumenBko.Jenis.SK_TUBEL}
 
 
-def _active_pengajuan(user):
-    """Pengajuan pegawai yang belum tuntas (aturan satu pengajuan aktif,
-    BISNIS_PROSES_PDLN.MD §2.1) — lihat `alur.pengajuan_belum_tuntas`."""
-    return alur.pengajuan_belum_tuntas(user)
+def _url_formulir_draft(pengajuan):
+    """Alamat formulir untuk MELANJUTKAN draft tertentu. Pegawai boleh memiliki beberapa pengajuan sekaligus
+    (paralel), jadi draft dipilih lewat `kode`; formulir tanpa `kode` selalu membuat pengajuan baru."""
+    return f"{reverse('pegawai:formulir_pengajuan')}?kode={pengajuan.kode}"
 
 
 def _status_html(p):
@@ -58,10 +59,11 @@ def _status_html(p):
 
 @role_required("pegawai")
 def beranda(request):
-    aktif = _active_pengajuan(request.user)
+    penahan = alur.penahan_pengajuan_baru(request.user)
     context = {
-        "aktif": aktif,
-        "alasan_blokir": alur.alasan_belum_tuntas(aktif),
+        "aktif_list": alur.pengajuan_aktif(request.user),   # semua pengajuan belum tuntas (paralel)
+        "penahan": penahan,                                  # hanya PDLN selesai yang laporannya belum disetujui
+        "alasan_blokir": alur.alasan_belum_tuntas(penahan),
         "profile": getattr(request.user, "profile", None),
         "tab": request.GET.get("tab", "pdln"),
         "tipe_choices": Pengajuan.TipePdln.choices,
@@ -84,14 +86,14 @@ _RIWAYAT_DATA_ORDER_FIELDS = {
 def riwayat_data(request):
     """Endpoint JSON server-side untuk tabel "Riwayat" pada Beranda
     Pegawai (protokol DataTables), dengan filter `jenis` (pdln/nondinas)
-    sesuai tab yang aktif. Pengajuan aktif ditampilkan terpisah."""
-    aktif = _active_pengajuan(request.user)
+    sesuai tab yang aktif. Pengajuan aktif (belum tuntas) ditampilkan terpisah."""
+    aktif_pk = [p.pk for p in alur.pengajuan_aktif(request.user)]
     qs = Pengajuan.objects.filter(pegawai=request.user).select_related("kategori", "laporan_pdln")
     jenis = request.GET.get("jenis")
     if jenis in JP.values:
         qs = qs.filter(jenis_perjalanan=jenis)
-    if aktif:
-        qs = qs.exclude(pk=aktif.pk)
+    if aktif_pk:
+        qs = qs.exclude(pk__in=aktif_pk)
     records_total = qs.count()
 
     search_value = request.GET.get("search[value]", "").strip()
@@ -118,22 +120,13 @@ def riwayat_data(request):
 
     data = []
     for p in page:
-        if p.pernah_dikirim or p.status == S.DIBATALKAN:
-            aksi_html = format_html(
-                '<a href="{}" class="button is-small">Lihat</a>',
-                reverse("pegawai:monitor_progres", args=[p.kode]),
-            )
-        else:
-            aksi_html = format_html(
-                '<a href="{}" class="button is-small">Lanjutkan</a>',
-                reverse("pegawai:formulir_pengajuan"),
-            )
+        # Riwayat hanya memuat pengajuan yang sudah tuntas atau dibatalkan (pengajuan_aktif dikecualikan di atas:
+        # draft, sedang diproses, dan PDLN selesai yang menunggu laporan ada di tabel "Pengajuan Aktif").
+        aksi_html = format_html(
+            '<a href="{}" class="button is-small">Lihat</a>',
+            reverse("pegawai:monitor_progres", args=[p.kode]),
+        )
         laporan = p.laporan if p.is_pdln else None
-        if p.is_pdln and p.status == S.SELESAI and not p.tuntas:
-            aksi_html = format_html(
-                '{} <a href="{}" class="button is-small is-info btn-pelaporan-info">Pelaporan PDLN</a>',
-                aksi_html, reverse("pegawai:laporan_form", args=[p.kode]),
-            )
         if not p.is_pdln:
             laporan_html = "—"
         elif p.status != S.SELESAI:
@@ -169,18 +162,23 @@ def _tipe_dari_request(request):
 
 @role_required("pegawai")
 def formulir_pengajuan(request):
-    """Tahap 2: Formulir Pengajuan. Jenis & tipe dipilih lewat modal
-    "Tambah Usulan Baru" (`?jenis=pdln&tipe=T1`). Selama pegawai masih punya
-    pengajuan belum tuntas, formulir hanya membuka draft/pengajuan yang
-    dikembalikan tersebut (aturan satu pengajuan aktif)."""
-    aktif = _active_pengajuan(request.user)
-    if aktif and aktif.status != S.BELUM:
-        messages.warning(request, alur.alasan_belum_tuntas(aktif))
-        return redirect("pegawai:beranda")
-
-    if aktif:
+    """Tahap 2: Formulir Pengajuan. Pegawai boleh memiliki beberapa pengajuan sekaligus (ILN dan PDLN paralel).
+    Tanpa `kode` = pengajuan BARU, jenis & tipe dipilih lewat modal "Tambah Usulan Baru" (`?jenis=pdln&tipe=T1`).
+    Dengan `?kode=` = melanjutkan draft (atau pengajuan yang dikembalikan Admin Unor) tertentu. Satu-satunya yang
+    menahan pengajuan baru: PDLN selesai yang laporannya belum disetujui (kewajiban lapor)."""
+    kode = request.GET.get("kode", "").strip()
+    if kode:
+        aktif = get_object_or_404(Pengajuan, kode=kode, pegawai=request.user)
+        if aktif.status != S.BELUM:
+            messages.warning(request, f"Pengajuan {aktif.kode} sudah dikirim dan tidak dapat diubah lewat formulir.")
+            return redirect("pegawai:beranda")
         jenis, tipe = aktif.jenis_perjalanan, aktif.tipe_pdln
     else:
+        aktif = None
+        penahan = alur.penahan_pengajuan_baru(request.user)
+        if penahan:
+            messages.warning(request, alur.alasan_belum_tuntas(penahan))
+            return redirect("pegawai:beranda")
         jenis, tipe = _tipe_dari_request(request)
 
     profile = getattr(request.user, "profile", None)
@@ -192,8 +190,9 @@ def formulir_pengajuan(request):
         form = PengajuanForm(request.POST, instance=aktif, profile=profile)
         if form.is_valid():
             with transaction.atomic():
-                if alur.pengajuan_belum_tuntas(request.user) not in (None, aktif):
-                    messages.error(request, "Anda masih memiliki pengajuan yang belum tuntas.")
+                penahan = alur.penahan_pengajuan_baru(request.user) if aktif is None else None
+                if penahan:
+                    messages.error(request, alur.alasan_belum_tuntas(penahan))
                     return redirect("pegawai:beranda")
                 pengajuan = form.save(commit=False)
                 pengajuan.pegawai = request.user
@@ -224,8 +223,9 @@ def _formulir_pdln(request, aktif, tipe, profile):
         form = PdlnForm(request.POST, instance=instance, tipe=tipe)
         if form.is_valid():
             with transaction.atomic():
-                if alur.pengajuan_belum_tuntas(request.user) not in (None, aktif):
-                    messages.error(request, "Anda masih memiliki pengajuan yang belum tuntas.")
+                penahan = alur.penahan_pengajuan_baru(request.user) if aktif is None else None
+                if penahan:
+                    messages.error(request, alur.alasan_belum_tuntas(penahan))
                     return redirect("pegawai:beranda")
                 pengajuan = form.save(commit=False)
                 pengajuan.pegawai = request.user
@@ -299,7 +299,7 @@ def upload_dokumen(request, kode):
     `persyaratan` (per jenis/tipe), lalu Kirim ke Admin Unor."""
     pengajuan = get_object_or_404(Pengajuan, kode=kode, pegawai=request.user)
     if not pengajuan.form_saved:
-        return redirect("pegawai:formulir_pengajuan")
+        return redirect(_url_formulir_draft(pengajuan))
 
     dapat_diubah = pengajuan.status == S.BELUM
 
@@ -784,6 +784,41 @@ def _context_profil(request, form_akun=None, aksi_terbuka=""):
     }
 
 
+logger = logging.getLogger(__name__)
+
+
+def simpan_dokumen_profil(user, jenis, berkas):
+    """Simpan dokumen Profil (satu berkas per jenis per user) dengan aman.
+
+    Berkas BARU disimpan lebih dulu; berkas LAMA baru dihapus sesudahnya. Dengan urutan ini kegagalan
+    menyimpan (disk/penyimpanan) tidak membuat dokumen lama hilang, dan berkas lama yang tidak bisa
+    dihapus (mis. sedang terkunci di Windows) tidak menggagalkan unggahan. Nama berkas yang sama dengan
+    yang lama aman: penyimpanan memberi nama unik untuk berkas baru."""
+    with transaction.atomic():
+        dok = DokumenKepegawaian.objects.select_for_update().filter(user=user, jenis=jenis).first()
+        if dok is None:
+            DokumenKepegawaian.objects.create(user=user, jenis=jenis, file=berkas)
+            return
+        nama_lama, penyimpanan = dok.file.name, dok.file.storage
+        dok.file = berkas
+        try:
+            dok.save()
+        except Exception:
+            # Berkas baru mungkin sudah tertulis walau pembaruan basis data gagal: bersihkan. Hanya bila memang
+            # sudah tersimpan (`_committed`), supaya tidak menghapus berkas lain yang kebetulan senama.
+            if getattr(dok.file, "_committed", False) and dok.file.name and dok.file.name != nama_lama:
+                try:
+                    penyimpanan.delete(dok.file.name)
+                except Exception:
+                    logger.warning("Berkas baru %s tidak dapat dibersihkan", dok.file.name, exc_info=True)
+            raise
+    if nama_lama and nama_lama != dok.file.name:
+        try:
+            penyimpanan.delete(nama_lama)
+        except Exception:
+            logger.warning("Berkas lama %s tidak dapat dihapus; dibiarkan", nama_lama, exc_info=True)
+
+
 @role_required("pegawai", "admin_unor", "admin_bpsdm", "admin_bko", "admin_pakln")
 def profil(request):
     user = request.user
@@ -814,19 +849,21 @@ def profil(request):
         elif aksi == "unggah_dokumen":
             jenis = request.POST.get("jenis", "")
             berkas = request.FILES.get("file")
-            if jenis not in dict(jenis_dokumen) or not berkas:
-                messages.error(request, "Pilih jenis dokumen dan berkasnya.")
+            if jenis not in dict(jenis_dokumen):
+                messages.error(request, "Jenis dokumen tidak dikenali.")
+            elif not berkas:
+                # Tidak ada berkas baru yang dipilih: dokumen yang sudah ada dibiarkan apa adanya.
+                messages.error(request, "Pilih berkas PDF terlebih dahulu. Dokumen yang sudah diunggah tidak diubah.")
             elif (galat := periksa_pdf(request, berkas)):
                 messages.error(request, galat)
             else:
-                dok = DokumenKepegawaian.objects.filter(user=user, jenis=jenis).first()
-                if dok:
-                    dok.file.delete(save=False)
-                    dok.file = berkas
-                    dok.save()
+                try:
+                    simpan_dokumen_profil(user, jenis, berkas)
+                except Exception:
+                    logger.exception("Gagal menyimpan dokumen profil %s untuk user %s", jenis, user.pk)
+                    messages.error(request, "Dokumen gagal disimpan. Dokumen sebelumnya tetap dipertahankan; silakan coba lagi.")
                 else:
-                    DokumenKepegawaian.objects.create(user=user, jenis=jenis, file=berkas)
-                messages.success(request, "Dokumen berhasil diunggah.")
+                    messages.success(request, "Dokumen berhasil diunggah.")
         return redirect("profil")
 
     return render(request, "akun/profil.html", _context_profil(request))

@@ -137,8 +137,9 @@
     <p class="helptext" id="rincian_hari"></p>
     <p class="help is-warning" id="peringatan_kalender" style="display:none;"></p>
     <p class="help is-danger" id="peringatan_cuti" style="display:none;"></p>
+    <p class="help is-danger" id="peringatan_nol_hari" style="display:none;"></p>
 
-    <button type="submit" class="button is-primary">Simpan &amp; Lanjutkan →</button>
+    <button type="submit" id="btn-simpan-lanjut" class="button is-primary">Simpan &amp; Lanjutkan →</button>
   </form>
 </div>
 {% endblock %}
@@ -153,6 +154,16 @@
     var $rincian = $('#rincian_hari');
     var $peringatanKalender = $('#peringatan_kalender');
     var $peringatanCuti = $('#peringatan_cuti');
+    var $peringatanNol = $('#peringatan_nol_hari');
+    var $simpan = $('#btn-simpan-lanjut');
+    // Pesan yang sama dengan validasi server (PengajuanForm.PESAN_NOL_HARI_KERJA).
+    var PESAN_NOL = '{{ form.PESAN_NOL_HARI_KERJA|escapejs }}';
+    // Server sudah menampilkan pesan yang sama (kirim ulang dengan 0 hari kerja): jangan ditampilkan dua kali.
+    var galatServerNol = false;
+    {% for e in form.non_field_errors %}{% if e == form.PESAN_NOL_HARI_KERJA %}galatServerNol = true;{% endif %}{% endfor %}
+    var nolHari = false;            // hasil hitungan terakhir kurang dari 1 hari kerja
+    var terakhirDiberitahu = '';    // rentang tanggal yang sudah diberi alert (tidak diulang untuk rentang yang sama)
+    var permintaanKe = 0;           // abaikan jawaban lama bila tanggal diubah lagi sebelum jawaban datang
     var sisaCuti = {% if profile %}{{ profile.sisa_cuti_tahun_berjalan }}{% else %}null{% endif %};
     var bulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
@@ -167,13 +178,25 @@
       $rincian.text('');
       $peringatanKalender.hide();
       $peringatanCuti.hide();
+      aturNolHari(false);
+    }
+
+    // Kurang dari 1 hari kerja: tampilkan pesan, nonaktifkan tombol lanjut. Server tetap memvalidasi ulang.
+    function aturNolHari(nol) {
+      nolHari = nol;
+      $simpan.prop('disabled', nol).attr('title', nol ? 'Tidak dapat dilanjutkan: hari kerja kurang dari 1 hari.' : '');
+      if (nol && !galatServerNol) { $peringatanNol.text(PESAN_NOL).show(); } else { $peringatanNol.hide(); }
+      if (!nol) { terakhirDiberitahu = ''; }
     }
 
     // Hanya pratinjau — nilai final dihitung ulang server saat disimpan.
-    function hitung() {
+    // `senyap` = pemanggilan awal saat halaman dimuat: tombol tetap dikunci, tetapi alert tidak dimunculkan.
+    function hitung(senyap) {
       if (!$b.val() || !$k.val()) { kosongkan(); return; }
+      var nomor = ++permintaanKe;
       $.getJSON('{% url "pegawai:hitung_hari" %}', { berangkat: $b.val(), kembali: $k.val() })
         .done(function (r) {
+          if (nomor !== permintaanKe) { return; }
           $kalender.val(r.hari_kalender);
           $kerja.val(r.hari_kerja);
 
@@ -199,8 +222,16 @@
           } else {
             $peringatanCuti.hide();
           }
+
+          aturNolHari(r.hari_kerja < 1);
+          var kunci = $b.val() + '|' + $k.val();
+          if (nolHari && !senyap && kunci !== terakhirDiberitahu) {
+            terakhirDiberitahu = kunci;
+            pasporAlert({ type: 'warning', title: 'Tidak perlu mengajukan izin', message: PESAN_NOL, confirmText: 'Mengerti' });
+          }
         })
         .fail(function (xhr) {
+          if (nomor !== permintaanKe) { return; }
           kosongkan();
           if (xhr.responseJSON && xhr.responseJSON.error) { $rincian.text(xhr.responseJSON.error); }
         });
@@ -212,8 +243,12 @@
     $b.on('change', batasiKembali);
     batasiKembali();
 
-    $b.add($k).on('change', hitung);
-    hitung();
+    $b.add($k).on('change', function () { hitung(false); });
+    // Cadangan bila tombol dikirim sebelum jawaban perhitungan datang atau lewat papan ketik.
+    $simpan.closest('form').on('submit', function (e) {
+      if (nolHari) { e.preventDefault(); pasporAlert({ type: 'warning', title: 'Tidak perlu mengajukan izin', message: PESAN_NOL, confirmText: 'Mengerti' }); }
+    });
+    hitung(true);
   });
 </script>
 {% endblock %}
