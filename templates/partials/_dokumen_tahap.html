@@ -22,7 +22,7 @@
     </div>
     <div class="actions">
       {% if b.dok %}
-        <button type="button" class="button is-small" data-doc-preview="{{ b.dok.file.url }}" data-doc-title="{{ b.label }}">👁 Pratinjau</button>
+        <button type="button" class="button is-small" data-doc-preview="{{ b.dok.file.url }}" data-doc-title="{{ b.label }}">{% include "partials/_ikon_mata.html" %}Pratinjau</button>
       {% endif %}
       {% if not readonly %}
         {% if b.dok %}

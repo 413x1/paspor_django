@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}PASPOR{% endblock %} — Kementerian PU</title>
   <link rel="stylesheet" href="{% static 'vendors/bulma/css/versions/bulma-no-dark-mode.min.css' %}">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20261116a">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20261119g">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -188,17 +188,24 @@
 
     // Panah dropdown berbalik (v -> ^) selama daftar pilihan terbuka. CSS tidak bisa mendeteksi status
     // dropdown bawaan browser, jadi kelas `is-open` dipasang di sini dan dilepas saat daftar tertutup.
-    // Opt-in per halaman: tambahkan kelas `panah-select` pada blok wrap_extra_class (lihat Manajemen User).
-    function tutupPanah($sel) { $sel.closest('.select').removeClass('is-open'); }
+    // Dropdown Bulma: opt-in per halaman lewat kelas `panah-select` pada blok wrap_extra_class (lihat Manajemen User).
+    // "Tampilkan N baris" bawaan DataTables (.dt-length) selalu ikut, di semua halaman bertabel.
+    var SEL_PANAH = '.panah-select .select select, .dt-length select';
+    function targetPanah(el) { var $w = $(el).closest('.select'); return $w.length ? $w : $(el); }
     $(document)
-      .on('mousedown', '.panah-select .select select', function (e) {
-        if (e.which === 1) { $(this).closest('.select').toggleClass('is-open'); }
+      .on('mousedown', SEL_PANAH, function (e) {
+        if (e.which === 1) { targetPanah(this).toggleClass('is-open'); }
       })
-      .on('change blur', '.panah-select .select select', function () { tutupPanah($(this)); })
-      .on('keydown', '.panah-select .select select', function (e) {
-        if (e.key === 'Escape' || e.key === 'Enter' || e.key === 'Tab') { tutupPanah($(this)); }
-        else if (e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { $(this).closest('.select').toggleClass('is-open'); }
+      .on('change blur', SEL_PANAH, function () { targetPanah(this).removeClass('is-open'); })
+      .on('keydown', SEL_PANAH, function (e) {
+        if (e.key === 'Escape' || e.key === 'Enter' || e.key === 'Tab') { targetPanah(this).removeClass('is-open'); }
+        else if (e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { targetPanah(this).toggleClass('is-open'); }
       });
+
+    // Semua tabel DataTables: header kolom yang bisa diurutkan diberi tooltip petunjuk.
+    $(document).on('init.dt', function (e, settings) {
+      $(settings.nTable).find('thead th.dt-orderable-asc, thead th.dt-orderable-desc').not('[title]').attr('title', 'Klik untuk mengurutkan');
+    });
 
     // Dropdown generik berbasis klik: [data-dropdown] (wadah) +
     // [data-dropdown-toggle] (tombol pemicu) + [data-dropdown-panel]
@@ -306,17 +313,32 @@
     }
 
     // Pratinjau dokumen di dalam modal (tanpa membuka tab baru)
+    // Ikon mata pada tombol "Lihat"/"Pratinjau" berkedip saat diklik sebagai tanda dokumen sedang dibuka;
+    // pratinjau dibuka sesaat kemudian agar kedipannya sempat terlihat.
+    $(document).on('animationend', '.ikon-mata', function () { this.classList.remove('is-kedip'); });
     $(document).on('click', '[data-doc-preview]', function (e) {
       e.preventDefault();
-      var url = $(this).data('doc-preview');
+      var $pemicu = $(this);
+      var ikon = $pemicu.find('.ikon-mata').get(0);
+      var url = $pemicu.data('doc-preview');
       // Untuk PDF: sembunyikan panel thumbnail/bookmark bawaan viewer.
       var frameUrl = /\.pdf($|\?)/i.test(url)
         ? url + (url.indexOf('#') === -1 ? '#' : '&') + 'toolbar=1&navpanes=0&statusbar=0&view=FitH'
         : url;
-      $('#docPreviewTitle').text($(this).data('doc-title') || 'Pratinjau Dokumen');
-      $('#docPreviewFrame').attr('src', frameUrl);
-      $('#docPreviewOpen').attr('href', url);
-      $('#docPreviewModal').addClass('is-active');
+      function bukaPratinjau() {
+        $('#docPreviewTitle').text($pemicu.data('doc-title') || 'Pratinjau Dokumen');
+        $('#docPreviewFrame').attr('src', frameUrl);
+        $('#docPreviewOpen').attr('href', url);
+        $('#docPreviewModal').addClass('is-active');
+      }
+      if (ikon && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        ikon.classList.remove('is-kedip');
+        void ikon.getBoundingClientRect();   // mulai ulang animasi bila diklik berulang
+        ikon.classList.add('is-kedip');
+        setTimeout(bukaPratinjau, 220);
+      } else {
+        bukaPratinjau();
+      }
     });
 
     // Unggah dokumen otomatis begitu berkas dipilih (halaman Unggah Dokumen

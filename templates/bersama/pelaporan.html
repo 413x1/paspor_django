@@ -4,6 +4,7 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pelaporan.css' %}?v=20261013c">
+{% if serverside_url %}<link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -28,12 +29,13 @@
 
 <div class="box">
   <div class="table-wrap">
-    <table class="table data-table is-fullwidth is-hoverable">
+    <table {% if serverside_url %}id="tabelPelaporan" {% endif %}class="table data-table is-fullwidth is-hoverable">
       <thead>
         <tr><th>Pegawai</th><th>Unor</th><th>Tipe / Kode</th><th>Negara</th><th>Tgl Kembali</th><th>Status Pelaporan</th><th>Tgl Unggah</th><th>Aksi</th></tr>
       </thead>
       <tbody>
-        {% for b in baris %}
+        {# Admin PAKLN: baris dimuat server-side (pelaporan_data). Admin Unor: tabel HTML biasa. #}
+        {% if not serverside_url %}{% for b in baris %}
           <tr>
             <td>{{ b.p.pegawai.profile.nama }}<br><span class="cell-muted">{{ b.p.pegawai.profile.nip }}</span></td>
             <td>{{ b.p.unit_organisasi.alias|default:"—" }}</td>
@@ -49,7 +51,7 @@
               <div class="aksi-pelaporan">
                 {% if b.laporan and b.laporan.file %}
                   <button type="button" class="button is-small is-info" data-id="{{ b.laporan.pk }}"
-                    data-doc-preview="{{ b.laporan.file.url }}" data-doc-title="Laporan {{ b.p.kode }}">👁 Lihat</button>
+                    data-doc-preview="{{ b.laporan.file.url }}" data-doc-title="Laporan {{ b.p.kode }}">{% include "partials/_ikon_mata.html" %}Lihat</button>
                 {% endif %}
                 {% if dapat_verifikasi and b.status == "menunggu" %}
                   <button type="button" class="button is-small is-success btn-verifikasi"
@@ -64,37 +66,14 @@
           </tr>
         {% empty %}
           <tr><td colspan="8" class="cell-muted">Belum ada PDLN berstatus selesai.</td></tr>
-        {% endfor %}
+        {% endfor %}{% endif %}
       </tbody>
     </table>
   </div>
+  {% if serverside_url %}<p class="helptext">Pencarian mencakup nama pegawai, NIP, kode pengajuan, unor, dan negara tujuan.</p>{% endif %}
 </div>
 
 {% if dapat_verifikasi %}
-{# Ringkasan isi laporan per baris (disembunyikan); disalin ke modal Verifikasi saat tombol diklik. #}
-<div hidden>
-  {% for b in baris %}{% if b.status == "menunggu" %}
-    <div id="ringkasan-{{ b.laporan.pk }}">
-      <div class="verif-isi">
-        {% for judul, isi in b.uraian %}
-          <div class="verif-item">
-            <div class="verif-label">{{ judul }}</div>
-            <div class="verif-teks">{{ isi|default:"—" }}</div>
-          </div>
-        {% endfor %}
-      </div>
-      <div class="verif-biaya">
-        <div class="verif-kotak"><div class="verif-label">Estimasi Biaya</div><div class="verif-nilai">{{ b.laporan.estimasi_biaya|rupiah }}</div></div>
-        <div class="verif-kotak"><div class="verif-label">Realisasi Biaya</div><div class="verif-nilai">{{ b.laporan.realisasi_biaya|rupiah }}</div></div>
-      </div>
-      <div class="verif-dokumen">
-        <span class="verif-label" style="margin:0;">Dokumen Laporan</span>
-        <button type="button" class="button is-small" data-doc-preview="{{ b.laporan.file.url }}" data-doc-title="Laporan {{ b.p.kode }}">👁 Lihat dokumen laporan</button>
-      </div>
-    </div>
-  {% endif %}{% endfor %}
-</div>
-
 {# ===== Modal 1: Verifikasi (approve) ===== #}
 <div id="modal-verifikasi" class="modal paspor-modal modal-verifikasi">
   <div class="modal-background"></div>
@@ -149,6 +128,52 @@
 {% endblock %}
 
 {% block extra_js %}
+{% if serverside_url %}
+<script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
+<script>
+  $(function () {
+    $('#tabelPelaporan').DataTable({
+      serverSide: true,
+      processing: true,
+      autoWidth: false,
+      ajax: { url: '{{ serverside_url }}', type: 'GET', cache: false },
+      order: [[4, 'desc']],   // Tgl Kembali, terbaru dahulu
+      columns: [
+        { data: 0, searchable: true, orderable: true },    // Pegawai (nama + NIP)
+        { data: 1, searchable: true, orderable: true },    // Unor
+        { data: 2, searchable: true, orderable: true },    // Tipe / Kode
+        { data: 3, searchable: true, orderable: false },   // Negara (many-to-many)
+        { data: 4, searchable: true, orderable: true },    // Tgl Kembali
+        { data: 5, searchable: false, orderable: false },  // Status Pelaporan (turunan)
+        { data: 6, searchable: true, orderable: true },    // Tgl Unggah
+        { data: 7, searchable: false, orderable: false },  // Aksi
+      ],
+      initComplete: function () {
+        // Kolom cari: ikon kaca pembesar, serta penjelasan lengkap cakupan pencarian (tooltip & pembaca layar).
+        $(this.api().table().container()).find('.dt-search input').addClass('dt-cari').attr({
+          'aria-label': 'Cari berdasarkan nama pegawai, NIP, kode pengajuan, unor, atau negara tujuan',
+          title: 'Cari berdasarkan nama pegawai, NIP, kode pengajuan, unor, atau negara tujuan'
+        });
+      },
+      pageLength: 10,
+      lengthMenu: [10, 25, 50, 100],
+      dom: '<"dt-toolbar"lf>rt<"dt-footer"ip>',
+      language: {
+        search: '',
+        searchPlaceholder: 'Cari pegawai, NIP, kode…',
+        lengthMenu: 'Tampilkan _MENU_ baris',
+        info: 'Menampilkan _START_–_END_ dari _TOTAL_ PDLN',
+        infoEmpty: 'Tidak ada data',
+        infoFiltered: '(disaring dari _MAX_ total PDLN)',
+        zeroRecords: 'Tidak ada PDLN yang cocok.',
+        emptyTable: 'Belum ada PDLN berstatus selesai.',
+        processing: 'Memuat…',
+        paginate: { previous: '‹ Sebelumnya', next: 'Berikutnya ›' },
+      },
+    });
+  });
+</script>
+{% endif %}
 {% if dapat_verifikasi %}
 <script>
   $(function () {
@@ -157,8 +182,9 @@
 
     function tutupModal() { $verifikasi.add($revisi).removeClass('is-active'); }
 
-    // Tombol "Verifikasi": isi ID laporan, alamat form, dan ringkasan baris itu, lalu tampilkan modal.
-    $('.btn-verifikasi').on('click', function () {
+    // Tombol pada kolom Aksi dibuat ulang setiap tabel digambar (paginasi/pencarian/sort), jadi memakai
+    // event delegation. Tombol "Verifikasi": isi ID laporan, alamat form, dan ringkasan baris itu.
+    $(document).on('click', '.btn-verifikasi', function () {
       var $tombol = $(this);
       $verifikasi.find('input[name="laporan_id"]').val($tombol.data('id'));
       $verifikasi.find('form').attr('action', $tombol.data('url'));
@@ -169,7 +195,7 @@
     });
 
     // Tombol "Request Perbaikan": isi ID laporan dan alamat form, kosongkan alasan, tampilkan modal.
-    $('.btn-revisi').on('click', function () {
+    $(document).on('click', '.btn-revisi', function () {
       var $tombol = $(this);
       $revisi.find('input[name="laporan_id"]').val($tombol.data('id'));
       $revisi.find('form').attr('action', $tombol.data('url'));

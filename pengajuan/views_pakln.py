@@ -1,13 +1,14 @@
 import base64
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from django.contrib import messages
 from django.contrib.staticfiles import finders
 from django.core.files.base import ContentFile
 from django.db import transaction
-from django.db.models import Prefetch, Q
+from django.db.models import Count, Prefetch, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.defaultfilters import date as filter_tanggal
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
@@ -2051,15 +2052,118 @@ def hapus_dokumen(request, kode, jenis):
 # Pelaporan PDLN — verifikasi (BISNIS_PROSES_PDLN.MD §4.4)
 # ---------------------------------------------------------------------------
 
+def _qs_pelaporan(user):
+    """PDLN berstatus Selesai (wajib lapor) yang terlihat oleh `user` — dasar halaman Pelaporan PDLN."""
+    return report.queryset_untuk(user).filter(
+        jenis_perjalanan=Pengajuan.JenisPerjalanan.PDLN, status=Pengajuan.Status.SELESAI,
+    )
+
+
+def _hitung_pelaporan(qs):
+    """Angka 6 kartu ringkasan lewat agregasi database (satu query) — aturannya sama dengan
+    `views_unor._konteks_pelaporan`: laporan draft dihitung "belum melapor"; "terlambat" hanya untuk
+    yang belum melapor dan sudah lewat `report.BATAS_HARI_LAPORAN` hari sejak tanggal kembali."""
+    batas = timezone.localdate() - timedelta(days=report.BATAS_HARI_LAPORAN)
+    belum_lapor = Q(laporan_pdln__isnull=True) | Q(laporan_pdln__status=LaporanPdln.Status.DRAFT)
+    hitung = qs.aggregate(
+        selesai=Count("pk"),
+        menunggu=Count("pk", filter=Q(laporan_pdln__status=LaporanPdln.Status.MENUNGGU)),
+        dikembalikan=Count("pk", filter=Q(laporan_pdln__status=LaporanPdln.Status.DIKEMBALIKAN)),
+        disetujui=Count("pk", filter=Q(laporan_pdln__status=LaporanPdln.Status.DISETUJUI)),
+        terlambat=Count("pk", filter=belum_lapor & Q(tgl_kembali__lt=batas)),
+    )
+    hitung["belum"] = hitung["selesai"] - hitung["menunggu"] - hitung["dikembalikan"] - hitung["disetujui"]
+    return hitung
+
+
 @role_required("admin_pakln")
 def pelaporan(request):
-    from .views_unor import _konteks_pelaporan
-
+    """Pelaporan PDLN — verifikasi laporan. Baris tabel dimuat server-side lewat `pelaporan_data`;
+    halaman ini hanya membawa angka kartu ringkasan (total keseluruhan, tidak ikut pencarian)."""
     return render(request, "bersama/pelaporan.html", {
-        **_konteks_pelaporan(report.queryset_untuk(request.user)),
+        "hitung": _hitung_pelaporan(_qs_pelaporan(request.user)),
+        "serverside_url": reverse("pakln:pelaporan_data"),
         "dapat_verifikasi": True,
         "preview_url": "pakln:preview",
     })
+
+
+# Kolom tabel Pelaporan PDLN (index sesuai urutan kolom pada pelaporan.html) -> field ORDER BY.
+# Kolom Negara (many-to-many), Status Pelaporan (turunan), dan Aksi tidak dapat diurutkan.
+_PELAPORAN_ORDER_FIELDS = {
+    "0": "pegawai__profile__nama",
+    "1": "unit_organisasi__alias",
+    "2": "kode",
+    "4": "tgl_kembali",
+    "6": "laporan_pdln__uploaded_at",
+}
+
+
+def _cari_pelaporan(nilai):
+    return (
+        Q(kode__icontains=nilai)
+        | Q(pegawai__profile__nama__icontains=nilai)
+        | Q(pegawai__profile__nip__icontains=nilai)
+        | Q(unit_organisasi__alias__icontains=nilai)
+        | Q(unit_organisasi__name__icontains=nilai)
+        | Q(tujuan_negara__nama_negara__icontains=nilai)
+    )
+
+
+@role_required("admin_pakln")
+def pelaporan_data(request):
+    """Endpoint JSON server-side untuk tabel Pelaporan PDLN (protokol DataTables: draw/start/length/
+    search/order pada GET), mengikuti pola `dashboard_data`. Isi baris mengikuti `_konteks_pelaporan`."""
+    qs = (
+        _qs_pelaporan(request.user)
+        .select_related("pegawai__profile", "unit_organisasi", "laporan_pdln")
+        .prefetch_related("tujuan_negara")
+    )
+    hari_ini = timezone.localdate()
+
+    def baris(p):
+        profil = getattr(p.pegawai, "profile", None)
+        laporan = p.laporan
+        if laporan is not None and laporan.status == LaporanPdln.Status.DRAFT:
+            laporan = None   # draft belum dilaporkan: dihitung "belum melapor"
+        status = laporan.status if laporan else "belum"
+        terlambat = bool(laporan is None and p.tgl_kembali and (hari_ini - p.tgl_kembali).days > report.BATAS_HARI_LAPORAN)
+        uraian = [] if laporan is None else [
+            ("Tujuan Kegiatan", laporan.tujuan_kegiatan), ("Materi Kegiatan", laporan.materi_kegiatan),
+            ("Tindak Lanjut", laporan.tindak_lanjut), ("Dampak Rekomendasi", laporan.dampak_rekomendasi),
+        ]
+        pegawai_html = format_html(
+            '{}<br><span class="cell-muted">{}</span>',
+            profil.nama if profil else "", profil.nip if profil else "",
+        )
+        kode_html = format_html(
+            '<a href="{}">{}</a><br><span class="cell-muted">{}</span>',
+            reverse("pakln:preview", kwargs={"kode": p.kode}), p.kode, p.jenis_label,
+        )
+        status_html_ = format_html(
+            "{}{}",
+            laporan.get_status_display() if laporan else "Belum melapor",
+            mark_safe('<br><span class="text-danger is-strong">Terlambat</span>') if terlambat else "",
+        )
+        aksi_html = render_to_string("partials/_pelaporan_aksi.html", {
+            "p": p, "laporan": laporan, "status": status, "uraian": uraian,
+            "verifikasi_url": reverse("pakln:verifikasi_laporan", kwargs={"kode": p.kode}),
+        }).strip()
+        return [
+            pegawai_html,
+            p.unit_organisasi.alias if p.unit_organisasi else "—",
+            kode_html,
+            # `.all()` memakai hasil prefetch (tanpa query per baris), berbeda dengan `tujuan_negara_display`.
+            ", ".join(n.nama_negara for n in p.tujuan_negara.all()),
+            filter_tanggal(p.tgl_kembali, "d M Y") if p.tgl_kembali else "",
+            status_html_,
+            filter_tanggal(laporan.uploaded_at, "d M Y") if laporan and laporan.uploaded_at else "—",
+            aksi_html,
+        ]
+
+    return report.datatable(
+        request, qs, _PELAPORAN_ORDER_FIELDS, baris, _cari_pelaporan, default_order="-tgl_selesai",
+    )
 
 
 @role_required("admin_pakln")

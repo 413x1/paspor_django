@@ -6,7 +6,7 @@
       <div class="info"><h4 style="font-size:13.5px;">{{ item.label }}</h4>
         {% if item.dok.tanggal_surat %}<p class="cell-muted">📅 {{ item.dok.tanggal_surat|date:"d M Y" }}</p>{% endif %}</div>
       <div class="actions">
-        <button type="button" class="button is-small" data-doc-preview="{{ item.dok.file.url }}" data-doc-title="{{ item.label }}">👁 Lihat</button>
+        <button type="button" class="button is-small" data-doc-preview="{{ item.dok.file.url }}" data-doc-title="{{ item.label }}">{% include "partials/_ikon_mata.html" %}Lihat</button>
       </div>
     </div>
   {% empty %}
@@ -18,7 +18,7 @@
         <div class="doc-row uploaded" style="padding:10px 14px;">
           <div class="info"><h4 style="font-size:13.5px;">Dokumen Pendukung Lainnya (Unor)</h4>
             {% if pendukung.kategori_tercentang %}<p class="cell-muted">{{ pendukung.kategori_tercentang|join:", " }}</p>{% endif %}</div>
-          <div class="actions"><button type="button" class="button is-small" data-doc-preview="{{ pendukung.file.url }}" data-doc-title="Dokumen Pendukung Unor">👁 Lihat</button></div>
+          <div class="actions"><button type="button" class="button is-small" data-doc-preview="{{ pendukung.file.url }}" data-doc-title="Dokumen Pendukung Unor">{% include "partials/_ikon_mata.html" %}Lihat</button></div>
         </div>
       {% endif %}
     {% endwith %}
