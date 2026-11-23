@@ -56,6 +56,11 @@ class PengajuanForm(forms.ModelForm):
     oleh pegawai — data pegawai lainnya ditampilkan read-only dari
     PegawaiProfile)."""
 
+    # Satu sumber untuk pesan di server dan di alert JavaScript (templates/pegawai/formulir.html).
+    PESAN_NOL_HARI_KERJA = (
+        "Hasil perhitungan hari kerja adalah 0 hari. Untuk 0 hari kerja tidak perlu mengajukan izin luar negeri."
+    )
+
     # Field eksplisit (bukan auto-generate dari Meta) supaya bisa memakai
     # GroupedModelChoiceField — dropdown Kategori Perjalanan dikelompokkan
     # per Jenis Perjalanan (<optgroup>). Queryset diisi ulang di __init__.
@@ -137,8 +142,8 @@ class PengajuanForm(forms.ModelForm):
 
     def clean(self):
         """Jumlah hari kerja selalu dihitung ulang di server dari tanggal &
-        kalender libur (nilai kiriman browser tidak dipercaya), lalu
-        divalidasi terhadap sisa cuti tahun berjalan."""
+        kalender libur (nilai kiriman browser tidak dipercaya). Minimal 1 hari
+        kerja, lalu divalidasi terhadap sisa cuti tahun berjalan."""
         cleaned = super().clean()
         berangkat = cleaned.get("tgl_berangkat")
         kembali = cleaned.get("tgl_kembali")
@@ -147,6 +152,10 @@ class PengajuanForm(forms.ModelForm):
 
         hari_kerja = hitung_hari_kerja(berangkat, kembali)
         self.instance.jumlah_hari_kerja = hari_kerja
+        if hari_kerja is not None and hari_kerja < 1:
+            # Seluruh rentang jatuh pada Sabtu/Minggu atau tanggal merah: tidak ada hari kerja yang terpakai,
+            # sehingga izin luar negeri tidak perlu diajukan.
+            raise forms.ValidationError(self.PESAN_NOL_HARI_KERJA)
         if hari_kerja is not None and self.profile is not None:
             sisa = self.profile.sisa_cuti_tahun_berjalan
             if hari_kerja > sisa:
