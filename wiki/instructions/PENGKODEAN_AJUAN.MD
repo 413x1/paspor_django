@@ -104,8 +104,8 @@ Unor lain memiliki urutan sendiri: Non-Dinas pertama Unor `04` tahun 2026 →
   kode lama dan baru selalu berbeda tanggal atau nomor.
 - Dua pengajuan yang tersimpan tepat bersamaan untuk kelompok yang sama berpotensi
   mendapat nomor yang sama; batasan `unique=True` pada `kode` akan menolak yang
-  kedua dengan `IntegrityError`. Untuk volume saat ini (satu pengajuan aktif
-  per pegawai) risikonya sangat kecil.
+  kedua dengan `IntegrityError`. Untuk volume saat ini (pengajuan dibuat satu per satu oleh
+  pegawai, walau boleh paralel) risikonya sangat kecil.
 
 ## Perubahan kode
 

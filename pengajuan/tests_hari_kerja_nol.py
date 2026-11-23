@@ -119,7 +119,7 @@ class ValidasiServerTests(HariKerjaNolBase):
         self.assertEqual(self.kirim_form(SENIN, date(2026, 12, 30)).status_code, 302)
         p = Pengajuan.objects.get(pegawai=self.pegawai)
         self.login(self.pegawai)
-        resp = self.client.post(reverse("pegawai:formulir_pengajuan"), self.data(SABTU, MINGGU))
+        resp = self.client.post(reverse("pegawai:formulir_pengajuan") + f"?kode={p.kode}", self.data(SABTU, MINGGU))
         self.assertEqual(resp.status_code, 200)
         self.assertIn(PESAN, [str(e) for e in resp.context["form"].non_field_errors()])
         p.refresh_from_db()

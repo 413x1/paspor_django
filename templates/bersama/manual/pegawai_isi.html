@@ -143,17 +143,17 @@
 <figure><a href="{% static 'images/user-manual/pegawai-01-sidebar.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/pegawai-01-sidebar.png' %}" alt="Sidebar Pegawai" width="280" height="800" loading="lazy"></a><figcaption>Sidebar Pegawai</figcaption></figure>
 <p><strong>Beranda</strong> menampilkan:</p>
 <ul>
-<li>tombol <strong>Tambah Usulan Baru</strong> (atau <strong>Lanjutkan Draft</strong> bila ada draft);</li>
-<li>tabel <strong>Pengajuan Aktif</strong> (Jenis, Tujuan, Kategori, Tgl Pengajuan, Status, Action);</li>
+<li>tombol <strong>Tambah Usulan Baru</strong> (selalu tersedia, kecuali ada Laporan PDLN yang belum disetujui);</li>
+<li>tabel <strong>Pengajuan Aktif</strong>: semua pengajuan Anda yang belum tuntas, termasuk draft (Jenis, Tujuan, Kategori, Tgl Pengajuan, Status, Action);</li>
 <li>tab <strong>Riwayat PDLN</strong> dan <strong>Riwayat Non-Dinas</strong>, dengan fitur cari;</li>
 <li>tabel <strong>Usulan Kegiatan Saya</strong> bila Anda pernah mengusulkan kegiatan.</li>
 </ul>
 <figure><a href="{% static 'images/user-manual/pegawai-02-beranda.png' %}" target="_blank" rel="noopener" title="Klik untuk memperbesar"><img src="{% static 'images/user-manual/pegawai-02-beranda.png' %}" alt="Beranda Pegawai" width="1366" height="800" loading="lazy"></a><figcaption>Beranda Pegawai</figcaption></figure>
 <h3 id="32-aturan-khusus-pegawai">3.2 Aturan Khusus Pegawai</h3>
 <ol>
-<li><strong>Hanya boleh ada satu pengajuan aktif.</strong> Pengajuan baru dapat dibuat jika pengajuan sebelumnya sudah <strong>tuntas</strong> atau <strong>dibatalkan</strong>. Selama pengajuan lama belum tuntas, tombol <strong>Tambah Usulan Baru</strong> nonaktif dan alasannya ditampilkan di Beranda.</li>
-<li><strong>Draft juga dihitung sebagai pengajuan aktif.</strong> Lanjutkan draft melalui tombol <strong>Lanjutkan Draft</strong>.</li>
-<li><strong>Untuk PDLN</strong>, pengajuan dianggap tuntas setelah <strong>Laporan PDLN disetujui</strong> (lihat <a href="#langkah-7-pelaporan-pdln-khusus-pdln">Langkah 7</a>).</li>
+<li><strong>Pengajuan boleh paralel.</strong> Anda dapat membuat pengajuan baru (ILN maupun PDLN) walau masih memiliki draft atau pengajuan yang sedang diproses, tanpa menunggu pengajuan sebelumnya selesai. Semua pengajuan yang belum tuntas tampil di tabel <strong>Pengajuan Aktif</strong>.</li>
+<li><strong>Lanjutkan draft dari tabel Pengajuan Aktif.</strong> Gunakan tombol <strong>Lanjutkan Formulir</strong> atau <strong>Lanjutkan Unggah</strong> pada baris pengajuan yang dimaksud. Tombol <strong>Tambah Usulan Baru</strong> selalu membuat pengajuan baru.</li>
+<li><strong>Untuk PDLN</strong>, pengajuan dianggap tuntas setelah <strong>Laporan PDLN disetujui</strong> (lihat <a href="#langkah-7-pelaporan-pdln-khusus-pdln">Langkah 7</a>). <strong>Selama ada PDLN selesai yang laporannya belum disetujui, pengajuan baru belum dapat dibuat</strong>: tombol <strong>Tambah Usulan Baru</strong> nonaktif dan alasannya ditampilkan di Beranda. Draft yang sudah ada tetap dapat dilanjutkan.</li>
 <li><strong>Mengusulkan kegiatan baru</strong> dapat dilakukan dari formulir PDLN. Keputusan akhir oleh <strong>Admin Biro PAKLN</strong> (lihat <a href="#34-mengusulkan-kegiatan-baru">Bagian 3.4</a>).</li>
 </ol>
 <h3 id="33-alur-pengajuan">3.3 Alur Pengajuan</h3>

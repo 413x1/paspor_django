@@ -24,8 +24,8 @@ Bagian ini menjelaskan cara Pegawai mengajukan, memantau, melaporkan, dan membat
 
 **Beranda** menampilkan:
 
-- tombol **Tambah Usulan Baru** (atau **Lanjutkan Draft** bila ada draft);
-- tabel **Pengajuan Aktif** (Jenis, Tujuan, Kategori, Tgl Pengajuan, Status, Action);
+- tombol **Tambah Usulan Baru** (selalu tersedia, kecuali ada Laporan PDLN yang belum disetujui);
+- tabel **Pengajuan Aktif**: semua pengajuan Anda yang belum tuntas, termasuk draft (Jenis, Tujuan, Kategori, Tgl Pengajuan, Status, Action);
 - tab **Riwayat PDLN** dan **Riwayat Non-Dinas**, dengan fitur cari;
 - tabel **Usulan Kegiatan Saya** bila Anda pernah mengusulkan kegiatan.
 
@@ -35,9 +35,9 @@ Bagian ini menjelaskan cara Pegawai mengajukan, memantau, melaporkan, dan membat
 
 ## 2. Aturan Khusus Pegawai
 
-1. **Hanya boleh ada satu pengajuan aktif.** Pengajuan baru dapat dibuat jika pengajuan sebelumnya sudah **tuntas** atau **dibatalkan**. Selama pengajuan lama belum tuntas, tombol **Tambah Usulan Baru** nonaktif dan alasannya ditampilkan di Beranda.
-2. **Draft juga dihitung sebagai pengajuan aktif.** Lanjutkan draft melalui tombol **Lanjutkan Draft**.
-3. **Untuk PDLN**, pengajuan dianggap tuntas setelah **Laporan PDLN disetujui** (lihat [Langkah 7](#langkah-7-pelaporan-pdln-khusus-pdln)).
+1. **Pengajuan boleh paralel.** Anda dapat membuat pengajuan baru (ILN maupun PDLN) walau masih memiliki draft atau pengajuan yang sedang diproses, tanpa menunggu pengajuan sebelumnya selesai. Semua pengajuan yang belum tuntas tampil di tabel **Pengajuan Aktif**.
+2. **Lanjutkan draft dari tabel Pengajuan Aktif.** Gunakan tombol **Lanjutkan Formulir** atau **Lanjutkan Unggah** pada baris pengajuan yang dimaksud. Tombol **Tambah Usulan Baru** selalu membuat pengajuan baru.
+3. **Untuk PDLN**, pengajuan dianggap tuntas setelah **Laporan PDLN disetujui** (lihat [Langkah 7](#langkah-7-pelaporan-pdln-khusus-pdln)). **Selama ada PDLN selesai yang laporannya belum disetujui, pengajuan baru belum dapat dibuat**: tombol **Tambah Usulan Baru** nonaktif dan alasannya ditampilkan di Beranda. Draft yang sudah ada tetap dapat dilanjutkan.
 4. **Mengusulkan kegiatan baru** dapat dilakukan dari formulir PDLN. Keputusan akhir oleh **Admin Biro PAKLN** (lihat [Bagian 4](#4-mengusulkan-kegiatan-baru)).
 
 ---

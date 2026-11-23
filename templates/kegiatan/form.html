@@ -45,6 +45,7 @@
 <form method="post" enctype="multipart/form-data" novalidate>
   {% csrf_token %}
   {% if tipe %}<input type="hidden" name="tipe" value="{{ tipe }}">{% endif %}
+  {% if kode_pengajuan %}<input type="hidden" name="kode" value="{{ kode_pengajuan }}">{% endif %}
   <fieldset {% if readonly %}disabled{% endif %}>
   <div class="box">
     <div class="section-title is-small is-spaced">Data Kegiatan</div>

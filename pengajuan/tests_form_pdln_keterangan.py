@@ -71,7 +71,8 @@ class KeteranganSumberPembiayaanTests(_Basis, TestCase):
         r = self._kirim(keterangan_sumber_pembiayaan="  Beasiswa LPDP  ")
         self.assertEqual(r.status_code, 302)
         self.assertEqual(DetailPdln.objects.get(pengajuan=self._pengajuan()).keterangan_sumber_pembiayaan, "Beasiswa LPDP")
-        html = self.client.get(reverse(self.URL)).content.decode()   # draft yang sama dibuka ulang
+        kode = self._pengajuan().kode
+        html = self.client.get(reverse(self.URL) + f"?kode={kode}").content.decode()   # draft yang sama dibuka ulang
         self.assertRegex(html, r'<textarea[^>]*name="keterangan_sumber_pembiayaan"[^>]*>\s*Beasiswa LPDP</textarea>')
 
     def test_teks_panjang_dan_multi_baris_diterima_sampai_batas(self):

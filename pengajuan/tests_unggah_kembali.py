@@ -41,7 +41,7 @@ class TombolKembaliTampilTests(KembaliBase):
     def test_tombol_kembali_di_kiri_tombol_kirim_dalam_field_is_grouped(self):
         p = self.isi_formulir("T1")
         html = self.halaman_unggah(p).content.decode()
-        url_formulir = reverse("pegawai:formulir_pengajuan")
+        url_formulir = reverse("pegawai:formulir_pengajuan") + f"?kode={p.kode}"      # draft yang sedang dibuka
         self.assertIn('class="field is-grouped"', html)
         kembali = html.index(f'href="{url_formulir}" class="button is-light"')
         kirim = html.index('name="kirim"')
@@ -132,7 +132,7 @@ class KembaliDataUtuhTests(KembaliBase):
             "tgl_kembali": p.tgl_kembali.isoformat(), "keterangan_sumber_pembiayaan": "Biaya Uji Revisi",
             "pernyataan_benar": "on",
         }
-        resp = self.client.post(reverse("pegawai:formulir_pengajuan"), data)
+        resp = self.client.post(reverse("pegawai:formulir_pengajuan") + f"?kode={p.kode}", data)
         self.assertRedirects(resp, reverse("pegawai:upload_dokumen", kwargs={"kode": p.kode}), fetch_redirect_response=False)
         self.assertEqual(Pengajuan.objects.filter(pegawai=self.pegawai).count(), 1)
         self.assertEqual(DokumenPegawai.objects.filter(pengajuan=p).count(), 1)

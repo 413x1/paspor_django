@@ -211,17 +211,25 @@ def timeline(pengajuan):
     return hasil
 
 
-def pengajuan_belum_tuntas(pegawai):
-    """Pengajuan terbaru pegawai yang belum mencapai tahap akhir, atau
-    None (aturan satu pengajuan aktif, BISNIS_PROSES_PDLN.MD §2.1)."""
+def pengajuan_aktif(pegawai):
+    """Semua pengajuan pegawai yang belum tuntas — draft, sedang diproses, dan PDLN selesai yang menunggu
+    laporan disetujui — terbaru dulu. Pegawai boleh memiliki lebih dari satu sekaligus (pengajuan paralel,
+    ILN maupun PDLN, BISNIS_PROSES_PDLN.MD §2.1). Pengajuan dibatalkan dan yang sudah tuntas tidak termasuk."""
     qs = (
         Pengajuan.objects.filter(pegawai=pegawai)
         .exclude(status=S.DIBATALKAN)
         .select_related("laporan_pdln")
         .order_by("-created_at")
     )
-    for p in qs:
-        if not p.tuntas:
+    return [p for p in qs if not p.tuntas]
+
+
+def penahan_pengajuan_baru(pegawai):
+    """Satu-satunya hal yang masih menahan pegawai membuat pengajuan baru: PDLN yang sudah selesai tetapi
+    laporannya belum disetujui (kewajiban lapor, BISNIS_PROSES_PDLN.MD §4.4). Draft dan pengajuan yang sedang
+    diproses TIDAK menahan. Mengembalikan pengajuannya, atau None bila tidak ada."""
+    for p in pengajuan_aktif(pegawai):
+        if p.status == S.SELESAI and p.is_pdln:
             return p
     return None
 

@@ -70,7 +70,7 @@
       {% if not dibekukan %}
         {# Kembali ke formulir pengajuan: isiannya tersimpan di draft (database), jadi tampil utuh saat dibuka lagi. #}
         <div class="control">
-          <a href="{% url 'pegawai:formulir_pengajuan' %}" class="button is-light"
+          <a href="{% url 'pegawai:formulir_pengajuan' %}?kode={{ pengajuan.kode }}" class="button is-light"
             title="Kembali ke formulir pengajuan. Isian formulir tetap tersimpan.">Kembali</a>
         </div>
       {% endif %}
