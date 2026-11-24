@@ -819,7 +819,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
   width: 32px; height: 32px; fill: none; stroke: currentColor;
   stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round;
 }
-.paspor-dialog.is-danger .dialog-icon, .paspor-dialog.is-error .dialog-icon { --dialog-tone: var(--red-strong); --dialog-tone-bg: var(--red-bg); }
+.paspor-dialog.is-danger .dialog-icon, .paspor-dialog.is-error .dialog-icon, .paspor-dialog.is-keluar .dialog-icon { --dialog-tone: var(--red-strong); --dialog-tone-bg: var(--red-bg); }
 .paspor-dialog.is-success .dialog-icon { --dialog-tone: var(--green); --dialog-tone-bg: var(--green-bg); }
 .paspor-dialog.is-info .dialog-icon { --dialog-tone: var(--teal); --dialog-tone-bg: var(--blue-bg); }
 /* Centang sukses digambar (stroke animation) saat dialog muncul. */
@@ -829,7 +829,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .paspor-dialog .dialog-actions { display: flex; gap: 8px; justify-content: center; }
 .paspor-dialog .dialog-actions .button { min-width: 110px; font-weight: 700; }
 #pasporDialog .dialog-ok { background: var(--navy-900); border-color: var(--navy-900); color: var(--white); }
-#pasporDialog.is-danger .dialog-ok, #pasporDialog.is-error .dialog-ok { background: var(--red-strong); border-color: var(--red-strong); }
+#pasporDialog.is-danger .dialog-ok, #pasporDialog.is-error .dialog-ok, #pasporDialog.is-keluar .dialog-ok { background: var(--red-strong); border-color: var(--red-strong); }
 #pasporDialog.is-success .dialog-ok { background: var(--green); border-color: var(--green); }
 #pasporDialog .dialog-ok:hover, #pasporDialog .dialog-ok:focus { color: var(--white); filter: brightness(1.08); }
 @media (prefers-reduced-motion: reduce) {
