@@ -1259,6 +1259,19 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .kontak-wa:hover { color: var(--green); text-decoration: underline; }
 .kontak-wa-field { padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; min-height: 40px; }
 
+/* Halaman Profil: untuk Pegawai, kotak dibagi dua kolom mandiri di layar lebar (kolom kiri dan kanan ditumpuk sendiri-sendiri,
+   bukan sejajar per baris, agar tinggi keduanya seimbang dan tidak ada celah kosong). Grid + minmax(0, 1fr) + gap didukung semua browser
+   utama (Chrome, Edge, Firefox, Safari 12+); tanpa :has / container query agar aman di Safari lama. Di bawah 1280px
+   (konten sudah menyempit karena sidebar) semua kotak bertumpuk satu kolom seperti semula. */
+@media (min-width: 1280px) {
+  .profil-grid.is-dua-kolom {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start;
+  }
+  .profil-grid.is-dua-kolom > .box { margin-bottom: 0; }
+  .profil-grid.is-dua-kolom .profil-kolom { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .profil-grid.is-dua-kolom .profil-kolom > .box { margin-bottom: 0; }
+  .profil-grid.is-dua-kolom > .profil-penuh { grid-column: 1 / -1; }   /* Dokumen: selebar penuh di bawah dua kolom */
+}
 .akun-panel { margin-top: 12px; }
 .akun-panel > summary { list-style: none; }
 .akun-panel > summary::-webkit-details-marker { display: none; }
