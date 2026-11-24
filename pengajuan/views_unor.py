@@ -12,10 +12,10 @@ from paspor.validators import periksa_pdf
 from logs.utils import catat_riwayat, record_activity
 from notifications.services import notify_approve_unor, notify_forward_bpsdm, notify_reject_unor
 
-from . import alur, pembatalan, persyaratan, report, riwayat, surat_tugas, tahap
+from . import alur, pelaporan_tabel, pembatalan, persyaratan, report, riwayat, surat_tugas, tahap
 from .decorators import role_required, tolak_pengajuan_sendiri
 from .surat_tugas import SuratTugasError
-from .models import DokumenUnorPendukung, LaporanPdln, Pengajuan, PermohonanPembatalan, RiwayatPengajuan
+from .models import DokumenUnorPendukung, Pengajuan, PermohonanPembatalan, RiwayatPengajuan
 
 S = Pengajuan.Status
 Aksi = RiwayatPengajuan.Aksi
@@ -466,36 +466,17 @@ def tarik_pembatalan(request, pk):
 
 @role_required("admin_unor")
 def pelaporan(request):
-    """Monitor Pelaporan PDLN (read-only) untuk pegawai unit organisasinya."""
+    """Monitor Pelaporan PDLN (read-only) untuk pegawai unit organisasinya. Baris tabel dimuat server-side lewat
+    `pelaporan_data`; halaman ini hanya membawa angka kartu ringkasan (total keseluruhan, tidak ikut pencarian)."""
     return render(request, "bersama/pelaporan.html", {
-        **_konteks_pelaporan(report.queryset_untuk(request.user)),
+        "hitung": pelaporan_tabel.hitung_pelaporan(pelaporan_tabel.qs_pelaporan(request.user)),
+        "serverside_url": reverse("unor:pelaporan_data"),
         "dapat_verifikasi": False,
         "preview_url": "unor:preview",
     })
 
 
-def _konteks_pelaporan(qs_pengajuan):
-    """Context bersama halaman Pelaporan PDLN admin (Unor & PAKLN)."""
-    qs = (
-        qs_pengajuan.filter(jenis_perjalanan=Pengajuan.JenisPerjalanan.PDLN, status=S.SELESAI)
-        .select_related("pegawai__profile", "unit_organisasi", "laporan_pdln")
-        .prefetch_related("tujuan_negara")
-        .order_by("-tgl_selesai")
-    )
-    baris, hitung = [], {"selesai": 0, "belum": 0, "menunggu": 0, "dikembalikan": 0, "disetujui": 0, "terlambat": 0}
-    hari_ini = timezone.localdate()
-    for p in qs:
-        laporan = p.laporan
-        if laporan is not None and laporan.status == LaporanPdln.Status.DRAFT:
-            laporan = None   # draft belum dilaporkan: dihitung "belum melapor"
-        status = laporan.status if laporan else "belum"
-        terlambat = laporan is None and p.tgl_kembali and (hari_ini - p.tgl_kembali).days > report.BATAS_HARI_LAPORAN
-        hitung["selesai"] += 1
-        hitung[status] = hitung.get(status, 0) + 1
-        hitung["terlambat"] += 1 if terlambat else 0
-        uraian = [] if laporan is None else [
-            ("Tujuan Kegiatan", laporan.tujuan_kegiatan), ("Materi Kegiatan", laporan.materi_kegiatan),
-            ("Tindak Lanjut", laporan.tindak_lanjut), ("Dampak Rekomendasi", laporan.dampak_rekomendasi),
-        ]
-        baris.append({"p": p, "laporan": laporan, "status": status, "terlambat": terlambat, "uraian": uraian})
-    return {"baris": baris, "hitung": hitung, "Status": LaporanPdln.Status}
+@role_required("admin_unor")
+def pelaporan_data(request):
+    """Endpoint JSON server-side untuk tabel Pelaporan PDLN Admin Unor — hanya PDLN unit organisasinya."""
+    return pelaporan_tabel.respons_data(request, preview_url="unor:preview")

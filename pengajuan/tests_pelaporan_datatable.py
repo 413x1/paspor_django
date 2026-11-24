@@ -1,4 +1,7 @@
-"""Pelaporan PDLN Admin PAKLN — DataTables server-side (`pakln:pelaporan_data`)."""
+"""Pelaporan PDLN — DataTables server-side: Admin PAKLN (`pakln:pelaporan_data`) dan Admin Unor (`unor:pelaporan_data`).
+
+Keduanya memakai satu implementasi (`pengajuan/pelaporan_tabel.py`); Admin Unor hanya melihat unit organisasinya dan
+tanpa tombol Verifikasi/Request Perbaikan."""
 
 from datetime import date, timedelta
 
@@ -14,7 +17,6 @@ from . import report
 from .models import LaporanPdln, Pengajuan
 from .tests_laporan_form import ISI, LaporanFormBase
 from .views_pakln import _hitung_pelaporan, _qs_pelaporan
-from .views_unor import _konteks_pelaporan
 
 S = LaporanPdln.Status
 
@@ -232,12 +234,10 @@ class KartuRingkasanTests(PelaporanServerSideBase):
         self.pdln(laporan=S.DISETUJUI)
         self.pdln(status=Pengajuan.Status.PROSES_PAKLN)    # bukan Selesai: tidak dihitung
 
-    def test_agregasi_sama_dengan_perhitungan_lama(self):
+    def test_agregasi_sesuai_aturan_kartu(self):
         qs = _qs_pelaporan(self.admin_pakln)
-        lama = _konteks_pelaporan(qs)["hitung"]
-        self.assertEqual(_hitung_pelaporan(qs), lama)
         self.assertEqual(
-            lama,
+            _hitung_pelaporan(qs),
             {"selesai": 7, "belum": 4, "menunggu": 1, "dikembalikan": 1, "disetujui": 1, "terlambat": 3},
         )
 
@@ -268,16 +268,151 @@ class HalamanDanAksesTests(PelaporanServerSideBase):
         for modal in ('id="modal-verifikasi"', 'id="modal-revisi"'):
             self.assertIn(modal, html)
 
-    def test_admin_unor_tetap_tabel_html_biasa(self):
-        self.client.force_login(self.admin_unor)
-        html = self.client.get(reverse("unor:pelaporan")).content.decode()
-        self.assertIn(self.p.kode, html)                    # baris dirender langsung
-        for tidak_ada in ('id="tabelPelaporan"', "serverSide", "dataTables.min.js", "pelaporan/data/", "Pencarian mencakup"):
-            self.assertNotIn(tidak_ada, html)
-
-    def test_endpoint_hanya_untuk_admin_pakln(self):
+    def test_endpoint_pakln_hanya_untuk_admin_pakln(self):
         for user in (self.admin_unor, self.pegawai):
             with self.subTest(user=user.username):
                 self.client.force_login(user)
                 resp = self.client.get(self.url_data)
                 self.assertNotEqual(resp.status_code, 200)
+
+
+class AdminUnorServerSideTests(PelaporanServerSideBase):
+    """Pelaporan PDLN Admin Unor: server-side, terbatas pada unit organisasinya, tanpa tombol verifikasi."""
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.admin_unor)
+        self.url_data = reverse("unor:pelaporan_data")
+
+    def pegawai_unit_lain(self, nama, nip):
+        user = User.objects.create_user(f"peg{nip}", password="x", role="pegawai")
+        PegawaiProfile.objects.create(
+            user=user, nip=nip, nama=nama, jabatan="Staf", pangkat_golongan="III-a",
+            unit_kerja="Biro", unit_organisasi=self.unor_lain,
+        )
+        return user
+
+    def test_halaman_memakai_server_side_tanpa_baris_dan_tanpa_modal(self):
+        html = self.client.get(reverse("unor:pelaporan")).content.decode()
+        self.assertIn('id="tabelPelaporan"', html)
+        self.assertIn("serverSide: true", html)
+        self.assertIn(self.url_data, html)
+        self.assertIn("dataTables.min.js", html)
+        self.assertIn("Pencarian mencakup nama pegawai, NIP, kode pengajuan, unor, dan negara tujuan.", html)
+        self.assertNotIn(self.p.kode, html)                 # baris tidak dirender di HTML
+        for tidak_ada in ('id="modal-verifikasi"', 'id="modal-revisi"', "$(document).on('click', '.btn-verifikasi'"):
+            self.assertNotIn(tidak_ada, html)
+
+    def test_format_dan_isi_kolom_dengan_tautan_pratinjau_unor(self):
+        self.p.tujuan_negara.set([Negara.objects.create(nama_negara="Uji Zentoria")])
+        json = self.ambil()
+        self.assertEqual(set(json), {"draw", "recordsTotal", "recordsFiltered", "data"})
+        self.assertEqual((json["draw"], json["recordsTotal"], json["recordsFiltered"]), (3, 1, 1))
+        baris = json["data"][0]
+        self.assertEqual(len(baris), 8)
+        self.assertIn("Pegawai Satu", baris[0])
+        self.assertEqual(baris[1], self.unor.alias)
+        self.assertIn(f'href="{reverse("unor:preview", args=[self.p.kode])}"', baris[2])     # pratinjau milik Admin Unor
+        self.assertNotIn(reverse("pakln:preview", args=[self.p.kode]), baris[2])
+        self.assertEqual(baris[3], "Uji Zentoria")
+        self.assertIn("Belum melapor", baris[5])
+
+    def test_hanya_unit_organisasinya_sendiri(self):
+        lain = self.pegawai_unit_lain("Pegawai Unit Lain", "2222")
+        punya_lain = self.pdln(pegawai=lain, unor=self.unor_lain, tgl_selesai=date(2026, 9, 25))
+        json = self.ambil()
+        self.assertEqual(json["recordsTotal"], 1)
+        self.assertEqual(self.kode_baris(json), [self.p.kode])
+        self.assertNotIn("Pegawai Unit Lain", str(json))
+        # pencarian tidak membuka data unit lain, walau cocok
+        self.assertEqual(self.ambil(**{"search[value]": "Pegawai Unit Lain"})["recordsFiltered"], 0)
+        self.assertEqual(self.ambil(**{"search[value]": punya_lain.kode})["recordsFiltered"], 0)
+        # Admin Unor unit lain melihat miliknya saja
+        admin_lain = User.objects.create_user("unor_lain_x", password="x", role="admin_unor", unit_organisasi=self.unor_lain)
+        self.client.force_login(admin_lain)
+        self.assertEqual(self.kode_baris(self.ambil()), [punya_lain.kode])
+
+    def test_hanya_pdln_selesai(self):
+        self.pdln(status=Pengajuan.Status.PROSES_PAKLN)
+        self.pdln(jenis="nondinas")
+        self.assertEqual(self.ambil()["recordsTotal"], 1)
+
+    def test_kolom_aksi_hanya_lihat_tanpa_verifikasi_dan_ringkasan(self):
+        self.p.delete()
+        menunggu = self.pdln(laporan=S.MENUNGGU, tgl_selesai=date(2026, 9, 5))
+        disetujui = self.pdln(laporan=S.DISETUJUI, tgl_selesai=date(2026, 9, 4))
+        belum = self.pdln(tgl_selesai=date(2026, 9, 3))
+        json = self.ambil()
+        aksi = {kode: b[7] for kode, b in zip(self.kode_baris(json), json["data"])}
+        status = {kode: b[5] for kode, b in zip(self.kode_baris(json), json["data"])}
+        for kode in (menunggu.kode, disetujui.kode):
+            self.assertIn("data-doc-preview", aksi[kode])               # laporan tetap bisa dilihat
+        self.assertNotIn("data-doc-preview", aksi[belum.kode])
+        for kode, teks in aksi.items():
+            for tidak_ada in ("btn-verifikasi", "btn-revisi", "ringkasan-", "Verifikasi", "Request Perbaikan"):
+                self.assertNotIn(tidak_ada, teks, kode)
+        self.assertIn("Menunggu Verifikasi", status[menunggu.kode])
+
+    def test_kartu_ringkasan_hanya_unit_sendiri_dan_satu_query(self):
+        lain = self.pegawai_unit_lain("Pegawai Unit Tiga", "3333")
+        self.pdln(pegawai=lain, unor=self.unor_lain, laporan=S.MENUNGGU)
+        self.pdln(laporan=S.DISETUJUI, tgl_selesai=date(2026, 9, 4))
+        resp = self.client.get(reverse("unor:pelaporan"))
+        self.assertEqual(
+            resp.context["hitung"],
+            {"selesai": 2, "belum": 1, "menunggu": 0, "dikembalikan": 0, "disetujui": 1, "terlambat": 1},   # self.p: belum melapor, lewat batas
+        )
+        self.assertFalse(resp.context["dapat_verifikasi"])
+        self.assertEqual(resp.context["serverside_url"], self.url_data)
+        qs = _qs_pelaporan(self.admin_unor)                  # pencarian unit Admin Unor terjadi di sini, bukan di agregasi
+        with CaptureQueriesContext(connection) as q:
+            _hitung_pelaporan(qs)
+        self.assertEqual(len(q), 1)
+
+    def test_pencarian_urutan_dan_paginasi(self):
+        self.p.delete()
+        a = self.pegawai_baru("Aaa Pertama", "1001")
+        z = self.pegawai_baru("Zzz Terakhir", "9009")
+        negara = Negara.objects.create(nama_negara="Uji Utara")
+        pa = self.pdln(pegawai=a, tgl_kembali=date(2026, 10, 1), tgl_selesai=date(2026, 9, 3), negara=[negara])
+        pz = self.pdln(pegawai=z, tgl_kembali=date(2026, 10, 9), tgl_selesai=date(2026, 9, 2))
+        self.assertEqual(self.kode_baris(self.ambil(**{"search[value]": "Zzz"})), [pz.kode])
+        self.assertEqual(self.kode_baris(self.ambil(**{"search[value]": "9009"})), [pz.kode])
+        self.assertEqual(self.kode_baris(self.ambil(**{"search[value]": "Uji Utara"})), [pa.kode])
+        asc = self.ambil(**{"order[0][column]": "0", "order[0][dir]": "asc"})
+        self.assertEqual(self.kode_baris(asc), [pa.kode, pz.kode])
+        desc = self.ambil(**{"order[0][column]": "0", "order[0][dir]": "desc"})
+        self.assertEqual(self.kode_baris(desc), [pz.kode, pa.kode])
+        halaman2 = self.ambil(length=1, start=1, **{"order[0][column]": "0", "order[0][dir]": "asc"})
+        self.assertEqual(self.kode_baris(halaman2), [pz.kode])
+        self.assertEqual(halaman2["recordsTotal"], 2)
+
+    def test_jumlah_query_tidak_bertambah_per_baris(self):
+        self.p.delete()
+        self.pdln(laporan=S.MENUNGGU, tgl_selesai=date(2026, 9, 1))
+        self.ambil()                                          # pemanasan: query sekali-jalan (sesi, cache) tidak ikut dihitung
+        with CaptureQueriesContext(connection) as satu:
+            self.ambil()
+        for i in range(2, 9):
+            self.pdln(laporan=S.MENUNGGU, tgl_selesai=date(2026, 9, i))
+        with CaptureQueriesContext(connection) as banyak:
+            json = self.ambil()
+        self.assertEqual(len(json["data"]), 8)
+        self.assertEqual(len(banyak), len(satu))
+
+    def test_akses_hanya_admin_unor(self):
+        for user in (self.pegawai, self.admin_pakln):
+            with self.subTest(user=user.username):
+                self.client.force_login(user)
+                self.assertNotEqual(self.client.get(self.url_data).status_code, 200)
+        self.client.logout()
+        self.assertEqual(self.client.get(self.url_data).status_code, 302)       # belum login -> halaman login
+
+    def test_endpoint_pakln_tetap_berisi_semua_unit_dengan_tombol_verifikasi(self):
+        self.p.delete()
+        menunggu = self.pdln(laporan=S.MENUNGGU)
+        self.client.force_login(self.admin_pakln)
+        json = self.client.get(reverse("pakln:pelaporan_data"), {"draw": 1, "start": 0, "length": 10}).json()
+        self.assertEqual(self.kode_baris(json), [menunggu.kode])
+        self.assertIn("btn-verifikasi", json["data"][0][7])
+        self.assertIn(reverse("pakln:preview", args=[menunggu.kode]), json["data"][0][2])
