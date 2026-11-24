@@ -1,4 +1,4 @@
-<div class="box profil-penuh">
+<div class="box{% if user.role == "pegawai" %} profil-penuh{% endif %}">
   <div class="section-title is-small">{% if user.role == "pegawai" %}Dokumen Kepegawaian{% else %}Dokumen Penugasan{% endif %}</div>
   {% for jenis, label, dok in jenis_dokumen %}
     <div class="doc-row {% if dok %}uploaded{% endif %}">

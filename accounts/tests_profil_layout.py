@@ -1,5 +1,6 @@
-"""Halaman Profil Pegawai: dua kolom di layar lebar (kiri Data Personal + Keamanan, kanan Akun + Data Paspor,
-Dokumen selebar penuh di bawahnya). Peran lain tetap satu kolom dengan urutan semula.
+"""Halaman Profil: dua kolom di layar lebar untuk Pegawai (kiri Data Personal + Keamanan, kanan Akun + Data Paspor,
+Dokumen selebar penuh di bawahnya) dan Admin Unor (kiri Data Personal + Keamanan, kanan Akun + Dokumen Penugasan).
+Peran lain tetap satu kolom dengan urutan semula.
 
 Ukuran piksel diperiksa di browser (Edge, Chrome, Firefox, WebKit); tes ini menjaga struktur, urutan, dan aturan CSS."""
 
@@ -58,20 +59,60 @@ class ProfilPegawaiDuaKolomTests(TestCase):
         self.assertNotIn("_profil_", self.html)
 
 
-class ProfilPeranLainTetapSatuKolomTests(TestCase):
+class ProfilAdminUnorDuaKolomTests(TestCase):
+    """Admin Unor: kiri Data Personal + Keamanan, kanan Akun + Dokumen Penugasan (tanpa Data Paspor)."""
+
     def setUp(self):
-        User.objects.create_user("adm1", password="Rahasia-123", role="admin_pakln", no_hp="6281100000002")
-        self.client.login(username="adm1", password="Rahasia-123")
-        self.html = self.client.get(reverse("profil")).content.decode()
+        User.objects.create_user("unor1", password="Rahasia-123", role="admin_unor", no_hp="6281100000003")
+        self.client.login(username="unor1", password="Rahasia-123")
+        self.resp = self.client.get(reverse("profil"))
+        self.html = self.resp.content.decode()
+
+    def test_dua_kolom_dengan_isi_yang_diminta(self):
+        self.assertEqual(self.resp.status_code, 200)
+        self.assertIn('<div class="profil-grid is-dua-kolom">', self.html)
+        kiri, kanan = self.html.split('<div class="profil-kolom">')[1:3]
+        self.assertIn("Data Personal", kiri)
+        self.assertIn("Keamanan", kiri)
+        self.assertNotIn(">Akun</div>", kiri)
+        self.assertNotIn("Dokumen Penugasan", kiri)
+        self.assertIn(">Akun</div>", kanan)
+        self.assertIn("Dokumen Penugasan", kanan)
+        self.assertNotIn("Keamanan", kanan)
+
+    def test_urutan_dan_dokumen_ada_di_kolom_bukan_selebar_penuh(self):
+        self.assertEqual(_judul(self.html), ["Data Personal", "Keamanan", "Akun", "Dokumen Penugasan"])
+        self.assertNotIn("profil-penuh", self.html)
+        self.assertEqual(self.html.count('<div class="profil-kolom">'), 2)
+
+    def test_tanpa_data_paspor_dan_isi_kotak_lengkap(self):
+        self.assertNotIn("Data Paspor", self.html)
+        for teks in ("Ubah Username", "Ganti Password", 'value="unggah_dokumen"'):
+            self.assertIn(teks, self.html)
+        self.assertEqual(self.html.count('class="box'), 4)
+
+
+class ProfilPeranLainTetapSatuKolomTests(TestCase):
+    PERAN = ("admin_pakln", "admin_bpsdm", "admin_bko")
+
+    def halaman(self, role):
+        user = User.objects.create_user(f"u_{role}", password="Rahasia-123", role=role, no_hp="6281100000002")
+        self.client.login(username=user.username, password="Rahasia-123")
+        return self.client.get(reverse("profil")).content.decode()
 
     def test_tanpa_kelas_dua_kolom_dan_urutan_semula(self):
-        self.assertIn('<div class="profil-grid">', self.html)
-        self.assertNotIn("is-dua-kolom", self.html)
-        self.assertNotIn("profil-kolom", self.html)
-        self.assertEqual(_judul(self.html), ["Data Personal", "Akun", "Keamanan", "Dokumen Penugasan"])
+        for role in self.PERAN:
+            with self.subTest(role=role):
+                html = self.halaman(role)
+                self.assertIn('<div class="profil-grid">', html)
+                self.assertNotIn("is-dua-kolom", html)
+                self.assertNotIn("profil-kolom", html)
+                self.assertEqual(_judul(html), ["Data Personal", "Akun", "Keamanan", "Dokumen Penugasan"])
 
     def test_data_paspor_hanya_untuk_pegawai(self):
-        self.assertNotIn("Data Paspor", self.html)
+        for role in self.PERAN:
+            with self.subTest(role=role):
+                self.assertNotIn("Data Paspor", self.halaman(role))
 
 
 class CssProfilTests(TestCase):
