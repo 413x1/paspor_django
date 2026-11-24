@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}PASPOR{% endblock %} — Kementerian PU</title>
   <link rel="stylesheet" href="{% static 'vendors/bulma/css/versions/bulma-no-dark-mode.min.css' %}">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20261124a">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}?v=20261124e">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -594,14 +594,15 @@
 
       $control.on('click', function (e) {
         e.stopPropagation();
-        $('.multiselect-panel.is-active').not($panel).removeClass('is-active');
+        $('.multiselect-panel.is-active').not($panel).removeClass('is-active').closest('.multiselect').removeClass('is-open');
         $panel.toggleClass('is-active');
+        $wrap.toggleClass('is-open', $panel.hasClass('is-active'));
         if ($panel.hasClass('is-active')) { $search.val('').trigger('input').focus(); }
       });
       $panel.on('click', function (e) { e.stopPropagation(); });
     }
     $('select[data-multiselect]').each(function () { initMultiselect($(this)); });
-    $(document).on('click', function () { $('.multiselect-panel.is-active').removeClass('is-active'); });
+    $(document).on('click', function () { $('.multiselect-panel.is-active').removeClass('is-active').closest('.multiselect').removeClass('is-open'); });
 
     // Penanda wajib: tambahkan "*" merah pada label setiap isian ber-atribut
     // `required` (Django memasangnya otomatis untuk field wajib) atau
