@@ -76,7 +76,9 @@ class HalamanUnorTanpaIkonTests(_Basis, TestCase):
         sesudah = self.get(self.admin_unor, "unor:preview", kode=p.kode).content.decode()          # sudah menyetujui: tautan
         self.assertRegex(sesudah, r"Lanjut ke Administrasi Unor\s*</a>")
         self.assertNotIn("Lanjut ke Administrasi Unor →", sesudah)
-        self.assertIn("Kembali ke Dasbor", sesudah)                                                # tombol lain tidak diubah
+        self.assertIn(">Kembali ke Dasbor</a>", sesudah)                                            # tombol kembali juga tanpa panah
+        self.assertNotIn("← Kembali ke Dasbor", sesudah)
+        self.assertNotIn("→", sesudah.split("Direktori Unggahan Pegawai")[1].split("Timeline Proses")[0])   # kotak aksi: tanpa panah
 
     def test_pratinjau_peran_lain_tidak_berubah(self):
         p = self.isi_formulir("T2P", negara=self.jepang)
