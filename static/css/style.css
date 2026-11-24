@@ -430,10 +430,24 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
   border-color: var(--teal); box-shadow: 0 0 0 2px rgba(36, 129, 155, .25);
 }
 .select:not(.is-multiple):not(.is-loading)::after {
-  border-color: var(--teal); transition: transform var(--duration-slow) var(--ease-apple-in-out);
+  border-color: var(--teal);
+  /* Dua keadaan memakai daftar fungsi transform yang sama (translateY lalu rotate) agar diinterpolasi per fungsi:
+     putaran tepat 180 derajat searah jarum jam, tanpa lompatan posisi di awal atau akhir animasi. */
+  transform: translateY(0) rotate(-45deg);
+  transition: transform var(--duration-slow) var(--ease-apple-in-out);
+  will-change: transform;
 }
-/* Kelas `is-open` dipasang lewat JS saat daftar pilihan terbuka (panah v menjadi ^). */
-.select.is-open:not(.is-multiple):not(.is-loading)::after { transform: rotate(135deg); margin-top: -.1em; }
+/* Kelas `is-open` dipasang lewat JS saat daftar pilihan terbuka: panah v berputar setengah putaran menjadi ^.
+   translateY(.3375em) = selisih margin-top lama (-.4375em menjadi -.1em) yang menjaga panah tetap di tengah
+   tinggi kolom, tetapi kini ikut dianimasikan bersama putarannya (margin-top tidak ikut bertransisi). */
+@supports selector(select:open) and selector(:has(a)) {
+  /* Status daftar dibaca langsung dari browser (`:open`): tetap benar walau daftar ditutup lewat Escape atau klik di luar. */
+  .select:has(> select:open):not(.is-multiple):not(.is-loading)::after { transform: translateY(.3375em) rotate(135deg); }
+}
+@supports not (selector(select:open) and selector(:has(a))) {
+  /* Browser lama: kelas `is-open` yang dipasang JS di base.html. */
+  .select.is-open:not(.is-multiple):not(.is-loading)::after { transform: translateY(.3375em) rotate(135deg); }
+}
 .field:not(:last-child) { margin-bottom: 16px; }
 .column .field, .column .control { width: 100%; }
 .field .help.is-danger, .errorlist { color: var(--red); font-size: 13px; margin: 4px 0 0; padding: 0; list-style: none; }
@@ -540,7 +554,12 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 }
 /* Kelas `is-open` dipasang lewat JS (base.html) selama daftar pilihan terbuka: panah bawah mengecil,
    panah atas membesar, sehingga tampak membalik secara halus. */
-.dt-toolbar .dt-length select.dt-input.is-open { background-size: 11px 0, 11px 7px; }
+@supports selector(select:open) {
+  .dt-toolbar .dt-length select.dt-input:open { background-size: 11px 0, 11px 7px; }
+}
+@supports not selector(select:open) {
+  .dt-toolbar .dt-length select.dt-input.is-open { background-size: 11px 0, 11px 7px; }
+}
 @media (prefers-reduced-motion: reduce) {
   .select:not(.is-multiple):not(.is-loading)::after, .dt-toolbar .dt-length select.dt-input { transition: none; }
 }
@@ -1035,8 +1054,14 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .multiselect-caret {
   display: block; width: 0.625em; height: 0.625em; flex-shrink: 0;
   border: 0.125em solid var(--teal); border-right: 0; border-top: 0;
-  transform: rotate(-45deg); margin-top: -0.2em;
+  /* Sama dengan panah dropdown biasa: daftar transform identik di dua keadaan agar putarannya halus. */
+  margin-top: -0.2em; transform: translateY(0) rotate(-45deg);
+  transition: transform var(--duration-slow) var(--ease-apple-in-out);
 }
+/* `is-open` dipasang JS (base.html) pada .multiselect selama panel terbuka: panah v berputar setengah putaran menjadi ^.
+   translateY(.35em) (diukur di browser) menjaga panah tetap di tinggi yang sama setelah diputar. */
+.multiselect.is-open .multiselect-caret { transform: translateY(.35em) rotate(135deg); }
+@media (prefers-reduced-motion: reduce) { .multiselect-caret { transition: none; } }
 .multiselect-panel {
   display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30;
   background: var(--white); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
