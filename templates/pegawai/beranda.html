@@ -25,7 +25,9 @@
 {% if penahan %}
   <div class="notification paspor-msg is-info">
     <strong>ⓘ Anda belum dapat mengajukan perjalanan baru:</strong> {{ alasan_blokir }}
+    {% if penahan_lain %}Masih ada {{ penahan_lain }} PDLN selesai lainnya yang laporannya belum disetujui.{% endif %}
     <a href="{% url 'pegawai:pelaporan' %}">Ke Pelaporan PDLN →</a>
+    <div class="helptext" style="margin-top:6px; color:var(--slate-600);">PDLN yang berstatus Selesai tetap wajib dilaporkan dan laporannya disetujui Admin Biro PAKLN sebelum usulan baru dapat dibuat. Pengajuan Anda yang masih diproses admin tidak menghalangi usulan baru.</div>
   </div>
 {% endif %}
 
