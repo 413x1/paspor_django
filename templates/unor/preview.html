@@ -34,7 +34,7 @@
   {% if pengajuan.status == "proses" and not dibekukan %}
     {% if pengajuan.preview_unor_agree %}
       <a href="{% url 'unor:upload_dokumen' kode=pengajuan.kode %}" class="button is-primary is-fullwidth" style="margin-top:16px;">
-        Lanjut ke Administrasi Unor →
+        Lanjut ke Administrasi Unor
       </a>
     {% else %}
       <form method="post" style="margin-top:16px;">
@@ -45,7 +45,7 @@
             Dokumen dan formulir telah <strong>ditinjau dan sesuai</strong>, untuk selanjutnya diproses administrasi oleh Admin Unor.
           </label>
         </div>
-        <button type="submit" name="lanjutkan" class="button is-primary is-fullwidth">Lanjutkan ke Administrasi Unor →</button>
+        <button type="submit" name="lanjutkan" class="button is-primary is-fullwidth">Lanjutkan ke Administrasi Unor</button>
       </form>
     {% endif %}
   {% endif %}

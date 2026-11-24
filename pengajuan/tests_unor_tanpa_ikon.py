@@ -66,6 +66,25 @@ class HalamanUnorTanpaIkonTests(_Basis, TestCase):
         self.assertNotIn("← Kembali ke Pratinjau", html)
         self.assertContains(resp, ">Kembali ke Dasbor</a>")
 
+    def test_pratinjau_unor_tombol_lanjut_tanpa_panah_di_kedua_kondisi(self):
+        p = self.isi_formulir("T2P", negara=self.jepang)
+        self.kirim(p)
+        sebelum = self.get(self.admin_unor, "unor:preview", kode=p.kode).content.decode()          # belum menyetujui: form + checkbox
+        self.assertIn(">Lanjutkan ke Administrasi Unor</button>", sebelum)
+        self.assertNotIn("Lanjutkan ke Administrasi Unor →", sebelum)
+        self.post(self.admin_unor, "unor:preview", {"lanjutkan": "1", "confirm": "on"}, kode=p.kode)
+        sesudah = self.get(self.admin_unor, "unor:preview", kode=p.kode).content.decode()          # sudah menyetujui: tautan
+        self.assertRegex(sesudah, r"Lanjut ke Administrasi Unor\s*</a>")
+        self.assertNotIn("Lanjut ke Administrasi Unor →", sesudah)
+        self.assertIn("Kembali ke Dasbor", sesudah)                                                # tombol lain tidak diubah
+
+    def test_pratinjau_peran_lain_tidak_berubah(self):
+        p = self.isi_formulir("T2P", negara=self.jepang)
+        self.kirim(p)
+        self.unor_teruskan(p)
+        html = self.get(self.admin_bpsdm, "bpsdm:preview", kode=p.kode).content.decode()
+        self.assertIn("Lanjutkan ke Administrasi BPSDM →", html)                                   # BPSDM: bukan cakupan perubahan ini
+
     def test_upload_halaman_peran_lain_tidak_berubah(self):
         p = self.isi_formulir("T2P", negara=self.jepang)
         self.kirim(p)
