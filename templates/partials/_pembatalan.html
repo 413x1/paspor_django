@@ -1,5 +1,5 @@
 {# Banner + tombol + modal pembatalan perjalanan (mekanisme interim, BISNIS_PROSES_PDLN.MD §4.5). #}
-{# Context: pengajuan, pembatalan_terbuka, pembatalan_alasan_tidak_bisa, pembatalan_url, pembatalan_draft, tarik_url_name (opsional, nama URL tarik permohonan dengan arg pk). #}
+{# Context: pengajuan, pembatalan_terbuka, pembatalan_alasan_tidak_bisa, pembatalan_url, pembatalan_draft, tarik_url_name (opsional, nama URL tarik permohonan dengan arg pk), tanpa_ikon (bool, opsional — buang ikon silang pada tombol; dipakai Pratinjau Admin Unor). #}
 {% if pembatalan_terbuka %}
   <div class="notification paspor-msg is-warning">
     <strong>✕ Permohonan pembatalan sedang diproses — {{ pembatalan_terbuka.get_status_display }}.</strong>
@@ -17,7 +17,7 @@
   </div>
 {% elif not pembatalan_alasan_tidak_bisa %}
   <button type="button" class="button is-small is-danger is-light" data-modal-open="pembatalanModal">
-    ✕ {% if pembatalan_draft %}Batalkan Draft{% else %}Ajukan Pembatalan{% endif %}
+    {% if not tanpa_ikon %}✕ {% endif %}{% if pembatalan_draft %}Batalkan Draft{% else %}Ajukan Pembatalan{% endif %}
   </button>
 
   <div id="pembatalanModal" class="modal paspor-modal">

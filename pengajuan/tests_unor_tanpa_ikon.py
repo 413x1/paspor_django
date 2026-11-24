@@ -80,6 +80,25 @@ class HalamanUnorTanpaIkonTests(_Basis, TestCase):
         self.assertNotIn("← Kembali ke Dasbor", sesudah)
         self.assertNotIn("→", sesudah.split("Direktori Unggahan Pegawai")[1].split("Timeline Proses")[0])   # kotak aksi: tanpa panah
 
+    def test_pratinjau_unor_tanpa_ikon_kembalikan_dan_silang_pembatalan(self):
+        p = self.isi_formulir("T2P", negara=self.jepang)
+        self.kirim(p)
+        html = self.get(self.admin_unor, "unor:preview", kode=p.kode).content.decode()
+        self.assertIn('<div class="section-title is-small">Kembalikan ke Pegawai</div>', html)
+        self.assertIn('class="button is-danger is-fullwidth">Kembalikan ke Pegawai</button>', html)
+        self.assertNotIn("↩", html)                                                      # ikon panah balik dihapus
+        self.assertRegex(html, r'data-modal-open="pembatalanModal">\s*Ajukan Pembatalan\s*</button>')
+        self.assertNotIn("✕ Ajukan Pembatalan", html)                                    # ikon silang pada tombol dihapus
+
+    def test_ikon_peringatan_tetap_dipertahankan_pada_banner_dikembalikan(self):
+        self.assertIn("⚠ Dikembalikan oleh", open("templates/unor/preview.html", encoding="utf-8").read())
+        self.assertIn("⚠ Dikembalikan oleh", open("templates/unor/upload.html", encoding="utf-8").read())
+
+    def test_tombol_pembatalan_pegawai_tidak_berubah(self):
+        p = self.isi_formulir("T1")
+        html = self.get(self.pegawai, "pegawai:upload_dokumen", kode=p.kode).content.decode()
+        self.assertRegex(html, r"✕\s*Batalkan Draft")                                       # Pegawai: ikon silang tetap
+
     def test_pratinjau_peran_lain_tidak_berubah(self):
         p = self.isi_formulir("T2P", negara=self.jepang)
         self.kirim(p)
