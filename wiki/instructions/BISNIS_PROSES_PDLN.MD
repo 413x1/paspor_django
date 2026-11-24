@@ -99,6 +99,11 @@ PDLN berstatus `selesai` yang **Laporan PDLN-nya belum disetujui** Admin Biro PA
 dibuat. Beranda menonaktifkan tombol "Tambah Usulan Baru" disertai alasannya, dan server menolak penyimpanan
 pengajuan baru. **Draft yang sudah ada tetap dapat dilanjutkan.**
 
+> **Konfirmasi Ketua Tim (24 Nov 2026).** Pengajuan yang belum selesai tetap diselesaikan oleh admin masing-masing dan
+> **tidak dianggap selesai** secara otomatis; pegawai boleh membuat usulan baru **bersamaan** dengan usulan sebelumnya
+> (paralel). Penahan kewajiban lapor di atas **tetap berlaku**. Beranda menampilkan alasan penahan, jumlah PDLN selesai
+> lain yang juga menahan, dan catatan penjelas bahwa pengajuan yang masih diproses tidak menghalangi usulan baru.
+
 | Jenis | Tahap akhir (pengajuan dianggap tuntas) |
 |---|---|
 | Non-Dinas | Pengajuan disetujui Admin Biro PAKLN (`status = selesai`). |

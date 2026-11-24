@@ -224,14 +224,17 @@ def pengajuan_aktif(pegawai):
     return [p for p in qs if not p.tuntas]
 
 
+def daftar_penahan(pegawai):
+    """Semua PDLN yang sudah selesai tetapi laporannya belum disetujui (kewajiban lapor, BISNIS_PROSES_PDLN.MD §4.4),
+    terbaru dulu. Draft dan pengajuan yang sedang diproses TIDAK termasuk."""
+    return [p for p in pengajuan_aktif(pegawai) if p.status == S.SELESAI and p.is_pdln]
+
+
 def penahan_pengajuan_baru(pegawai):
     """Satu-satunya hal yang masih menahan pegawai membuat pengajuan baru: PDLN yang sudah selesai tetapi
-    laporannya belum disetujui (kewajiban lapor, BISNIS_PROSES_PDLN.MD §4.4). Draft dan pengajuan yang sedang
-    diproses TIDAK menahan. Mengembalikan pengajuannya, atau None bila tidak ada."""
-    for p in pengajuan_aktif(pegawai):
-        if p.status == S.SELESAI and p.is_pdln:
-            return p
-    return None
+    laporannya belum disetujui. Mengembalikan yang terbaru, atau None bila tidak ada."""
+    penahan = daftar_penahan(pegawai)
+    return penahan[0] if penahan else None
 
 
 def alasan_belum_tuntas(pengajuan):

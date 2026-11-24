@@ -59,10 +59,12 @@ def _status_html(p):
 
 @role_required("pegawai")
 def beranda(request):
-    penahan = alur.penahan_pengajuan_baru(request.user)
+    daftar_penahan = alur.daftar_penahan(request.user)
+    penahan = daftar_penahan[0] if daftar_penahan else None
     context = {
         "aktif_list": alur.pengajuan_aktif(request.user),   # semua pengajuan belum tuntas (paralel)
         "penahan": penahan,                                  # hanya PDLN selesai yang laporannya belum disetujui
+        "penahan_lain": max(len(daftar_penahan) - 1, 0),     # PDLN selesai lain yang juga masih menahan
         "alasan_blokir": alur.alasan_belum_tuntas(penahan),
         "profile": getattr(request.user, "profile", None),
         "tab": request.GET.get("tab", "pdln"),
