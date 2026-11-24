@@ -848,6 +848,24 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .login-card form { text-align: left; }
 .login-card .field:not(:last-child) { margin-bottom: 16px; }
 .login-card .helptext { text-align: center; margin-top: 14px; }
+/* Kolom password dengan tombol mata (lihat/sembunyikan password). Tombol berada di dalam kolom, di kanan. */
+.password-control { position: relative; }
+.password-control .input { padding-right: 46px; }
+/* Edge menambahkan tombol mata bawaan di input password; disembunyikan agar tidak ada dua ikon. */
+.password-control .input::-ms-reveal, .password-control .input::-ms-clear { display: none; }
+.password-toggle {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 46px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 0 8px 8px 0; background: transparent; color: var(--slate-400); cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-apple);
+}
+.password-toggle:hover { color: var(--slate-900); }
+.password-toggle:focus-visible { outline: 2px solid var(--teal); outline-offset: -2px; color: var(--slate-900); }
+.password-toggle svg {
+  width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.password-toggle .ikon-sembunyi, .password-toggle.is-aktif .ikon-tampil { display: none; }
+.password-toggle.is-aktif .ikon-sembunyi { display: block; }
 .login-error {
   background: var(--red-bg); color: var(--red); border-radius: 8px; padding: 10px 14px; font-size: 13px;
   margin-bottom: 16px;
