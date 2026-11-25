@@ -966,26 +966,16 @@ def templates_data(request):
             status_html = mark_safe(
                 '<span class="tag paspor-status is-selesai"><span class="dot"></span>Aktif</span>'
             )
-            toggle_label = "🙈 Sembunyikan"
         else:
             status_html = mark_safe(
                 '<span class="tag paspor-status is-belum"><span class="dot"></span>Disembunyikan</span>'
             )
-            toggle_label = "👁 Tampilkan"
 
-        aksi_html = format_html(
-            '<div class="table-actions">'
-            '<a href="{}" target="_blank" rel="noopener" class="button is-small">⬇ Unduh</a>'
-            '<a href="{}" class="button is-small">✎ Edit</a>'
-            '<button type="button" class="button is-small" data-template-toggle="{}">{}</button>'
-            '<button type="button" class="button is-small is-danger" data-template-hapus="{}">🗑 Hapus</button>'
-            '</div>',
-            t.file.url,
-            reverse("pakln:edit_template", args=[t.pk]),
-            reverse("pakln:toggle_template", args=[t.pk]),
-            toggle_label,
-            reverse("pakln:hapus_template", args=[t.pk]),
-        )
+        aksi_html = render_to_string("partials/_aksi_template.html", {
+            "unduh_url": t.file.url, "edit_url": reverse("pakln:edit_template", args=[t.pk]),
+            "toggle_url": reverse("pakln:toggle_template", args=[t.pk]), "aktif": t.aktif,
+            "hapus_url": reverse("pakln:hapus_template", args=[t.pk]),
+        }).strip()
         data.append([nama_html, target_html, unit_html, kategori_html, status_html, aksi_html])
 
     return JsonResponse({
