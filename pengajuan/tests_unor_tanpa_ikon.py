@@ -103,8 +103,9 @@ class HalamanUnorTanpaIkonTests(_Basis, TestCase):
         p = self.isi_formulir("T2P", negara=self.jepang)
         self.kirim(p)
         self.unor_teruskan(p)
-        html = self.get(self.admin_bpsdm, "bpsdm:preview", kode=p.kode).content.decode()
-        self.assertIn("Lanjutkan ke Administrasi BPSDM →", html)                                   # BPSDM: bukan cakupan perubahan ini
+        self.bpsdm_teruskan(p)
+        html = self.get(self.admin_pakln, "pakln:preview", kode=p.kode).content.decode()
+        self.assertIn("Lanjutkan ke Administrasi Biro PAKLN →", html)                             # Biro PAKLN: bukan cakupan perubahan ini
 
     def test_dasbor_unor_tombol_tl_tanpa_panah(self):
         p = self.isi_formulir("T1")
@@ -119,10 +120,10 @@ class HalamanUnorTanpaIkonTests(_Basis, TestCase):
         p = self.isi_formulir("T2P", negara=self.jepang)
         self.kirim(p)
         self.unor_teruskan(p)
-        self.post(self.admin_bpsdm, "bpsdm:preview", {"lanjutkan": "1"}, kode=p.kode)
-        html = self.get(self.admin_bpsdm, "bpsdm:upload_dokumen", kode=p.kode).content.decode()
-        self.assertIn("← Kembali ke Pratinjau", html)                           # BPSDM: bukan cakupan perubahan ini
-        self.assertIn("Teruskan ke Admin Biro PAKLN →", html)
+        self.bpsdm_teruskan(p)
+        self.post(self.admin_pakln, "pakln:preview", {"lanjutkan": "1"}, kode=p.kode)
+        html = self.get(self.admin_pakln, "pakln:upload_dokumen", kode=p.kode).content.decode()
+        self.assertIn("← Kembali ke Pratinjau", html)                           # Biro PAKLN: bukan cakupan perubahan ini
 
 
 @override_settings(STORAGES=_STORAGES_MEMORI)
