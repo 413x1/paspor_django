@@ -61,7 +61,7 @@ class TombolLihatPasswordTests(TestCase):
         self.assertIn(".password-control .input::-ms-reveal, .password-control .input::-ms-clear { display: none; }", css)
         self.assertIn(".password-toggle .ikon-sembunyi, .password-toggle.is-aktif .ikon-tampil { display: none; }", css)
         self.assertIn(".password-toggle.is-aktif .ikon-sembunyi { display: block; }", css)
-        self.assertIn("css/style.css?v=20261124h", self.html)
+        self.assertIn("css/style.css?v=20261125a", self.html)
 
 
 class LoginTetapBerfungsiTests(TestCase):

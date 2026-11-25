@@ -752,6 +752,9 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 }
 .preview-split > .box { margin-bottom: 0; }
 .preview-split > :only-child { grid-column: 1 / -1; }
+/* Kolom yang menumpuk beberapa kotak di dalam .preview-split (Pratinjau Admin Unor: kolom kanan). */
+.preview-kolom { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-content: start; min-width: 0; }
+.preview-kolom > .box { margin-bottom: 0; }
 @media (max-width: 1100px) { .preview-split { grid-template-columns: 1fr; } }
 
 /* ---------- Modal — animasi masuk/keluar (berlaku untuk semua .modal) ----------
