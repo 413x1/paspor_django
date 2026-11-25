@@ -55,11 +55,6 @@ class PratinjauUnorSusunanTests(_Basis, TestCase):
         self.assertIn("Direktori Unggahan Pegawai", kolom)
         self.assertIn("Timeline Proses", kolom)
 
-    def test_peran_lain_tidak_berubah(self):
-        p = self.pengajuan_proses()
-        html = self.get(self.admin_pakln, "pakln:preview", kode=p.kode).content.decode()
-        self.assertNotIn(KOLOM, html)
-
 
 class CssPreviewKolomTests(TestCase):
     def test_aturan_kolom_tumpukan(self):

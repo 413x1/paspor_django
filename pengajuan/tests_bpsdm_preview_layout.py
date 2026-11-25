@@ -60,9 +60,3 @@ class PratinjauBpsdmSusunanTests(_Basis, TestCase):
         self.assertNotIn("Kembalikan ke Admin Unor", kolom)
         self.assertIn("Unggahan Pegawai &amp; Admin Unor", kolom)
         self.assertIn("Timeline Proses", kolom)
-
-    def test_pratinjau_biro_pakln_tidak_berubah(self):
-        p = self.pengajuan_di_bpsdm()
-        self.bpsdm_teruskan(p)
-        html = self.get(self.admin_pakln, "pakln:preview", kode=p.kode).content.decode()
-        self.assertNotIn(KOLOM, html)

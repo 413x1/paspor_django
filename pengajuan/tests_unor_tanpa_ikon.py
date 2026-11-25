@@ -99,13 +99,10 @@ class HalamanUnorTanpaIkonTests(_Basis, TestCase):
         html = self.get(self.pegawai, "pegawai:upload_dokumen", kode=p.kode).content.decode()
         self.assertRegex(html, r"✕\s*Batalkan Draft")                                       # Pegawai: ikon silang tetap
 
-    def test_pratinjau_peran_lain_tidak_berubah(self):
+    def test_halaman_pegawai_tidak_berubah(self):
         p = self.isi_formulir("T2P", negara=self.jepang)
-        self.kirim(p)
-        self.unor_teruskan(p)
-        self.bpsdm_teruskan(p)
-        html = self.get(self.admin_pakln, "pakln:preview", kode=p.kode).content.decode()
-        self.assertIn("Lanjutkan ke Administrasi Biro PAKLN →", html)                             # Biro PAKLN: bukan cakupan perubahan ini
+        html = self.get(self.pegawai, "pegawai:upload_dokumen", kode=p.kode).content.decode()
+        self.assertIn("Kirim ke Admin Unor \u2192", html)                                         # Pegawai: bukan cakupan perubahan ini
 
     def test_dasbor_unor_tombol_tl_tanpa_panah(self):
         p = self.isi_formulir("T1")
@@ -115,15 +112,6 @@ class HalamanUnorTanpaIkonTests(_Basis, TestCase):
         aksi = baris[0][-1]                                        # kolom Aksi
         self.assertIn('class="button is-warning is-small">TL</a>', aksi)
         self.assertNotIn("\u2192", aksi)
-
-    def test_upload_halaman_peran_lain_tidak_berubah(self):
-        p = self.isi_formulir("T2P", negara=self.jepang)
-        self.kirim(p)
-        self.unor_teruskan(p)
-        self.bpsdm_teruskan(p)
-        self.post(self.admin_pakln, "pakln:preview", {"lanjutkan": "1"}, kode=p.kode)
-        html = self.get(self.admin_pakln, "pakln:upload_dokumen", kode=p.kode).content.decode()
-        self.assertIn("← Kembali ke Pratinjau", html)                           # Biro PAKLN: bukan cakupan perubahan ini
 
 
 @override_settings(STORAGES=_STORAGES_MEMORI)

@@ -737,7 +737,7 @@ def _proses_aksi_akun(request, aksi):
     if aksi == "ubah_username":
         lama = user.username
         form.save()
-        record_activity(request, A.UBAH_USERNAME, f"Ubah username: {lama} → {akun.username}",
+        record_activity(request, A.UBAH_USERNAME, f"Ubah username: dari {lama} menjadi {akun.username}",
                         target_type="user", target_id=user.pk)
     elif aksi in ("atur_password", "ganti_password"):
         form.save()
@@ -755,7 +755,7 @@ def _proses_aksi_akun(request, aksi):
         if berubah:
             record_activity(
                 request, A.UBAH_KONTAK, "Mengubah kontak sendiri", target_type="user", target_id=user.pk,
-                detail="; ".join(f"{f}: {lama or '—'} → {baru or '—'}" for f, (lama, baru) in berubah.items()),
+                detail="; ".join(f"{f}: dari {lama or '—'} menjadi {baru or '—'}" for f, (lama, baru) in berubah.items()),
             )
     messages.success(request, _PESAN_AKUN[aksi])
     return None

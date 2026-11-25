@@ -44,7 +44,8 @@ class WhitelistProfilTests(_ProfilBasis, TestCase):
         self.assertEqual(self.pegawai.role, "pegawai")
         self.assertEqual(self.pegawai.profile.nama, "Pegawai Satu")
         log = ActivityLog.objects.get(aktivitas=ActivityLog.Aktivitas.UBAH_USERNAME)
-        self.assertIn("peg1 → peg.baru", log.deskripsi)
+        self.assertIn("Ubah username: dari peg1 menjadi peg.baru", log.deskripsi)
+        self.assertNotIn("→", log.deskripsi)
 
     def test_pegawai_ubah_kontak_ditolak(self):
         self.post_profil(self.pegawai, {"aksi": "ubah_kontak", "email": "lain@pu.go.id", "no_hp": "081299998888"})
@@ -62,6 +63,11 @@ class WhitelistProfilTests(_ProfilBasis, TestCase):
         self.assertEqual(self.pakln.no_hp, "6281299998888")
         self.assertEqual(self.pakln.role, "admin_pakln")
         self.assertFalse(self.pakln.no_hp_dikunci)  # akun lokal tidak dikunci
+        log = ActivityLog.objects.get(aktivitas=ActivityLog.Aktivitas.UBAH_KONTAK, deskripsi="Mengubah kontak sendiri")
+        self.assertIn("email: dari ", log.detail)
+        self.assertIn(" menjadi pakln.baru@pu.go.id", log.detail)
+        self.assertIn(" menjadi 6281299998888", log.detail)
+        self.assertNotIn("→", log.detail)
 
     def test_role_ganda_ubah_kontak_hanya_saat_peran_pakln(self):
         from .models import PeranUser

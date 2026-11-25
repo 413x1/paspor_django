@@ -22,12 +22,13 @@ class TombolGenerateNdTests(_AlurMixin, TestCase):
         for rute in ("pakln:generate_nd_kabag", "pakln:generate_nd_karo"):
             self.assertIn(f'href="{reverse(rute)}?pengajuan={kode}"', html)
         self.assertEqual(html.count('target="_blank" rel="noopener">ND K'), 2)
-        self.assertIn("📄 Generate ND", html)
+        self.assertIn("Generate ND<span", html)                                  # tombol tampil, tanpa ikon dokumen
+        self.assertNotIn("📄", html.split("Generate ND")[0][-60:])
 
     def test_tidak_tampil_bila_bukan_dalam_proses_pakln(self):
         Pengajuan.objects.filter(pk=self.pengajuan.pk).update(status=Pengajuan.Status.SELESAI)
         html = self.client.get(self.url).content.decode()
-        self.assertNotIn("📄 Generate ND", html)
+        self.assertNotIn("Generate ND<span", html)
         self.assertNotIn("generate-nd-kabag", html)
         self.assertNotIn("generate-nd-karo", html)
 

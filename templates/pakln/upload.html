@@ -22,7 +22,7 @@
       <div class="level-item">
         <div class="table-head-actions" data-dropdown>
           <button type="button" class="button is-small is-primary" data-dropdown-toggle aria-haspopup="true" aria-expanded="false">
-            📄 Generate ND<span class="navbar-manage-caret"></span>
+            Generate ND<span class="navbar-manage-caret"></span>
           </button>
           <div class="table-head-menu" data-dropdown-panel>
             <a href="{% url 'pakln:generate_nd_kabag' %}?pengajuan={{ pengajuan.kode }}" class="navbar-item" target="_blank" rel="noopener">ND Kabag</a>
@@ -34,7 +34,7 @@
     {% endif %}
   </div>
 
-  {% include "partials/_dokumen_tahap.html" with hapus_url="pakln:hapus_dokumen" %}
+  {% include "partials/_dokumen_tahap.html" with hapus_url="pakln:hapus_dokumen" tanpa_ikon=True %}
 
   {% if pengajuan.pakai_surat_tugas_paralel %}
   <div class="section-title" style="font-size:14px;margin:20px 0 8px;">Surat Tugas Pimpinan Unor — Admin Unor</div>
@@ -66,7 +66,7 @@
       <div class="control"><textarea class="textarea" id="catatan_st" name="catatan" rows="2" required placeholder="cth. Nomor surat tidak sesuai dengan Izin Prinsip."></textarea></div>
       <p class="helptext">Wajib diisi. Status pengajuan tidak berubah; hanya Surat Tugas yang dikembalikan.</p>
     </div>
-    <button type="submit" name="kembalikan_surat_tugas" class="button is-danger is-light">↩ Kembalikan Surat Tugas ke Admin Unor</button>
+    <button type="submit" name="kembalikan_surat_tugas" class="button is-danger is-light">Kembalikan Surat Tugas ke Admin Unor</button>
   </form>
   {% endif %}
   {% endif %}
@@ -156,7 +156,7 @@
       </label>
     </div>
     <button type="submit" name="selesaikan" class="button is-warning is-fullwidth" {% if not lengkap or dibekukan or alasan_selesai_bko or alasan_menunggu_st %}disabled{% endif %}>
-      Selesaikan Proses ✓
+      Selesaikan Proses
     </button>
     {% if not lengkap %}
       <p class="helptext">Lengkapi dokumen wajib untuk melanjutkan: {{ dokumen_kurang|join:", " }}.</p>
@@ -184,14 +184,14 @@
   <form method="post" style="margin-bottom:18px;" data-confirm="Selesaikan pengajuan tanpa SK Tugas Belajar?" data-confirm-title="Lanjutkan tanpa SK Tubel" data-confirm-ok="Selesaikan">
     {% csrf_token %}
     <div class="field">
-      <label class="label" for="catatan_lanjut">✓ Lanjutkan tanpa SK Tubel — catatan internal (hanya terlihat Biro PAKLN)</label>
+      <label class="label" for="catatan_lanjut">Lanjutkan tanpa SK Tubel — catatan internal (hanya terlihat Biro PAKLN)</label>
       <div class="control"><textarea class="textarea" id="catatan_lanjut" name="catatan" rows="2" required></textarea></div>
     </div>
     <div class="agree-box">
       <input type="checkbox" id="agree_lanjut" name="agree" required>
       <label for="agree_lanjut">Dokumen administrasi Biro PAKLN telah <strong>lengkap dan sesuai</strong>; pengajuan diselesaikan tanpa SK Tugas Belajar.</label>
     </div>
-    <button type="submit" name="selesaikan_tanpa_sk_tubel" class="button is-warning is-fullwidth" {% if not lengkap or alasan_menunggu_st %}disabled{% endif %}>✓ Lanjutkan tanpa SK Tubel</button>
+    <button type="submit" name="selesaikan_tanpa_sk_tubel" class="button is-warning is-fullwidth" {% if not lengkap or alasan_menunggu_st %}disabled{% endif %}>Lanjutkan tanpa SK Tubel</button>
     {% if not lengkap %}<p class="helptext">Lengkapi dokumen wajib: {{ dokumen_kurang|join:", " }}.</p>{% endif %}
   </form>
 
@@ -209,7 +209,7 @@
 {% include "partials/_riwayat_pengajuan.html" %}
 
 <div class="button-row">
-  <a href="{% url 'pakln:preview' kode=pengajuan.kode %}" class="button">← Kembali ke Pratinjau</a>
+  <a href="{% url 'pakln:preview' kode=pengajuan.kode %}" class="button">Kembali ke Pratinjau</a>
   <a href="{% url 'pakln:dashboard' %}" class="button">Kembali ke Dasbor</a>
 </div>
 {% endblock %}

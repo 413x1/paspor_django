@@ -507,12 +507,12 @@ def dashboard_data(request):
             aksi_html = mark_safe('<span class="cell-muted">Menunggu Admin BPSDM</span>')
         elif p.status == Pengajuan.Status.PROSES_PAKLN and not p.preview_pakln_agree:
             aksi_html = format_html(
-                '<a href="{}" class="button is-warning is-small">TL →</a>',
+                '<a href="{}" class="button is-warning is-small">TL</a>',
                 reverse("pakln:preview", args=[p.kode]),
             )
         elif p.status == Pengajuan.Status.PROSES_PAKLN:
             aksi_html = format_html(
-                '<a href="{}" class="button is-warning is-small">TL →</a>',
+                '<a href="{}" class="button is-warning is-small">TL</a>',
                 reverse("pakln:upload_dokumen", args=[p.kode]),
             )
         else:
@@ -739,7 +739,7 @@ def users_data(request):
 
 
 def _ringkas_perubahan(perubahan):
-    return "; ".join(f"{f}: {lama or '—'} → {baru or '—'}" for f, (lama, baru) in perubahan.items())
+    return "; ".join(f"{f}: dari {lama or '—'} menjadi {baru or '—'}" for f, (lama, baru) in perubahan.items())
 
 
 def _sinkron_ehrm(request, user_obj, buka_kunci=()):

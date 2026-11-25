@@ -97,7 +97,7 @@ def ganti_peran(request):
     sebelumnya, user.role = user.role, peran
     record_activity(
         request, ActivityLog.Aktivitas.GANTI_PERAN,
-        f"Ganti peran: {User.Role(sebelumnya).label} → {User.Role(peran).label}",
+        f"Ganti peran: dari {User.Role(sebelumnya).label} menjadi {User.Role(peran).label}",
         target_type="user", target_id=user.pk,
     )
     return redirect("home")
