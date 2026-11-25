@@ -320,6 +320,16 @@ class AlurT2PBkoTests(_Basis, TestCase):
             recipient=self.admin_bko, event=Notification.Event.FORWARD_BKO, pengajuan=p).exists())
         self.assertNotIn("sk_tubel", [s.jenis for s in persyaratan.daftar_syarat(p, "pakln")])
 
+    def test_kotak_tutup_pemrosesan_tanpa_simbol_kotak(self):
+        """UI: judul dan tombol "Tutup Pemrosesan" pada halaman SK Tugas Belajar BKO tanpa simbol kotak (■)."""
+        p = self.sampai_pakln()
+        resp = self.get(self.admin_bko, "bko:proses", kode=p.kode)
+        self.assertContains(resp, '<div class="section-title is-small">Tutup Pemrosesan</div>')
+        self.assertContains(resp, 'name="tutup" class="button is-danger is-fullwidth">Tutup Pemrosesan</button>')
+        self.assertNotContains(resp, "■")
+        self.tutup(p)                                           # aksinya tetap berfungsi
+        self.assertEqual(self.refresh(p).status_bko, self.SB.DITUTUP)
+
     def test_t2l_tidak_memakai_bko(self):
         p = self.sampai_pakln("T2L")
         self.assertEqual(p.status_bko, "")
