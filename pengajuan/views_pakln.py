@@ -426,9 +426,9 @@ def histori_generate_data(request):
 
     data = []
     for idx, log in enumerate(page):
-        aksi_html = format_html(
-            '<a href="{}" download class="button is-small">⬇ Unduh</a>', log.file.url,
-        ) if log.file else mark_safe('<span class="cell-muted">Berkas tidak tersedia</span>')
+        aksi_html = render_to_string("partials/_aksi_master.html", {
+            "objek": "dokumen yang dihasilkan", "unduh_url": log.file.url,
+        }).strip() if log.file else mark_safe('<span class="cell-muted">Berkas tidak tersedia</span>')
 
         data.append([
             start + idx + 1,
@@ -711,10 +711,9 @@ def users_data(request):
             status_html = mark_safe(
                 '<span class="tag paspor-status is-belum"><span class="dot"></span>Nonaktif</span>'
             )
-        aksi_html = format_html(
-            '<a href="{}" class="button is-small">✎ Edit</a>',
-            reverse("pakln:edit_user", args=[u.pk]),
-        )
+        aksi_html = render_to_string("partials/_aksi_master.html", {
+            "objek": "user", "edit_url": reverse("pakln:edit_user", args=[u.pk]),
+        }).strip()
         data.append([
             format_html("<strong>{}</strong>", u.username),
             format_html(
@@ -1092,28 +1091,21 @@ def negara_data(request):
             status_html = mark_safe(
                 '<span class="tag paspor-status is-selesai"><span class="dot"></span>Aktif</span>'
             )
-            toggle_label = "🙏 Nonaktifkan"
         else:
             status_html = mark_safe(
                 '<span class="tag paspor-status is-belum"><span class="dot"></span>Nonaktif</span>'
             )
-            toggle_label = "👁 Aktifkan"
 
-        aksi_html = format_html(
-            '<div class="table-actions">'
-            '<a href="{}" class="button is-small">✎ Edit</a>'
-            '<button type="button" class="button is-small" data-negara-toggle="{}">{}</button>'
-            '<button type="button" class="button is-small is-danger" data-negara-hapus="{}">🗑 Hapus</button>'
-            '</div>',
-            reverse("pakln:edit_negara", args=[n.pk]),
-            reverse("pakln:toggle_negara", args=[n.pk]),
-            toggle_label,
-            reverse("pakln:hapus_negara", args=[n.pk]),
-        )
+        aksi_html = render_to_string("partials/_aksi_master.html", {
+            "objek": "negara", "aktif": n.is_active,
+            "edit_url": reverse("pakln:edit_negara", args=[n.pk]),
+            "toggle_url": reverse("pakln:toggle_negara", args=[n.pk]), "attr_toggle": "data-negara-toggle",
+            "hapus_url": reverse("pakln:hapus_negara", args=[n.pk]), "attr_hapus": "data-negara-hapus",
+        }).strip()
         data.append([
             format_html(
                 "<strong>{}</strong>{}", n.nama_negara,
-                format_html('<br><span class="badge-auto">Perlu Visa</span>') if n.perlu_visa else "",
+                mark_safe('<br><span class="badge-auto">Perlu Visa</span>') if n.perlu_visa else "",
             ),
             escape(n.kode_negara or "—"),
             status_html,
@@ -1302,12 +1294,10 @@ def kalender_data(request):
             status_html = mark_safe(
                 '<span class="tag paspor-status is-selesai"><span class="dot"></span>Aktif</span>'
             )
-            toggle_label = "🙏 Nonaktifkan"
         else:
             status_html = mark_safe(
                 '<span class="tag paspor-status is-belum"><span class="dot"></span>Nonaktif</span>'
             )
-            toggle_label = "👁 Aktifkan"
 
         hari = _HARI_ID[h.tanggal.weekday()]
         if h.tanggal.weekday() in AKHIR_PEKAN:
@@ -1315,17 +1305,12 @@ def kalender_data(request):
         else:
             hari_html = escape(hari)
 
-        aksi_html = format_html(
-            '<div class="table-actions">'
-            '<a href="{}" class="button is-small">✎ Edit</a>'
-            '<button type="button" class="button is-small" data-libur-toggle="{}">{}</button>'
-            '<button type="button" class="button is-small is-danger" data-libur-hapus="{}">🗑 Hapus</button>'
-            '</div>',
-            reverse("pakln:edit_hari_libur", args=[h.pk]),
-            reverse("pakln:toggle_hari_libur", args=[h.pk]),
-            toggle_label,
-            reverse("pakln:hapus_hari_libur", args=[h.pk]),
-        )
+        aksi_html = render_to_string("partials/_aksi_master.html", {
+            "objek": "hari libur", "aktif": h.is_active,
+            "edit_url": reverse("pakln:edit_hari_libur", args=[h.pk]),
+            "toggle_url": reverse("pakln:toggle_hari_libur", args=[h.pk]), "attr_toggle": "data-libur-toggle",
+            "hapus_url": reverse("pakln:hapus_hari_libur", args=[h.pk]), "attr_hapus": "data-libur-hapus",
+        }).strip()
         data.append([
             format_html("<strong>{}</strong>", _tanggal_indonesia(h.tanggal)),
             hari_html,
@@ -1518,24 +1503,17 @@ def sumber_pembiayaan_data(request):
             status_html = mark_safe(
                 '<span class="tag paspor-status is-selesai"><span class="dot"></span>Aktif</span>'
             )
-            toggle_label = "🙏 Nonaktifkan"
         else:
             status_html = mark_safe(
                 '<span class="tag paspor-status is-belum"><span class="dot"></span>Nonaktif</span>'
             )
-            toggle_label = "👁 Aktifkan"
 
-        aksi_html = format_html(
-            '<div class="table-actions">'
-            '<a href="{}" class="button is-small">✎ Edit</a>'
-            '<button type="button" class="button is-small" data-sumber-toggle="{}">{}</button>'
-            '<button type="button" class="button is-small is-danger" data-sumber-hapus="{}">🗑 Hapus</button>'
-            '</div>',
-            reverse("pakln:edit_sumber_pembiayaan", args=[s.pk]),
-            reverse("pakln:toggle_sumber_pembiayaan", args=[s.pk]),
-            toggle_label,
-            reverse("pakln:hapus_sumber_pembiayaan", args=[s.pk]),
-        )
+        aksi_html = render_to_string("partials/_aksi_master.html", {
+            "objek": "sumber pembiayaan", "aktif": s.is_active,
+            "edit_url": reverse("pakln:edit_sumber_pembiayaan", args=[s.pk]),
+            "toggle_url": reverse("pakln:toggle_sumber_pembiayaan", args=[s.pk]), "attr_toggle": "data-sumber-toggle",
+            "hapus_url": reverse("pakln:hapus_sumber_pembiayaan", args=[s.pk]), "attr_hapus": "data-sumber-hapus",
+        }).strip()
         data.append([
             format_html("<strong>{}</strong>", s.nama),
             s.get_tipe_perjalanan_display(),
@@ -1675,24 +1653,17 @@ def kategori_data(request):
             status_html = mark_safe(
                 '<span class="tag paspor-status is-selesai"><span class="dot"></span>Aktif</span>'
             )
-            toggle_label = "🙏 Nonaktifkan"
         else:
             status_html = mark_safe(
                 '<span class="tag paspor-status is-belum"><span class="dot"></span>Nonaktif</span>'
             )
-            toggle_label = "👁 Aktifkan"
 
-        aksi_html = format_html(
-            '<div class="table-actions">'
-            '<a href="{}" class="button is-small">✎ Edit</a>'
-            '<button type="button" class="button is-small" data-kategori-toggle="{}">{}</button>'
-            '<button type="button" class="button is-small is-danger" data-kategori-hapus="{}">🗑 Hapus</button>'
-            '</div>',
-            reverse("pakln:edit_kategori", args=[k.pk]),
-            reverse("pakln:toggle_kategori", args=[k.pk]),
-            toggle_label,
-            reverse("pakln:hapus_kategori", args=[k.pk]),
-        )
+        aksi_html = render_to_string("partials/_aksi_master.html", {
+            "objek": "kategori perjalanan", "aktif": k.is_active,
+            "edit_url": reverse("pakln:edit_kategori", args=[k.pk]),
+            "toggle_url": reverse("pakln:toggle_kategori", args=[k.pk]), "attr_toggle": "data-kategori-toggle",
+            "hapus_url": reverse("pakln:hapus_kategori", args=[k.pk]), "attr_hapus": "data-kategori-hapus",
+        }).strip()
         data.append([
             format_html("<strong>{}</strong>", k.nama_kategori),
             k.get_jenis_perjalanan_display(),
