@@ -80,13 +80,13 @@ def status_html(p, dengan_bko=True, dengan_surat_tugas=True):
 
 
 def _tombol_surat_tugas(p):
-    """Tombol "Surat Tugas →" bila jalur Surat Tugas PDLN Tipe 2 sudah terbuka dan masih berjalan; kuning bila
+    """Tombol "Surat Tugas" bila jalur Surat Tugas PDLN Tipe 2 sudah terbuka dan masih berjalan; kuning bila
     Admin Unor perlu bertindak (menunggu diunggah/dikirim atau dikembalikan Biro PAKLN)."""
     if not (p.track_surat_tugas_terbuka and p.status in surat_tugas.STATUS_JALUR_AKTIF) or p.pembatalan_terbuka:
         return ""
     perlu_aksi = p.status_surat_tugas in (SS.MENUNGGU, SS.DIKEMBALIKAN)
     return format_html(
-        ' <a href="{}" class="button {} is-small">Surat Tugas →</a>',
+        ' <a href="{}" class="button {} is-small">Surat Tugas</a>',
         reverse("unor:surat_tugas", args=[p.kode]), "is-warning" if perlu_aksi else "",
     )
 
@@ -105,7 +105,7 @@ def dashboard_data(request):
             aksi = format_html('<a href="{}" class="button is-small">Lihat</a>', reverse("unor:preview", args=[p.kode]))
         elif p.status == S.PROSES:
             url = reverse("unor:upload_dokumen" if p.preview_unor_agree else "unor:preview", args=[p.kode])
-            aksi = format_html('<a href="{}" class="button is-warning is-small">TL →</a>', url)
+            aksi = format_html('<a href="{}" class="button is-warning is-small">TL</a>', url)
         else:
             aksi = format_html('<a href="{}" class="button is-small">Lihat</a>', reverse("unor:preview", args=[p.kode]))
         aksi = format_html("{}{}", aksi, _tombol_surat_tugas(p))

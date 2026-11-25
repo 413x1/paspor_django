@@ -106,6 +106,15 @@ class HalamanUnorTanpaIkonTests(_Basis, TestCase):
         html = self.get(self.admin_bpsdm, "bpsdm:preview", kode=p.kode).content.decode()
         self.assertIn("Lanjutkan ke Administrasi BPSDM →", html)                                   # BPSDM: bukan cakupan perubahan ini
 
+    def test_dasbor_unor_tombol_tl_tanpa_panah(self):
+        p = self.isi_formulir("T1")
+        self.kirim(p)                                              # status Dalam Proses Unor -> tombol TL kuning
+        baris = self.get(self.admin_unor, "unor:dashboard_data").json()["data"]
+        self.assertEqual(len(baris), 1)
+        aksi = baris[0][-1]                                        # kolom Aksi
+        self.assertIn('class="button is-warning is-small">TL</a>', aksi)
+        self.assertNotIn("\u2192", aksi)
+
     def test_upload_halaman_peran_lain_tidak_berubah(self):
         p = self.isi_formulir("T2P", negara=self.jepang)
         self.kirim(p)
@@ -127,6 +136,13 @@ class SuratTugasUnorTanpaIkonTests(_DasarUnor, TestCase):
         self.assertContains(resp, "Kirim ke Biro PAKLN")
         self.assertNotIn("Kirim ke Biro PAKLN →", html)
         self.assertNotIn("Kirim Ulang ke Biro PAKLN →", html)
+
+    def test_dasbor_unor_tombol_surat_tugas_tanpa_panah(self):
+        self.pengajuan(jalur=SS.MENUNGGU)
+        self.login(self.admin_unor)
+        isi = str(self.client.get(reverse("unor:dashboard_data")).json()["data"])
+        self.assertIn(">Surat Tugas</a>", isi)
+        self.assertNotIn("Surat Tugas \u2192", isi)
 
     def test_tombol_kirim_ulang_tanpa_panah(self):
         p = self.pengajuan(jalur=SS.DIKEMBALIKAN)
