@@ -16,6 +16,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.html import format_html, format_html_join
+from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_POST
 
 from logs.models import ActivityLog
@@ -41,7 +42,7 @@ def _log(request, deskripsi, kegiatan, status=ActivityLog.Status.BERHASIL, detai
 
 def status_kegiatan_html(k):
     if k.status == K.DISETUJUI and not k.is_active:
-        return format_html('<span class="tag kegiatan-status is-nonaktif">Nonaktif</span>')
+        return mark_safe('<span class="tag kegiatan-status is-nonaktif">Nonaktif</span>')
     return format_html('<span class="tag kegiatan-status is-{}">{}</span>', k.status, k.get_status_display())
 
 
