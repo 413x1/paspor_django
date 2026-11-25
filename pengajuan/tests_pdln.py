@@ -353,6 +353,16 @@ class AlurT2PBkoTests(_Basis, TestCase):
         self.assertIn("Buka Kembali Pemrosesan", kolom)
         self.assertNotIn("Tutup Pemrosesan", kolom)
 
+    def test_tombol_bko_tanpa_tanda_panah(self):
+        """UI: tombol Proses (Dasbor BKO) dan Kembali ke Dasbor (halaman SK Tugas Belajar) tanpa tanda panah."""
+        p = self.sampai_pakln()
+        isi = str(self.get(self.admin_bko, "bko:dashboard_data").json()["data"])
+        self.assertIn('class="button is-warning is-small">Proses</a>', isi)
+        self.assertNotIn("Proses \u2192", isi)
+        html = self.get(self.admin_bko, "bko:proses", kode=p.kode).content.decode()
+        self.assertIn('class="button is-fullwidth">Kembali ke Dasbor</a>', html)
+        self.assertNotIn("\u2190 Kembali ke Dasbor", html)
+
     def test_t2l_tidak_memakai_bko(self):
         p = self.sampai_pakln("T2L")
         self.assertEqual(p.status_bko, "")

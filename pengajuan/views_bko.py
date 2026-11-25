@@ -53,7 +53,7 @@ def dashboard_data(request):
 
     def baris(p):
         if bko.bisa_diubah(p) and p.status_bko != SB.DIUNGGAH:
-            aksi = format_html('<a href="{}" class="button is-warning is-small">Proses →</a>',
+            aksi = format_html('<a href="{}" class="button is-warning is-small">Proses</a>',
                                reverse("bko:proses", args=[p.kode]))
         else:
             aksi = format_html('<a href="{}" class="button is-small">Lihat</a>', reverse("bko:proses", args=[p.kode]))
