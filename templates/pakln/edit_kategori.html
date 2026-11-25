@@ -8,7 +8,7 @@
     <h2>Edit Kategori Perjalanan</h2>
     <p class="sub">{{ kategori.nama_kategori }}</p>
   </div>
-  <a href="{% url 'pakln:kelola_kategori' %}" class="button is-small">← Kembali ke Manajemen Kategori Perjalanan</a>
+  {% url 'pakln:kelola_kategori' as url_daftar %}{% include "partials/_tombol_kembali.html" with url=url_daftar label="Manajemen Kategori Perjalanan" %}
 </div>
 
 <div class="box">

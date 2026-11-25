@@ -8,7 +8,7 @@
     <h2>Edit Template</h2>
     <p class="sub">{{ template.nama }}</p>
   </div>
-  <a href="{% url 'pakln:kelola_template' %}" class="button is-small">← Kembali ke Manajemen Template</a>
+  {% url 'pakln:kelola_template' as url_daftar %}{% include "partials/_tombol_kembali.html" with url=url_daftar label="Manajemen Template" %}
 </div>
 
 <div class="box">

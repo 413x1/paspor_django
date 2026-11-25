@@ -8,7 +8,7 @@
     <h2>Edit User</h2>
     <p class="sub">{{ user_obj.username }} · {{ user_obj.get_sumber_akun_display }} · {{ user_obj.metode_login_display }}</p>
   </div>
-  <a href="{% url 'pakln:kelola_user' %}" class="button is-small">← Kembali ke Manajemen User</a>
+  {% url 'pakln:kelola_user' as url_daftar %}{% include "partials/_tombol_kembali.html" with url=url_daftar label="Manajemen User" %}
 </div>
 
 {# Form aksi e-HRM — tombolnya berada di dalam form utama lewat atribut form="…" #}
