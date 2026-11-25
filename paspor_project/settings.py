@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
+    "django_ratelimit",  # pembatas percobaan login (accounts/pembatas_login.py)
 
     # Aplikasi PASPOR
     "paspor",
@@ -92,6 +93,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "accounts.middleware.PembatasLoginMiddleware",  # blokir sementara IP setelah 5x login gagal
     "accounts.middleware.PeranAktifMiddleware",  # peran aktif user ber-role ganda
     "django.contrib.messages.middleware.MessageMiddleware",
     "paspor.middleware.UnggahDitolakMiddleware",  # unggahan bukan-PDF -> status 400
@@ -366,6 +368,34 @@ REDIS_DB = env("REDIS_DB", "0")
 REDIS_PASSWORD = env("REDIS_PASSWORD", "")
 _redis_auth = f":{quote(REDIS_PASSWORD, safe='')}@" if REDIS_PASSWORD else ""
 CELERY_BROKER_URL = env("CELERY_BROKER_URL") or f"redis://{_redis_auth}{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}"
+
+# ---------------------------------------------------------------------------
+# Cache & pembatas login (accounts/pembatas_login.py)
+# ---------------------------------------------------------------------------
+# Penghitung login gagal & daftar blokir IP disimpan di cache. Produksi WAJIB
+# Redis agar berlaku lintas worker Gunicorn (LocMem = per proses). Bawaan:
+# "redis" bila DEBUG=False, "locmem" bila DEBUG=True; timpa dengan DJANGO_CACHE_BACKEND.
+CACHE_BACKEND = env("DJANGO_CACHE_BACKEND", "locmem" if DEBUG else "redis")
+CACHE_REDIS_DB = env("CACHE_REDIS_DB", "1")  # DB terpisah dari broker Celery (REDIS_DB)
+if CACHE_BACKEND == "redis":
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": f"redis://{_redis_auth}{REDIS_HOST}:{REDIS_PORT}/{CACHE_REDIS_DB}",
+            "KEY_PREFIX": "paspor",
+            "OPTIONS": {"socket_connect_timeout": 3, "socket_timeout": 3},
+        }
+    }
+    # RedisCache bawaan Django mendukung incr atomik, hanya tidak ada di daftar resmi django-ratelimit.
+    SILENCED_SYSTEM_CHECKS = ["django_ratelimit.W001"]
+else:
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+    # LocMem hanya untuk pengembangan satu proses (penghitung tidak dibagi antar worker).
+    SILENCED_SYSTEM_CHECKS = ["django_ratelimit.E003", "django_ratelimit.W001"]
+RATELIMIT_USE_CACHE = "default"
+LOGIN_BATAS_GAGAL = int(env("LOGIN_BATAS_GAGAL", "5"))        # kali gagal per IP + username sebelum diblokir
+LOGIN_BATAS_GAGAL_IP = int(env("LOGIN_BATAS_GAGAL_IP", "20"))  # kali gagal per IP (semua username), tidak direset login berhasil
+LOGIN_DURASI_BLOKIR = int(env("LOGIN_DURASI_BLOKIR", "600"))  # detik (10 menit)
 CELERY_TIMEZONE = TIME_ZONE                       # Asia/Jakarta: jam jadwal Beat dibaca sebagai WIB
 CELERY_TASK_IGNORE_RESULT = True                  # status dicatat di tabel sendiri (EmailLog), bukan result backend
 CELERY_TASK_ACKS_LATE = True                      # pesan dianggap selesai setelah task sukses
