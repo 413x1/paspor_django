@@ -17,7 +17,8 @@
       {% endif %}
     </p>
   </div>
-  <a href="{{ kembali_url }}" class="button is-small">← {{ kembali_label }}</a>
+  {% if kembali_gaya %}{% include "partials/_tombol_kembali.html" with url=kembali_url label=kembali_label %}
+  {% else %}<a href="{{ kembali_url }}" class="button is-small">← {{ kembali_label }}</a>{% endif %}
 </div>
 
 {% if info %}<div class="notification paspor-msg is-info">{{ info }}</div>{% endif %}

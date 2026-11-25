@@ -76,4 +76,4 @@ class CssBadgeLoncengTests(TestCase):
 
     def test_versi_cache_css_dinaikkan(self):
         html = self.client.get(reverse("login")).content.decode()
-        self.assertIn("css/style.css?v=20261125a", html)
+        self.assertIn("css/style.css?v=20261125b", html)

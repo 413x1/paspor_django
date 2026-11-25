@@ -146,7 +146,7 @@ def pakln_data(request):
         tombol = [format_html('<a href="{}" class="button is-small{}">{}</a>',
                               reverse("pakln:edit_kegiatan", args=[k.pk]),
                               " is-warning" if k.status == K.MENUNGGU else "",
-                              "Tinjau →" if k.status == K.MENUNGGU else "✎ Edit")]
+                              "Tinjau" if k.status == K.MENUNGGU else "✎ Edit")]
         if k.status == K.DISETUJUI:
             tombol.append(format_html(
                 '<button type="button" class="button is-small" data-kegiatan-toggle="{}">{}</button>',
@@ -174,7 +174,7 @@ def pakln_tambah(request):
         messages.error(request, "Periksa kembali isian formulir.")
     return render(request, "kegiatan/form.html", {
         "peran": "admin_pakln", "judul": "Tambah Kegiatan", "form": form, "formset": formset,
-        "kembali_url": reverse("pakln:kelola_kegiatan"), "kembali_label": "Daftar Kegiatan",
+        "kembali_url": reverse("pakln:kelola_kegiatan"), "kembali_label": "Daftar Kegiatan", "kembali_gaya": True,
         "tombol_simpan": "Simpan Kegiatan",
     })
 
@@ -194,7 +194,7 @@ def pakln_edit(request, pk):
         "peran": "admin_pakln", "judul": "Tinjau Usulan Kegiatan" if kegiatan.status == K.MENUNGGU else "Edit Kegiatan",
         "kegiatan": kegiatan, "form": form, "formset": formset,
         "kembali_url": reverse("pakln:kelola_kegiatan") + ("?tab=menunggu" if kegiatan.status == K.MENUNGGU else ""),
-        "kembali_label": "Daftar Kegiatan", "tombol_simpan": "Simpan Perubahan",
+        "kembali_label": "Daftar Kegiatan", "kembali_gaya": True, "tombol_simpan": "Simpan Perubahan",
         "keputusan_url": reverse("pakln:putuskan_kegiatan", args=[kegiatan.pk]) if kegiatan.status == K.MENUNGGU else "",
         "mirip": layanan.mirip(kegiatan.nama, kegiatan.tahun_pelaksanaan, kecuali=kegiatan.pk) if kegiatan.status == K.MENUNGGU else [],
         "peserta": _peserta(kegiatan, request.user),

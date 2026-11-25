@@ -755,6 +755,34 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 /* Kolom yang menumpuk beberapa kotak di dalam .preview-split (Pratinjau Admin Unor: kolom kanan). */
 .preview-kolom { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-content: start; min-width: 0; }
 .preview-kolom > .box { margin-bottom: 0; }
+
+/* Tombol kembali bergaya (partials/_tombol_kembali.html): chip bulat berisi panah + teks dua baris. Saat disorot, chip
+   terisi warna dan panah bergeser sedikit ke kiri untuk menegaskan arah "kembali". */
+.tombol-kembali {
+  display: inline-flex; align-items: center; gap: 10px; padding: 6px 16px 6px 7px; flex-shrink: 0;
+  background: var(--white); border: 1px solid var(--line); border-radius: 12px; color: var(--navy-900); line-height: 1.15;
+  transition: border-color var(--duration-fast) var(--ease-apple), box-shadow var(--duration-fast) var(--ease-apple);
+}
+.tombol-kembali-ikon {
+  display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%;
+  background: var(--blue-bg); color: var(--teal);
+  transition: background-color var(--duration-fast) var(--ease-apple), color var(--duration-fast) var(--ease-apple);
+}
+.tombol-kembali-ikon svg {
+  width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round;
+  transition: transform var(--duration-fast) var(--ease-apple);
+}
+.tombol-kembali-teks { display: flex; flex-direction: column; text-align: left; }
+.tombol-kembali-teks small { font-size: 11px; font-weight: 600; color: var(--slate-600); }
+.tombol-kembali-teks strong { font-size: 13.5px; font-weight: 700; }
+.tombol-kembali:hover, .tombol-kembali:focus-visible { border-color: var(--teal); color: var(--navy-900); box-shadow: 0 2px 8px rgba(29, 53, 87, .10); }
+.tombol-kembali:hover .tombol-kembali-ikon, .tombol-kembali:focus-visible .tombol-kembali-ikon { background: var(--teal); color: var(--white); }
+.tombol-kembali:hover .tombol-kembali-ikon svg, .tombol-kembali:focus-visible .tombol-kembali-ikon svg { transform: translateX(-2px); }
+.tombol-kembali:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .tombol-kembali, .tombol-kembali-ikon, .tombol-kembali-ikon svg { transition: none; }
+  .tombol-kembali:hover .tombol-kembali-ikon svg, .tombol-kembali:focus-visible .tombol-kembali-ikon svg { transform: none; }
+}
 @media (max-width: 1100px) { .preview-split { grid-template-columns: 1fr; } }
 
 /* ---------- Modal — animasi masuk/keluar (berlaku untuk semua .modal) ----------
