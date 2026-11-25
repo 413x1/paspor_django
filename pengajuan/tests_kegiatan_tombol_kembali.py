@@ -1,7 +1,7 @@
 """Kegiatan Admin PAKLN: tombol Tinjau tanpa panah dan tombol kembali ke Daftar Kegiatan bergaya (perbaikan UI).
 
-Tombol kembali (chip bulat berisi panah + teks "Kembali ke <halaman>") hanya dipakai halaman Admin PAKLN (Tambah dan
-Detail/Edit Kegiatan). Halaman Kegiatan milik BPSDM dan Pegawai tetap memakai tombol lama sampai disetujui."""
+Tombol kembali (chip bulat berisi panah + teks "Kembali ke <halaman>") dipakai semua halaman Kegiatan: Admin PAKLN
+(Tambah dan Detail/Edit), Admin BPSDM (Tambah dan Edit), dan Pegawai (Usulkan Kegiatan)."""
 
 from pathlib import Path
 
@@ -64,13 +64,34 @@ class TombolKegiatanPaklnTests(_KegiatanBasis, TestCase):
         html = self.get(self.admin_pakln, "pakln:edit_kegiatan", pk=k.pk).content.decode()
         self.assertTombolKembali(html, reverse("pakln:kelola_kegiatan") + "?tab=menunggu")
 
-    # ---- halaman peran lain tidak berubah ----
-    def test_halaman_kegiatan_bpsdm_tetap_memakai_tombol_lama(self):
+    # ---- Admin BPSDM dan Pegawai memakai tombol yang sama ----
+    def test_halaman_tambah_kegiatan_bpsdm_memakai_tombol_kembali_bergaya(self):
         resp = self.get(self.admin_bpsdm, "bpsdm:tambah_kegiatan")
         self.assertEqual(resp.status_code, 200)
+        self.assertTombolKembali(resp.content.decode(), reverse("bpsdm:kegiatan"))
+
+    def test_halaman_edit_kegiatan_bpsdm_memakai_tombol_kembali_bergaya(self):
+        k = self.buat_kegiatan(Kegiatan.Status.MENUNGGU)
+        Kegiatan.objects.filter(pk=k.pk).update(diusulkan_oleh=self.admin_bpsdm)       # BPSDM menyunting usulannya sendiri
+        resp = self.get(self.admin_bpsdm, "bpsdm:edit_kegiatan", pk=k.pk)
+        self.assertEqual(resp.status_code, 200)
         html = resp.content.decode()
-        self.assertNotIn('class="tombol-kembali"', html)
-        self.assertIn(PANAH_KIRI + " Daftar Kegiatan", html)
+        self.assertIn('class="tombol-kembali"', html)
+        self.assertNotIn(PANAH_KIRI + " Daftar Kegiatan", html)
+
+    def test_halaman_usulkan_kegiatan_pegawai_memakai_tombol_kembali_bergaya(self):
+        resp = self.get(self.pegawai, "pegawai:usulkan_kegiatan")
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode()
+        self.assertIn('class="tombol-kembali"', html)
+        self.assertIn('title="Kembali ke Formulir Pengajuan"', html)
+        self.assertIn("<small>Kembali ke</small><strong>Formulir Pengajuan</strong>", html)
+        self.assertNotIn(PANAH_KIRI + " Formulir Pengajuan", html)
+
+    def test_tombol_lama_tidak_tersisa_di_templat_kegiatan(self):
+        isi = open("templates/kegiatan/form.html", encoding="utf-8").read()
+        self.assertNotIn(PANAH_KIRI + " {{ kembali_label }}", isi)
+        self.assertIn('{% include "partials/_tombol_kembali.html"', isi)
 
 
 class CssTombolKembaliTests(TestCase):
