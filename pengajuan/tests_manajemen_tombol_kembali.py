@@ -54,9 +54,9 @@ class TombolKembaliManajemenTests(_Basis, TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertTombol(resp.content.decode(), reverse("pakln:kelola_kalender") + "?tahun=2027", "Setting Kalender")
 
-    def test_halaman_generate_nd_belum_diubah(self):
+    def test_halaman_generate_nd_kembali_ke_dasbor_bergaya(self):
         for rute in ("pakln:generate_nd_kabag", "pakln:generate_nd_karo"):
             with self.subTest(halaman=rute):
-                html = self.get(self.admin_pakln, rute).content.decode()
-                self.assertIn(PANAH_KIRI + " Kembali ke Dasbor", html)
-                self.assertNotIn('class="tombol-kembali"', html)
+                resp = self.get(self.admin_pakln, rute)
+                self.assertEqual(resp.status_code, 200)
+                self.assertTombol(resp.content.decode(), reverse("pakln:dashboard"), "Dasbor")

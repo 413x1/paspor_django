@@ -86,7 +86,7 @@
     <h2>Generate Dokumen — ND Karo</h2>
     <p class="sub">Permohonan Persetujuan Izin Perjalanan ke Luar Negeri dari Kepala Biro PAKLN ke Sekretaris Jenderal. Pratinjau di kiri memperbarui otomatis mengikuti isian form.</p>
   </div>
-  <a href="{% url 'pakln:dashboard' %}" class="button is-small">← Kembali ke Dasbor</a>
+  {% url 'pakln:dashboard' as url_dasbor %}{% include "partials/_tombol_kembali.html" with url=url_dasbor label="Dasbor" %}
 </div>
 
 <div class="columns is-variable is-5">
