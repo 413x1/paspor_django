@@ -21,10 +21,11 @@
   {% include "partials/_ringkasan_pengajuan.html" %}
 </div>
 
+{# Kolom kanan: Unggahan, SK Tugas Belajar, lalu Tutup/Buka Kembali Pemrosesan. Timeline Proses tetap selebar penuh di bawah. #}
+<div class="preview-kolom">
 <div class="box">
   <div class="section-title">Unggahan Pegawai, Admin Unor &amp; Admin BPSDM</div>
   {% include "partials/_direktori_dokumen.html" %}
-</div>
 </div>
 
 <div class="box">
@@ -62,6 +63,8 @@
   </div>
   {% endif %}
 {% endif %}
+</div>
+</div>
 
 {% include "partials/_riwayat_pengajuan.html" %}
 
