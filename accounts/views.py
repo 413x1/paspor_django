@@ -10,7 +10,7 @@ from logs.models import ActivityLog
 from logs.utils import record_activity
 from paspor.integrasi import ehrm
 
-from . import sso
+from . import pembatas_login, sso
 from .middleware import SESSION_KEY
 from .models import User
 
@@ -43,6 +43,13 @@ def login_view(request):
         akun = User.objects.filter(username__iexact=username).first() if username else None
         if akun is not None and akun.is_active and not akun.has_usable_password():
             error = PESAN_TANPA_PASSWORD
+        # Kegagalan ini (dihitung signal user_login_failed) bisa jadi yang ke-5:
+        # langsung beri tahu bahwa IP kini diblokir sementara.
+        sisa = pembatas_login.sisa_blokir(request, username)
+        if sisa:
+            error = pembatas_login.pesan_blokir(sisa)
+            return render(request, "registration/login.html",
+                          {"error": error, "sso_tersedia": sso_tersedia()}, status=429)
 
     return render(request, "registration/login.html", {"error": error, "sso_tersedia": sso_tersedia()})
 

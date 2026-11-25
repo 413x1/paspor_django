@@ -36,3 +36,37 @@ class PeranAktifMiddleware:
             user._role_db = user.role
             user.role = peran
         return self.get_response(request)
+
+
+class PembatasLoginMiddleware:
+    """Tolak POST ke halaman login (aplikasi & /admin/) dari IP yang sedang
+    diblokir sementara karena terlalu banyak login gagal. Kredensial tidak
+    diperiksa sama sekali selama blokir berlaku (status 429)."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if request.method == "POST" and request.path in _path_login():
+            from . import pembatas_login
+            sisa = pembatas_login.sisa_blokir(request, request.POST.get("username", ""))
+            if sisa:
+                from django.shortcuts import render
+                from .views import sso_tersedia
+                resp = render(request, "registration/login.html", {
+                    "error": pembatas_login.pesan_blokir(sisa), "sso_tersedia": sso_tersedia(),
+                }, status=429)
+                resp["Retry-After"] = str(sisa)
+                return resp
+        return self.get_response(request)
+
+
+def _path_login():
+    from django.urls import NoReverseMatch, reverse
+    paths = set()
+    for nama in ("login", "admin:login"):
+        try:
+            paths.add(reverse(nama))
+        except NoReverseMatch:
+            pass
+    return paths
