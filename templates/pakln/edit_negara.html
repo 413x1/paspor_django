@@ -8,7 +8,7 @@
     <h2>Edit Negara</h2>
     <p class="sub">{{ negara.nama_negara }}</p>
   </div>
-  <a href="{% url 'pakln:kelola_negara' %}" class="button is-small">← Kembali ke Manajemen Negara</a>
+  {% url 'pakln:kelola_negara' as url_daftar %}{% include "partials/_tombol_kembali.html" with url=url_daftar label="Manajemen Negara" %}
 </div>
 
 <div class="box">

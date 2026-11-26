@@ -27,7 +27,7 @@
   <div class="section-title">Unggah Dokumen Administrasi BPSDM — {{ pengajuan.kode }}</div>
   <p class="sub is-title-sub">{{ pengajuan.jenis_label }}</p>
 
-  {% include "partials/_dokumen_tahap.html" with hapus_url="bpsdm:hapus_dokumen" %}
+  {% include "partials/_dokumen_tahap.html" with hapus_url="bpsdm:hapus_dokumen" tanpa_ikon=True %}
 
   <form method="post">
     {% csrf_token %}
@@ -43,7 +43,7 @@
       <label for="agree">Admin BPSDM menyatakan seluruh dokumen administrasi telah <strong>lengkap dan sesuai</strong>.</label>
     </div>
     <button type="submit" name="teruskan" class="button is-warning is-fullwidth" {% if not lengkap or dibekukan %}disabled{% endif %}>
-      Teruskan ke Admin Biro PAKLN →
+      Teruskan ke Admin Biro PAKLN
     </button>
     {% if not lengkap %}<p class="helptext">Lengkapi dokumen wajib: {{ dokumen_kurang|join:", " }}.</p>{% endif %}
   </form>
@@ -52,7 +52,7 @@
 {% include "partials/_riwayat_pengajuan.html" %}
 
 <div class="button-row">
-  <a href="{% url 'bpsdm:preview' kode=pengajuan.kode %}" class="button">← Kembali ke Pratinjau</a>
+  <a href="{% url 'bpsdm:preview' kode=pengajuan.kode %}" class="button">Kembali ke Pratinjau</a>
   <a href="{% url 'bpsdm:dashboard' %}" class="button">Kembali ke Dasbor</a>
 </div>
 {% endblock %}

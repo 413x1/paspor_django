@@ -1,0 +1,32 @@
+<div class="box">
+  <div class="section-title is-small">Data Paspor</div>
+  <div class="table-wrap">
+    <table class="table data-table is-fullwidth">
+      <thead><tr><th>Nomor Paspor</th><th>Jenis</th><th>Tgl Expired</th><th></th></tr></thead>
+      <tbody>
+        {% for x in paspor_list %}
+          <tr>
+            <td><strong>{{ x.nomor }}</strong></td><td>{{ x.get_jenis_display }}</td><td>{{ x.tgl_expired|date:"d M Y" }}</td>
+            <td>
+              <form method="post" data-confirm="Hapus data paspor ini?" data-confirm-type="danger" data-confirm-title="Hapus" data-confirm-ok="Hapus" style="margin:0;">
+                {% csrf_token %}<input type="hidden" name="aksi" value="hapus_paspor"><input type="hidden" name="id" value="{{ x.pk }}">
+                <button type="submit" class="button is-small is-danger">🗑</button>
+              </form>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="cell-muted">Belum ada data paspor.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <form method="post" class="filter-bar" style="margin-top:12px;">
+    {% csrf_token %}
+    <input type="hidden" name="aksi" value="tambah_paspor">
+    <div class="field"><label class="label">Nomor Paspor</label><input class="input" name="nomor" required placeholder="cth. D 7654321"></div>
+    <div class="field"><label class="label">Jenis</label>
+      <div class="select"><select name="jenis">{% for v, l in jenis_paspor %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></div></div>
+    <div class="field"><label class="label">Tgl Expired</label><input class="input" type="date" name="tgl_expired" required></div>
+    <button type="submit" class="button is-primary">➕ Tambah Paspor</button>
+  </form>
+</div>

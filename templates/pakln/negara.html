@@ -13,7 +13,7 @@
     <h2>Manajemen Negara</h2>
     <p class="sub">Kelola daftar negara yang menjadi pilihan pada field "Tujuan Negara" di Formulir Pengajuan.</p>
   </div>
-  <a href="{% url 'pakln:dashboard' %}" class="button is-small">← Kembali ke Dasbor</a>
+  {% url 'pakln:dashboard' as url_dasbor %}{% include "partials/_tombol_kembali.html" with url=url_dasbor label="Dasbor" %}
 </div>
 
 <div class="box">

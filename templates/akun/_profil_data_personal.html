@@ -1,0 +1,30 @@
+<div class="box">
+  <div class="section-title is-small">Data Personal {% if profile %}<span class="badge-auto">Sinkronisasi e-HRM</span>{% endif %}</div>
+  <dl class="kv-list">
+    {% if profile %}
+      <dt>Nama</dt><dd>{{ profile.nama }}</dd>
+      <dt>NIP</dt><dd>{{ profile.nip }}</dd>
+      <dt>Jabatan</dt><dd>{{ profile.jabatan }}</dd>
+      <dt>Pangkat/Golongan</dt><dd>{{ profile.pangkat_golongan }}</dd>
+      <dt>Unit Kerja</dt><dd>{{ profile.unit_kerja }}</dd>
+      <dt>Unit Organisasi</dt><dd>{{ profile.unit_organisasi.name|default:"—" }}</dd>
+    {% else %}
+      <dt>Nama</dt><dd>{{ user.get_full_name|default:user.username }}</dd>
+      <dt>Unit Kerja</dt><dd>{{ user.unit_kerja|default:"—" }}</dd>
+      <dt>Unit Organisasi</dt><dd>{{ user.get_unit_organisasi.name|default:"—" }}</dd>
+    {% endif %}
+    <dt>Email</dt><dd>{{ user.email|default:"—" }}{% if user.email_dikunci %} <span class="badge-kunci">Dikunci</span>{% endif %}</dd>
+    <dt>No. HP (WhatsApp)</dt><dd>{% include "partials/_kontak_wa.html" with no_hp=user.no_hp %}{% if user.no_hp_dikunci %} <span class="badge-kunci">Dikunci</span>{% endif %}</dd>
+  </dl>
+  {% if forms_akun.ubah_kontak %}
+    <details class="akun-panel"{% if aksi_terbuka == "ubah_kontak" %} open{% endif %}>
+      <summary class="button is-small">✎ Ubah Email &amp; No. HP</summary>
+      {% include "akun/_form_akun.html" with form=forms_akun.ubah_kontak aksi="ubah_kontak" tombol="Simpan Kontak" %}
+    </details>
+  {% else %}
+    <p class="helptext" style="margin-top:10px;">Perubahan email dan nomor HP melalui Admin Biro PAKLN.</p>
+  {% endif %}
+  {% if profile %}
+    <p class="helptext">Terakhir sinkron e-HRM: {{ user.ehrm_sinkron_at|date:"d M Y H:i"|default:"belum pernah" }}</p>
+  {% endif %}
+</div>

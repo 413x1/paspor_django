@@ -52,7 +52,7 @@ def dashboard_data(request):
     def baris(p):
         if p.status == S.PROSES_BPSDM and not p.pembatalan_terbuka:
             url = reverse("bpsdm:upload_dokumen" if p.preview_bpsdm_agree else "bpsdm:preview", args=[p.kode])
-            aksi = format_html('<a href="{}" class="button is-warning is-small">TL →</a>', url)
+            aksi = format_html('<a href="{}" class="button is-warning is-small">TL</a>', url)
         elif p.status in (S.PROSES, S.BELUM):
             aksi = mark_safe('<span class="cell-muted">Menunggu Admin Unor</span>')
         else:

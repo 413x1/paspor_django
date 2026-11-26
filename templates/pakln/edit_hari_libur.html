@@ -8,7 +8,7 @@
     <h2>Edit Hari Libur</h2>
     <p class="sub">{{ libur }}</p>
   </div>
-  <a href="{% url 'pakln:kelola_kalender' %}?tahun={{ libur.tanggal.year }}" class="button is-small">← Kembali ke Setting Kalender</a>
+  {% url 'pakln:kelola_kalender' as url_kalender %}{% with tahun=libur.tanggal.year|stringformat:"d" %}{% with url_daftar=url_kalender|add:"?tahun="|add:tahun %}{% include "partials/_tombol_kembali.html" with url=url_daftar label="Setting Kalender" %}{% endwith %}{% endwith %}
 </div>
 
 <div class="box">

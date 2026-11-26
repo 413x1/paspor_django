@@ -27,6 +27,8 @@
   {% include "partials/_ringkasan_pengajuan.html" %}
 </div>
 
+{# Kolom kanan: Direktori Unggahan, Kembalikan ke Pegawai, lalu Timeline Proses (mengisi ruang di bawah kotak Pratinjau). #}
+<div class="preview-kolom">
 <div class="box">
   <div class="section-title">Direktori Unggahan Pegawai</div>
   {% include "partials/_direktori_dokumen.html" %}
@@ -34,7 +36,7 @@
   {% if pengajuan.status == "proses" and not dibekukan %}
     {% if pengajuan.preview_unor_agree %}
       <a href="{% url 'unor:upload_dokumen' kode=pengajuan.kode %}" class="button is-primary is-fullwidth" style="margin-top:16px;">
-        Lanjut ke Administrasi Unor →
+        Lanjut ke Administrasi Unor
       </a>
     {% else %}
       <form method="post" style="margin-top:16px;">
@@ -45,21 +47,19 @@
             Dokumen dan formulir telah <strong>ditinjau dan sesuai</strong>, untuk selanjutnya diproses administrasi oleh Admin Unor.
           </label>
         </div>
-        <button type="submit" name="lanjutkan" class="button is-primary is-fullwidth">Lanjutkan ke Administrasi Unor →</button>
+        <button type="submit" name="lanjutkan" class="button is-primary is-fullwidth">Lanjutkan ke Administrasi Unor</button>
       </form>
     {% endif %}
   {% endif %}
 
   <div style="margin-top:16px;">
-    {% include "partials/_pembatalan.html" with tarik_url_name="unor:tarik_pembatalan" %}
+    {% include "partials/_pembatalan.html" with tarik_url_name="unor:tarik_pembatalan" tanpa_ikon=True %}
   </div>
 </div>
-</div>
 
-<div class="preview-split">
 {% if pengajuan.status == "proses" and not dibekukan %}
 <div class="box is-danger-soft">
-  <div class="section-title is-small">↩ Kembalikan ke Pegawai</div>
+  <div class="section-title is-small">Kembalikan ke Pegawai</div>
   <p class="cell-muted is-title-sub">
     Gunakan ini jika formulir atau dokumen pengajuan perlu diperbaiki pegawai sebelum dapat diproses lebih lanjut.
     Pengajuan akan berstatus <strong>Belum Diajukan</strong> kembali sampai pegawai mengirim ulang.
@@ -72,13 +72,14 @@
         <textarea class="textarea" id="catatan" name="catatan" rows="3" required placeholder="cth. Dokumen belum ditandatangani, mohon diunggah ulang."></textarea>
       </div>
     </div>
-    <button type="submit" name="kembalikan" class="button is-danger is-fullwidth">↩ Kembalikan ke Pegawai</button>
+    <button type="submit" name="kembalikan" class="button is-danger is-fullwidth">Kembalikan ke Pegawai</button>
   </form>
 </div>
 {% endif %}
 
 {% include "partials/_riwayat_pengajuan.html" %}
 </div>
+</div>
 
-<a href="{% url 'unor:dashboard' %}{% if pengajuan.is_pdln %}?tab=pdln{% else %}?tab=nondinas{% endif %}" class="button is-fullwidth">← Kembali ke Dasbor</a>
+<a href="{% url 'unor:dashboard' %}{% if pengajuan.is_pdln %}?tab=pdln{% else %}?tab=nondinas{% endif %}" class="button is-fullwidth">Kembali ke Dasbor</a>
 {% endblock %}

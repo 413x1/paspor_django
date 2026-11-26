@@ -1,0 +1,16 @@
+<div class="box">
+  <div class="section-title is-small">Akun</div>
+  <dl class="kv-list">
+    <dt>Username</dt><dd><strong>{{ user.username }}</strong></dd>
+    <dt>Metode login</dt><dd>{{ user.metode_login_display }}</dd>
+    <dt>Peran</dt>
+    <dd>
+      {% for p in peran_list %}<span class="badge-peran{% if p.role == user.role %} is-aktif{% endif %}">{{ p.get_role_display }}{% if p.unit_organisasi_id %} ({{ p.unit_organisasi.alias }}){% endif %}</span> {% empty %}{{ user.get_role_display }}{% endfor %}
+      <div class="helptext">Peran diatur oleh Admin Biro PAKLN.</div>
+    </dd>
+  </dl>
+  <details class="akun-panel"{% if aksi_terbuka == "ubah_username" %} open{% endif %}>
+    <summary class="button is-small">✎ Ubah Username</summary>
+    {% include "akun/_form_akun.html" with form=forms_akun.ubah_username aksi="ubah_username" tombol="Simpan Username" %}
+  </details>
+</div>

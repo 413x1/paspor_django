@@ -114,6 +114,8 @@ class KelolaKontakTests(_KontakBasis, TestCase):
         log = ActivityLog.objects.get(aktivitas=ActivityLog.Aktivitas.UBAH_KONTAK)
         self.assertIn("6281100000001", log.detail)
         self.assertIn("6281299998888", log.detail)
+        self.assertIn("dari 6281100000001 menjadi 6281299998888", log.detail)
+        self.assertNotIn("→", log.detail)
 
     def test_edit_user_lokal_tidak_mengunci(self):
         self.client.force_login(self.pakln)

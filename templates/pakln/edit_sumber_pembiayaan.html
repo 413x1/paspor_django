@@ -8,7 +8,7 @@
     <h2>Edit Sumber Pembiayaan</h2>
     <p class="sub">{{ sumber.nama }}</p>
   </div>
-  <a href="{% url 'pakln:kelola_sumber_pembiayaan' %}" class="button is-small">← Kembali ke Manajemen Sumber Pembiayaan</a>
+  {% url 'pakln:kelola_sumber_pembiayaan' as url_daftar %}{% include "partials/_tombol_kembali.html" with url=url_daftar label="Manajemen Sumber Pembiayaan" %}
 </div>
 
 <div class="box">

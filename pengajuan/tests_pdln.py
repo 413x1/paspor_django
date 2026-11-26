@@ -320,6 +320,49 @@ class AlurT2PBkoTests(_Basis, TestCase):
             recipient=self.admin_bko, event=Notification.Event.FORWARD_BKO, pengajuan=p).exists())
         self.assertNotIn("sk_tubel", [s.jenis for s in persyaratan.daftar_syarat(p, "pakln")])
 
+    def test_kotak_tutup_pemrosesan_tanpa_simbol_kotak(self):
+        """UI: judul dan tombol "Tutup Pemrosesan" pada halaman SK Tugas Belajar BKO tanpa simbol kotak (■)."""
+        p = self.sampai_pakln()
+        resp = self.get(self.admin_bko, "bko:proses", kode=p.kode)
+        self.assertContains(resp, '<div class="section-title is-small">Tutup Pemrosesan</div>')
+        self.assertContains(resp, 'name="tutup" class="button is-danger is-fullwidth">Tutup Pemrosesan</button>')
+        self.assertNotContains(resp, "■")
+        self.tutup(p)                                           # aksinya tetap berfungsi
+        self.assertEqual(self.refresh(p).status_bko, self.SB.DITUTUP)
+
+    def test_halaman_bko_kolom_kanan_berisi_unggahan_sk_tubel_dan_tutup_pemrosesan(self):
+        """UI: kolom kanan memuat Unggahan, SK Tugas Belajar, lalu Tutup Pemrosesan; Timeline tetap selebar penuh di bawah."""
+        p = self.sampai_pakln()
+        html = self.get(self.admin_bko, "bko:proses", kode=p.kode).content.decode()
+        kolom_awal = html.index('<div class="preview-kolom">')
+        timeline = html.index("Timeline Proses")
+        kolom = html[kolom_awal:timeline]
+        urutan = [kolom.index(t) for t in ("Unggahan Pegawai, Admin Unor", "SK Tugas Belajar", "Tutup Pemrosesan")]
+        self.assertEqual(urutan, sorted(urutan))
+        self.assertLess(html.index("Data Pegawai &amp; Pengajuan"), kolom_awal)     # Data Pegawai di kolom kiri, di luar kolom kanan
+        self.assertEqual(html.count('<div class="preview-split">'), 1)
+        self.assertEqual(html.count('<div class="preview-kolom">'), 1)
+        self.assertGreater(timeline, html.index("Tutup Pemrosesan"))               # Timeline di bawah, di luar kolom kanan
+        self.assertNotIn("Timeline Proses", kolom)
+
+    def test_halaman_bko_ditutup_menampilkan_buka_kembali_di_kolom_kanan(self):
+        p = self.sampai_pakln()
+        self.tutup(p)
+        html = self.get(self.admin_bko, "bko:proses", kode=p.kode).content.decode()
+        kolom = html[html.index('<div class="preview-kolom">'):html.index("Timeline Proses")]
+        self.assertIn("Buka Kembali Pemrosesan", kolom)
+        self.assertNotIn("Tutup Pemrosesan", kolom)
+
+    def test_tombol_bko_tanpa_tanda_panah(self):
+        """UI: tombol Proses (Dasbor BKO) dan Kembali ke Dasbor (halaman SK Tugas Belajar) tanpa tanda panah."""
+        p = self.sampai_pakln()
+        isi = str(self.get(self.admin_bko, "bko:dashboard_data").json()["data"])
+        self.assertIn('class="button is-warning is-small">Proses</a>', isi)
+        self.assertNotIn("Proses \u2192", isi)
+        html = self.get(self.admin_bko, "bko:proses", kode=p.kode).content.decode()
+        self.assertIn('class="button is-fullwidth">Kembali ke Dasbor</a>', html)
+        self.assertNotIn("\u2190 Kembali ke Dasbor", html)
+
     def test_t2l_tidak_memakai_bko(self):
         p = self.sampai_pakln("T2L")
         self.assertEqual(p.status_bko, "")

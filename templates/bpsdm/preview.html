@@ -27,13 +27,15 @@
   {% include "partials/_ringkasan_pengajuan.html" %}
 </div>
 
+{# Kolom kanan: Unggahan, Kembalikan ke Admin Unor, lalu Timeline Proses (mengisi ruang di bawah kotak Pratinjau). #}
+<div class="preview-kolom">
 <div class="box">
   <div class="section-title">Unggahan Pegawai &amp; Admin Unor</div>
   {% include "partials/_direktori_dokumen.html" %}
 
   {% if pengajuan.status == "proses_bpsdm" and not dibekukan %}
     {% if pengajuan.preview_bpsdm_agree %}
-      <a href="{% url 'bpsdm:upload_dokumen' kode=pengajuan.kode %}" class="button is-primary is-fullwidth" style="margin-top:16px;">Lanjut ke Administrasi BPSDM →</a>
+      <a href="{% url 'bpsdm:upload_dokumen' kode=pengajuan.kode %}" class="button is-primary is-fullwidth" style="margin-top:16px;">Lanjut ke Administrasi BPSDM</a>
     {% else %}
       <form method="post" style="margin-top:16px;">
         {% csrf_token %}
@@ -41,17 +43,15 @@
           <input type="checkbox" id="confirm" name="confirm" required>
           <label for="confirm">Dokumen dan formulir telah <strong>ditinjau dan sesuai</strong>, untuk selanjutnya diproses administrasi oleh Admin BPSDM.</label>
         </div>
-        <button type="submit" name="lanjutkan" class="button is-primary is-fullwidth">Lanjutkan ke Administrasi BPSDM →</button>
+        <button type="submit" name="lanjutkan" class="button is-primary is-fullwidth">Lanjutkan ke Administrasi BPSDM</button>
       </form>
     {% endif %}
   {% endif %}
 </div>
-</div>
 
-<div class="preview-split">
 {% if pengajuan.status == "proses_bpsdm" and not dibekukan %}
 <div class="box is-danger-soft">
-  <div class="section-title is-small">↩ Kembalikan ke Admin Unor</div>
+  <div class="section-title is-small">Kembalikan ke Admin Unor</div>
   <p class="cell-muted is-title-sub">Pengajuan akan berstatus <strong>Dalam Proses Unor</strong> kembali sampai Admin Unor meneruskan ulang.</p>
   <form method="post" data-confirm="Kembalikan pengajuan ini ke Admin Unor beserta catatan?" data-confirm-title="Kembalikan Pengajuan" data-confirm-ok="Kembalikan">
     {% csrf_token %}
@@ -59,13 +59,14 @@
       <label class="label" for="catatan">Catatan untuk Admin Unor</label>
       <div class="control"><textarea class="textarea" id="catatan" name="catatan" rows="3" required></textarea></div>
     </div>
-    <button type="submit" name="kembalikan" class="button is-danger is-fullwidth">↩ Kembalikan ke Admin Unor</button>
+    <button type="submit" name="kembalikan" class="button is-danger is-fullwidth">Kembalikan ke Admin Unor</button>
   </form>
 </div>
 {% endif %}
 
 {% include "partials/_riwayat_pengajuan.html" %}
 </div>
+</div>
 
-<a href="{% url 'bpsdm:dashboard' %}" class="button is-fullwidth">← Kembali ke Dasbor</a>
+<a href="{% url 'bpsdm:dashboard' %}" class="button is-fullwidth">Kembali ke Dasbor</a>
 {% endblock %}

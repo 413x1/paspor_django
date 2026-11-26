@@ -430,10 +430,24 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
   border-color: var(--teal); box-shadow: 0 0 0 2px rgba(36, 129, 155, .25);
 }
 .select:not(.is-multiple):not(.is-loading)::after {
-  border-color: var(--teal); transition: transform var(--duration-slow) var(--ease-apple-in-out);
+  border-color: var(--teal);
+  /* Dua keadaan memakai daftar fungsi transform yang sama (translateY lalu rotate) agar diinterpolasi per fungsi:
+     putaran tepat 180 derajat searah jarum jam, tanpa lompatan posisi di awal atau akhir animasi. */
+  transform: translateY(0) rotate(-45deg);
+  transition: transform var(--duration-slow) var(--ease-apple-in-out);
+  will-change: transform;
 }
-/* Kelas `is-open` dipasang lewat JS saat daftar pilihan terbuka (panah v menjadi ^). */
-.select.is-open:not(.is-multiple):not(.is-loading)::after { transform: rotate(135deg); margin-top: -.1em; }
+/* Kelas `is-open` dipasang lewat JS saat daftar pilihan terbuka: panah v berputar setengah putaran menjadi ^.
+   translateY(.3375em) = selisih margin-top lama (-.4375em menjadi -.1em) yang menjaga panah tetap di tengah
+   tinggi kolom, tetapi kini ikut dianimasikan bersama putarannya (margin-top tidak ikut bertransisi). */
+@supports selector(select:open) and selector(:has(a)) {
+  /* Status daftar dibaca langsung dari browser (`:open`): tetap benar walau daftar ditutup lewat Escape atau klik di luar. */
+  .select:has(> select:open):not(.is-multiple):not(.is-loading)::after { transform: translateY(.3375em) rotate(135deg); }
+}
+@supports not (selector(select:open) and selector(:has(a))) {
+  /* Browser lama: kelas `is-open` yang dipasang JS di base.html. */
+  .select.is-open:not(.is-multiple):not(.is-loading)::after { transform: translateY(.3375em) rotate(135deg); }
+}
 .field:not(:last-child) { margin-bottom: 16px; }
 .column .field, .column .control { width: 100%; }
 .field .help.is-danger, .errorlist { color: var(--red); font-size: 13px; margin: 4px 0 0; padding: 0; list-style: none; }
@@ -540,7 +554,12 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 }
 /* Kelas `is-open` dipasang lewat JS (base.html) selama daftar pilihan terbuka: panah bawah mengecil,
    panah atas membesar, sehingga tampak membalik secara halus. */
-.dt-toolbar .dt-length select.dt-input.is-open { background-size: 11px 0, 11px 7px; }
+@supports selector(select:open) {
+  .dt-toolbar .dt-length select.dt-input:open { background-size: 11px 0, 11px 7px; }
+}
+@supports not selector(select:open) {
+  .dt-toolbar .dt-length select.dt-input.is-open { background-size: 11px 0, 11px 7px; }
+}
 @media (prefers-reduced-motion: reduce) {
   .select:not(.is-multiple):not(.is-loading)::after, .dt-toolbar .dt-length select.dt-input { transition: none; }
 }
@@ -652,6 +671,16 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
   display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; white-space: nowrap;
 }
 .table-actions .button { flex-shrink: 0; padding-left: 10px; padding-right: 10px; }
+/* Tombol aksi berikon (is-ikon) dirapatkan sedikit agar lebar kolom Aksi setara dengan tombol beremoji sebelumnya
+   (empat tombol tetap muat di layar 1280px tanpa menggeser tabel). */
+.table-actions.is-ikon { gap: 5px; }
+.table-actions.is-ikon .button { padding-left: 8px; padding-right: 8px; }
+.table-actions.is-ikon .ikon-aksi { width: 1.1em; height: 1.1em; margin-right: 5px; }
+/* Ikon garis pada tombol aksi tabel (partials/_ikon_aksi.html): ukuran mengikuti teks, warna mengikuti tombol. */
+.ikon-aksi {
+  width: 1.2em; height: 1.2em; margin-right: 6px; flex-shrink: 0; vertical-align: -.22em;
+  fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
 
 /* ---------- Timeline (monitor progres) ---------- */
 .timeline { list-style: none; margin: 0; padding: 0; }
@@ -733,6 +762,37 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 }
 .preview-split > .box { margin-bottom: 0; }
 .preview-split > :only-child { grid-column: 1 / -1; }
+/* Kolom yang menumpuk beberapa kotak di dalam .preview-split (Pratinjau Admin Unor: kolom kanan). */
+.preview-kolom { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-content: start; min-width: 0; }
+.preview-kolom > .box { margin-bottom: 0; }
+
+/* Tombol kembali bergaya (partials/_tombol_kembali.html): chip bulat berisi panah + teks dua baris. Saat disorot, chip
+   terisi warna dan panah bergeser sedikit ke kiri untuk menegaskan arah "kembali". */
+.tombol-kembali {
+  display: inline-flex; align-items: center; gap: 10px; padding: 6px 16px 6px 7px; flex-shrink: 0;
+  background: var(--white); border: 1px solid var(--line); border-radius: 12px; color: var(--navy-900); line-height: 1.15;
+  transition: border-color var(--duration-fast) var(--ease-apple), box-shadow var(--duration-fast) var(--ease-apple);
+}
+.tombol-kembali-ikon {
+  display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%;
+  background: var(--blue-bg); color: var(--teal);
+  transition: background-color var(--duration-fast) var(--ease-apple), color var(--duration-fast) var(--ease-apple);
+}
+.tombol-kembali-ikon svg {
+  width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round;
+  transition: transform var(--duration-fast) var(--ease-apple);
+}
+.tombol-kembali-teks { display: flex; flex-direction: column; text-align: left; }
+.tombol-kembali-teks small { font-size: 11px; font-weight: 600; color: var(--slate-600); }
+.tombol-kembali-teks strong { font-size: 13.5px; font-weight: 700; }
+.tombol-kembali:hover, .tombol-kembali:focus-visible { border-color: var(--teal); color: var(--navy-900); box-shadow: 0 2px 8px rgba(29, 53, 87, .10); }
+.tombol-kembali:hover .tombol-kembali-ikon, .tombol-kembali:focus-visible .tombol-kembali-ikon { background: var(--teal); color: var(--white); }
+.tombol-kembali:hover .tombol-kembali-ikon svg, .tombol-kembali:focus-visible .tombol-kembali-ikon svg { transform: translateX(-2px); }
+.tombol-kembali:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .tombol-kembali, .tombol-kembali-ikon, .tombol-kembali-ikon svg { transition: none; }
+  .tombol-kembali:hover .tombol-kembali-ikon svg, .tombol-kembali:focus-visible .tombol-kembali-ikon svg { transform: none; }
+}
 @media (max-width: 1100px) { .preview-split { grid-template-columns: 1fr; } }
 
 /* ---------- Modal — animasi masuk/keluar (berlaku untuk semua .modal) ----------
@@ -800,7 +860,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
   width: 32px; height: 32px; fill: none; stroke: currentColor;
   stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round;
 }
-.paspor-dialog.is-danger .dialog-icon, .paspor-dialog.is-error .dialog-icon { --dialog-tone: var(--red-strong); --dialog-tone-bg: var(--red-bg); }
+.paspor-dialog.is-danger .dialog-icon, .paspor-dialog.is-error .dialog-icon, .paspor-dialog.is-keluar .dialog-icon { --dialog-tone: var(--red-strong); --dialog-tone-bg: var(--red-bg); }
 .paspor-dialog.is-success .dialog-icon { --dialog-tone: var(--green); --dialog-tone-bg: var(--green-bg); }
 .paspor-dialog.is-info .dialog-icon { --dialog-tone: var(--teal); --dialog-tone-bg: var(--blue-bg); }
 /* Centang sukses digambar (stroke animation) saat dialog muncul. */
@@ -810,7 +870,7 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .paspor-dialog .dialog-actions { display: flex; gap: 8px; justify-content: center; }
 .paspor-dialog .dialog-actions .button { min-width: 110px; font-weight: 700; }
 #pasporDialog .dialog-ok { background: var(--navy-900); border-color: var(--navy-900); color: var(--white); }
-#pasporDialog.is-danger .dialog-ok, #pasporDialog.is-error .dialog-ok { background: var(--red-strong); border-color: var(--red-strong); }
+#pasporDialog.is-danger .dialog-ok, #pasporDialog.is-error .dialog-ok, #pasporDialog.is-keluar .dialog-ok { background: var(--red-strong); border-color: var(--red-strong); }
 #pasporDialog.is-success .dialog-ok { background: var(--green); border-color: var(--green); }
 #pasporDialog .dialog-ok:hover, #pasporDialog .dialog-ok:focus { color: var(--white); filter: brightness(1.08); }
 @media (prefers-reduced-motion: reduce) {
@@ -848,6 +908,24 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .login-card form { text-align: left; }
 .login-card .field:not(:last-child) { margin-bottom: 16px; }
 .login-card .helptext { text-align: center; margin-top: 14px; }
+/* Kolom password dengan tombol mata (lihat/sembunyikan password). Tombol berada di dalam kolom, di kanan. */
+.password-control { position: relative; }
+.password-control .input { padding-right: 46px; }
+/* Edge menambahkan tombol mata bawaan di input password; disembunyikan agar tidak ada dua ikon. */
+.password-control .input::-ms-reveal, .password-control .input::-ms-clear { display: none; }
+.password-toggle {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 46px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 0 8px 8px 0; background: transparent; color: var(--slate-400); cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-apple);
+}
+.password-toggle:hover { color: var(--slate-900); }
+.password-toggle:focus-visible { outline: 2px solid var(--teal); outline-offset: -2px; color: var(--slate-900); }
+.password-toggle svg {
+  width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.password-toggle .ikon-sembunyi, .password-toggle.is-aktif .ikon-tampil { display: none; }
+.password-toggle.is-aktif .ikon-sembunyi { display: block; }
 .login-error {
   background: var(--red-bg); color: var(--red); border-radius: 8px; padding: 10px 14px; font-size: 13px;
   margin-bottom: 16px;
@@ -861,11 +939,22 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
   background: var(--bg); color: var(--slate-600); border: 1px solid var(--line);
 }
 .notif-bell:hover { background: var(--white); color: var(--slate-900); }
+/* Badge jumlah notifikasi. Sebelumnya `line-height: 18px` di dalam ruang isi 14px (tinggi 18px dikurangi dua border
+   2px) mendorong angka sekitar 2,5px ke bawah. Cadangan: angka dipusatkan dengan flexbox. Posisi (-4px) menempatkan pusat
+   badge tepat di tepi lingkaran lonceng pada sudut 45 derajat kanan-atas. */
 .notif-badge {
-  position: absolute; top: -2px; right: -2px; min-width: 18px; height: 18px; padding: 0 4px;
-  border-radius: 999px; background: var(--red-strong); color: var(--white);
-  font-size: 10px; font-weight: 800; line-height: 18px; text-align: center;
-  border: 2px solid var(--white);
+  position: absolute; top: -4px; right: -4px; box-sizing: border-box; min-width: 20px; height: 20px; padding: 0 5px 1px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 999px; background: var(--red-strong); color: var(--white); border: 2px solid var(--white);
+  font-size: 11px; font-weight: 800; line-height: 1; letter-spacing: 0; font-variant-numeric: tabular-nums;
+}
+/* Browser yang mendukung `text-box`: angka dipusatkan menurut TINGGI ANGKA (cap) sehingga tepat di tengah apa pun
+   fontnya; font sistem seperti Segoe UI menempatkan angka sedikit lebih rendah dari tengah kotak barisnya. */
+@supports (text-box: trim-both cap alphabetic) {
+  .notif-badge {
+    display: block; text-align: center; text-box: trim-both cap alphabetic;
+    padding: calc((16px - 1cap) / 2) 5px 0;
+  }
 }
 
 /* Avatar ikon bulat per level — dipakai di dropdown, halaman "Lihat Semua", dan toast */
@@ -1006,8 +1095,14 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .multiselect-caret {
   display: block; width: 0.625em; height: 0.625em; flex-shrink: 0;
   border: 0.125em solid var(--teal); border-right: 0; border-top: 0;
-  transform: rotate(-45deg); margin-top: -0.2em;
+  /* Sama dengan panah dropdown biasa: daftar transform identik di dua keadaan agar putarannya halus. */
+  margin-top: -0.2em; transform: translateY(0) rotate(-45deg);
+  transition: transform var(--duration-slow) var(--ease-apple-in-out);
 }
+/* `is-open` dipasang JS (base.html) pada .multiselect selama panel terbuka: panah v berputar setengah putaran menjadi ^.
+   translateY(.35em) (diukur di browser) menjaga panah tetap di tinggi yang sama setelah diputar. */
+.multiselect.is-open .multiselect-caret { transform: translateY(.35em) rotate(135deg); }
+@media (prefers-reduced-motion: reduce) { .multiselect-caret { transition: none; } }
 .multiselect-panel {
   display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30;
   background: var(--white); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
@@ -1205,6 +1300,19 @@ body.sidebar-collapsed .app-main { margin-left: 0; }
 .kontak-wa:hover { color: var(--green); text-decoration: underline; }
 .kontak-wa-field { padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; min-height: 40px; }
 
+/* Halaman Profil: untuk Pegawai, kotak dibagi dua kolom mandiri di layar lebar (kolom kiri dan kanan ditumpuk sendiri-sendiri,
+   bukan sejajar per baris, agar tinggi keduanya seimbang dan tidak ada celah kosong). Grid + minmax(0, 1fr) + gap didukung semua browser
+   utama (Chrome, Edge, Firefox, Safari 12+); tanpa :has / container query agar aman di Safari lama. Di bawah 1280px
+   (konten sudah menyempit karena sidebar) semua kotak bertumpuk satu kolom seperti semula. */
+@media (min-width: 1280px) {
+  .profil-grid.is-dua-kolom {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start;
+  }
+  .profil-grid.is-dua-kolom > .box { margin-bottom: 0; }
+  .profil-grid.is-dua-kolom .profil-kolom { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .profil-grid.is-dua-kolom .profil-kolom > .box { margin-bottom: 0; }
+  .profil-grid.is-dua-kolom > .profil-penuh { grid-column: 1 / -1; }   /* Dokumen: selebar penuh di bawah dua kolom */
+}
 .akun-panel { margin-top: 12px; }
 .akun-panel > summary { list-style: none; }
 .akun-panel > summary::-webkit-details-marker { display: none; }

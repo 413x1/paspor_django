@@ -24,6 +24,8 @@
   {% include "partials/_ringkasan_pengajuan.html" %}
 </div>
 
+{# Kolom kanan: Direktori Dokumen, Kembalikan, lalu Timeline Proses (mengisi ruang di bawah kotak Pratinjau). #}
+<div class="preview-kolom">
 <div class="box">
   <div class="section-title">Direktori Dokumen</div>
   {% include "partials/_direktori_dokumen.html" %}
@@ -31,7 +33,7 @@
   {% if pengajuan.status == "proses_pakln" and not dibekukan %}
     {% if pengajuan.preview_pakln_agree %}
       <a href="{% url 'pakln:upload_dokumen' kode=pengajuan.kode %}" class="button is-primary is-fullwidth" style="margin-top:16px;">
-        Lanjut ke Administrasi Biro PAKLN →
+        Lanjut ke Administrasi Biro PAKLN
       </a>
     {% else %}
       <form method="post" style="margin-top:16px;">
@@ -42,19 +44,17 @@
             Dokumen dan formulir telah <strong>ditinjau dan sesuai</strong>, untuk selanjutnya diproses administrasi oleh Biro PAKLN.
           </label>
         </div>
-        <button type="submit" name="lanjutkan" class="button is-primary is-fullwidth">Lanjutkan ke Administrasi Biro PAKLN →</button>
+        <button type="submit" name="lanjutkan" class="button is-primary is-fullwidth">Lanjutkan ke Administrasi Biro PAKLN</button>
       </form>
     {% endif %}
   {% elif pengajuan.status == "selesai" or pengajuan.preview_pakln_agree %}
     <a href="{% url 'pakln:upload_dokumen' kode=pengajuan.kode %}" class="button is-fullwidth" style="margin-top:16px;">Lihat Dokumen Biro PAKLN</a>
   {% endif %}
 </div>
-</div>
 
-<div class="preview-split">
 {% if pengajuan.status == "proses_pakln" and not dibekukan %}
 <div class="box is-danger-soft">
-  <div class="section-title is-small">↩ Kembalikan ke {{ tujuan_kembali }}</div>
+  <div class="section-title is-small">Kembalikan ke {{ tujuan_kembali }}</div>
   <p class="cell-muted is-title-sub">
     Gunakan ini jika ada kekurangan atau kesalahan berkas administrasi {{ tujuan_kembali }} yang perlu diperbaiki.
     Pengajuan akan kembali ke tahap {{ tujuan_kembali }} sampai diteruskan ulang.
@@ -68,13 +68,14 @@
           placeholder="cth. Nota Dinas belum sesuai format, mohon direvisi."></textarea>
       </div>
     </div>
-    <button type="submit" name="kembalikan" class="button is-danger is-fullwidth">↩ Kembalikan ke {{ tujuan_kembali }}</button>
+    <button type="submit" name="kembalikan" class="button is-danger is-fullwidth">Kembalikan ke {{ tujuan_kembali }}</button>
   </form>
 </div>
 {% endif %}
 
 {% include "partials/_riwayat_pengajuan.html" %}
 </div>
+</div>
 
-<a href="{% url 'pakln:dashboard' %}{% if pengajuan.is_pdln %}?tab=pdln{% else %}?tab=nondinas{% endif %}" class="button is-fullwidth">← Kembali ke Dasbor</a>
+<a href="{% url 'pakln:dashboard' %}{% if pengajuan.is_pdln %}?tab=pdln{% else %}?tab=nondinas{% endif %}" class="button is-fullwidth">Kembali ke Dasbor</a>
 {% endblock %}

@@ -63,6 +63,9 @@ class PeranAktifTests(_PeranBasis, TestCase):
         # Peran yang dipilih menjadi default login berikutnya.
         self.assertEqual(User.objects.get(pk=self.ganda.pk).role, "pegawai")
         self.assertTrue(ActivityLog.objects.filter(aktivitas=ActivityLog.Aktivitas.GANTI_PERAN).exists())
+        deskripsi = ActivityLog.objects.filter(aktivitas=ActivityLog.Aktivitas.GANTI_PERAN).latest("pk").deskripsi
+        self.assertRegex(deskripsi, r"^Ganti peran: dari .+ menjadi .+$")
+        self.assertNotIn("→", deskripsi)
 
     def test_prioritas_bila_peran_terakhir_tidak_dimiliki(self):
         User.objects.filter(pk=self.ganda.pk).update(role="admin_bko")

@@ -50,7 +50,7 @@
     <strong>{% if pengajuan.status_surat_tugas %}{{ pengajuan.get_status_surat_tugas_display }}{% else %}Belum dibuka{% endif %}</strong>
     · pengajuan: {{ pengajuan.get_status_display }}</p>
 
-  {% include "partials/_dokumen_tahap.html" with hapus_url="unor:hapus_surat_tugas" %}
+  {% include "partials/_dokumen_tahap.html" with hapus_url="unor:hapus_surat_tugas" tanpa_ikon=True %}
 
   {% if not terkunci %}
   <form method="post">
@@ -61,7 +61,7 @@
     </div>
     <button type="submit" name="kirim" class="button is-warning is-fullwidth" data-agree-submit
       {% if not bisa_kirim %}data-locked{% endif %} disabled>
-      {% if pengajuan.status_surat_tugas == "dikembalikan" %}Kirim Ulang ke Biro PAKLN{% else %}Kirim ke Biro PAKLN{% endif %} →
+      {% if pengajuan.status_surat_tugas == "dikembalikan" %}Kirim Ulang ke Biro PAKLN{% else %}Kirim ke Biro PAKLN{% endif %}
     </button>
     {% if not bisa_kirim %}
       <p class="helptext">Unggah berkas Surat Tugas untuk dapat mengirim.</p>
