@@ -1,6 +1,6 @@
 """Halaman Profil: dua kolom di layar lebar untuk Pegawai (kiri Data Personal + Keamanan, kanan Akun + Data Paspor,
-Dokumen selebar penuh di bawahnya) serta Admin Unor, Admin BKO, dan Admin BPSDM (kiri Data Personal + Keamanan, kanan Akun + Dokumen Penugasan).
-Peran lain tetap satu kolom dengan urutan semula.
+Dokumen selebar penuh di bawahnya) serta Admin Unor, Admin BKO, Admin BPSDM, dan Admin Biro PAKLN (kiri Data Personal + Keamanan, kanan Akun + Dokumen Penugasan).
+Templat tetap menyimpan susunan satu kolom sebagai cadangan untuk peran yang belum dikenal.
 
 Ukuran piksel diperiksa di browser (Edge, Chrome, Firefox, WebKit); tes ini menjaga struktur, urutan, dan aturan CSS."""
 
@@ -60,9 +60,10 @@ class ProfilPegawaiDuaKolomTests(TestCase):
 
 
 class ProfilAdminDuaKolomTests(TestCase):
-    """Admin Unor, Admin BKO, dan Admin BPSDM: kiri Data Personal + Keamanan, kanan Akun + Dokumen Penugasan (tanpa Data Paspor)."""
+    """Admin Unor, Admin BKO, Admin BPSDM, dan Admin Biro PAKLN: kiri Data Personal + Keamanan, kanan Akun + Dokumen Penugasan
+    (tanpa Data Paspor)."""
 
-    PERAN = ("admin_unor", "admin_bko", "admin_bpsdm")
+    PERAN = ("admin_unor", "admin_bko", "admin_bpsdm", "admin_pakln")
 
     def halaman(self, role):
         user = User.objects.create_user(f"u_{role}", password="Rahasia-123", role=role, no_hp="6281100000003")
@@ -103,27 +104,18 @@ class ProfilAdminDuaKolomTests(TestCase):
                 self.assertEqual(html.count('class="box'), 4)
 
 
-class ProfilPeranLainTetapSatuKolomTests(TestCase):
-    PERAN = ("admin_pakln",)
+class ProfilAdminPaklnTests(TestCase):
+    """Admin Biro PAKLN boleh mengubah email dan nomor HP sendiri: tombolnya ada di kotak Data Personal (kolom kiri)."""
 
-    def halaman(self, role):
-        user = User.objects.create_user(f"u_{role}", password="Rahasia-123", role=role, no_hp="6281100000002")
+    def test_tombol_ubah_kontak_ada_di_kolom_kiri(self):
+        user = User.objects.create_user("pakln1", password="Rahasia-123", role="admin_pakln", no_hp="6281100000004")
         self.client.login(username=user.username, password="Rahasia-123")
-        return self.client.get(reverse("profil")).content.decode()
-
-    def test_tanpa_kelas_dua_kolom_dan_urutan_semula(self):
-        for role in self.PERAN:
-            with self.subTest(role=role):
-                html = self.halaman(role)
-                self.assertIn('<div class="profil-grid">', html)
-                self.assertNotIn("is-dua-kolom", html)
-                self.assertNotIn("profil-kolom", html)
-                self.assertEqual(_judul(html), ["Data Personal", "Akun", "Keamanan", "Dokumen Penugasan"])
-
-    def test_data_paspor_hanya_untuk_pegawai(self):
-        for role in self.PERAN:
-            with self.subTest(role=role):
-                self.assertNotIn("Data Paspor", self.halaman(role))
+        html = self.client.get(reverse("profil")).content.decode()
+        kiri, kanan = html.split('<div class="profil-kolom">')[1:3]
+        self.assertIn("Ubah Email &amp; No. HP", kiri)
+        self.assertIn("Data Personal", kiri)
+        self.assertNotIn("Ubah Email", kanan)
+        self.assertIn("Ubah Username", kanan)
 
 
 class CssProfilTests(TestCase):

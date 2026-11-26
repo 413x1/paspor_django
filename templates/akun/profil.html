@@ -13,7 +13,7 @@
 {% comment %}
   Dua kolom di layar lebar, kolom kiri selalu Data Personal + Keamanan:
   - Pegawai: kanan Akun + Data Paspor; Dokumen Kepegawaian selebar penuh di bawahnya.
-  - Admin Unor, Admin BKO, dan Admin BPSDM: kanan Akun + Dokumen Penugasan.
+  - Admin Unor, Admin BKO, Admin BPSDM, dan Admin Biro PAKLN: kanan Akun + Dokumen Penugasan.
   Peran lain tetap satu kolom dengan urutan semula. Isi tiap kotak ada di akun/_profil_*.html.
 {% endcomment %}
 {% if user.role == "pegawai" %}
@@ -28,7 +28,7 @@
   </div>
   {% include "akun/_profil_dokumen.html" %}
 </div>
-{% elif user.role == "admin_unor" or user.role == "admin_bko" or user.role == "admin_bpsdm" %}
+{% elif user.role == "admin_unor" or user.role == "admin_bko" or user.role == "admin_bpsdm" or user.role == "admin_pakln" %}
 <div class="profil-grid is-dua-kolom">
   <div class="profil-kolom">
     {% include "akun/_profil_data_personal.html" %}
