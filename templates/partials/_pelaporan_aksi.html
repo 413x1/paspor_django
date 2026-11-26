@@ -1,10 +1,10 @@
-{% load pengajuan_extras %}{# Kolom Aksi tabel Pelaporan PDLN (Admin PAKLN) — dirender per baris oleh `views_pakln.pelaporan_data`. #}
+{% load pengajuan_extras %}{# Kolom Aksi tabel Pelaporan PDLN (Admin PAKLN) — dirender per baris oleh `pelaporan_tabel.respons_data` (Admin PAKLN dan Admin Unor). #}
 <div class="aksi-pelaporan">
   {% if laporan and laporan.file %}
     <button type="button" class="button is-small is-info" data-id="{{ laporan.pk }}"
       data-doc-preview="{{ laporan.file.url }}" data-doc-title="Laporan {{ p.kode }}">{% include "partials/_ikon_mata.html" %}Lihat</button>
   {% endif %}
-  {% if status == "menunggu" %}
+  {% if dapat_verifikasi and status == "menunggu" %}
     <button type="button" class="button is-small is-success btn-verifikasi"
       data-id="{{ laporan.pk }}" data-kode="{{ p.kode }}" data-pegawai="{{ p.pegawai.profile.nama }}"
       data-url="{{ verifikasi_url }}">✓ Verifikasi</button>
@@ -13,7 +13,7 @@
       data-url="{{ verifikasi_url }}">↩ Request Perbaikan</button>
   {% endif %}
 </div>
-{% if status == "menunggu" %}
+{% if dapat_verifikasi and status == "menunggu" %}
 {# Ringkasan isi laporan (disembunyikan); disalin ke modal Verifikasi saat tombol diklik. #}
 <div hidden id="ringkasan-{{ laporan.pk }}">
   <div class="verif-isi">

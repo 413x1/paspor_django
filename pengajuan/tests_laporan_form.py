@@ -397,9 +397,13 @@ class LaporanDiAdminDanDaftarTests(LaporanFormBase):
         self.kirim()
         self.client.force_login(self.admin_unor)
         html = self.client.get(reverse("unor:pelaporan")).content.decode()
-        self.assertIn("Lihat", html)
         for tidak_ada in ('id="modal-verifikasi"', 'id="modal-revisi"', 'class="button is-small is-warning btn-revisi"'):
             self.assertNotIn(tidak_ada, html)
+        data = self.client.get(reverse("unor:pelaporan_data"), {"draw": 1, "start": 0, "length": 10}).json()["data"]
+        aksi = data[0][7]                              # baris dimuat server-side; kolom Aksi
+        self.assertIn("Lihat", aksi)
+        for tidak_ada in ("btn-verifikasi", "btn-revisi", "ringkasan-"):
+            self.assertNotIn(tidak_ada, aksi)
 
     def test_modal_verifikasi_mengembalikan_laporan_lewat_catatan_pakln(self):
         """Form modal Request Perbaikan memakai name="catatan_pakln"; backend lama tetap berjalan."""
@@ -420,11 +424,14 @@ class LaporanDiAdminDanDaftarTests(LaporanFormBase):
 
     def test_draft_dihitung_belum_melapor_oleh_admin_dan_laporan(self):
         from . import report
-        from .views_unor import _konteks_pelaporan
+        from .pelaporan_tabel import hitung_pelaporan
         self.kirim("draft")
-        ctx = _konteks_pelaporan(Pengajuan.objects.filter(pk=self.p.pk))
-        self.assertEqual((ctx["hitung"]["belum"], ctx["hitung"]["menunggu"]), (1, 0))
-        self.assertIsNone(ctx["baris"][0]["laporan"])
+        self.client.force_login(self.admin_pakln)
+        hitung = hitung_pelaporan(Pengajuan.objects.filter(pk=self.p.pk))
+        self.assertEqual((hitung["belum"], hitung["menunggu"]), (1, 0))
+        baris = self.client.get(reverse("pakln:pelaporan_data"), {"draw": 1, "start": 0, "length": 10}).json()["data"][0]
+        self.assertIn("Belum melapor", baris[5])         # draft belum dilaporkan
+        self.assertNotIn("btn-verifikasi", baris[7])
         self.assertTrue(report.status_pelaporan(Pengajuan.objects.get(pk=self.p.pk)).startswith("Belum Melapor"))
 
     def test_draft_tidak_menghitung_pengajuan_tuntas_dan_pesan_blokir(self):

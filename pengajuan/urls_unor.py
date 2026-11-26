@@ -10,6 +10,7 @@ urlpatterns = [
     path("pembatalan/<int:pk>/putuskan/", views.putuskan_pembatalan, name="putuskan_pembatalan"),
     path("pembatalan/<int:pk>/tarik/", views.tarik_pembatalan, name="tarik_pembatalan"),
     path("pelaporan/", views.pelaporan, name="pelaporan"),
+    path("pelaporan/data/", views.pelaporan_data, name="pelaporan_data"),
     path("export/", views_report.export_database, name="export"),
     path("export/data/", views_report.export_data, name="export_data"),
     path("rekap/", views_report.rekap, name="rekap"),

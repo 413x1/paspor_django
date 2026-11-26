@@ -4,7 +4,7 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'css/pelaporan.css' %}?v=20261013c">
-{% if serverside_url %}<link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">{% endif %}
+<link rel="stylesheet" href="{% static 'vendors/datatables/css/dataTables.min.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -29,48 +29,16 @@
 
 <div class="box">
   <div class="table-wrap">
-    <table {% if serverside_url %}id="tabelPelaporan" {% endif %}class="table data-table is-fullwidth is-hoverable">
+    <table id="tabelPelaporan" class="table data-table is-fullwidth is-hoverable">
       <thead>
         <tr><th>Pegawai</th><th>Unor</th><th>Tipe / Kode</th><th>Negara</th><th>Tgl Kembali</th><th>Status Pelaporan</th><th>Tgl Unggah</th><th>Aksi</th></tr>
       </thead>
       <tbody>
-        {# Admin PAKLN: baris dimuat server-side (pelaporan_data). Admin Unor: tabel HTML biasa. #}
-        {% if not serverside_url %}{% for b in baris %}
-          <tr>
-            <td>{{ b.p.pegawai.profile.nama }}<br><span class="cell-muted">{{ b.p.pegawai.profile.nip }}</span></td>
-            <td>{{ b.p.unit_organisasi.alias|default:"—" }}</td>
-            <td><a href="{% url preview_url kode=b.p.kode %}">{{ b.p.kode }}</a><br><span class="cell-muted">{{ b.p.jenis_label }}</span></td>
-            <td>{{ b.p.tujuan_negara_display }}</td>
-            <td>{{ b.p.tgl_kembali|date:"d M Y" }}</td>
-            <td>
-              {% if b.laporan %}{{ b.laporan.get_status_display }}{% else %}Belum melapor{% endif %}
-              {% if b.terlambat %}<br><span class="text-danger is-strong">Terlambat</span>{% endif %}
-            </td>
-            <td>{{ b.laporan.uploaded_at|date:"d M Y"|default:"—" }}</td>
-            <td>
-              <div class="aksi-pelaporan">
-                {% if b.laporan and b.laporan.file %}
-                  <button type="button" class="button is-small is-info" data-id="{{ b.laporan.pk }}"
-                    data-doc-preview="{{ b.laporan.file.url }}" data-doc-title="Laporan {{ b.p.kode }}">{% include "partials/_ikon_mata.html" %}Lihat</button>
-                {% endif %}
-                {% if dapat_verifikasi and b.status == "menunggu" %}
-                  <button type="button" class="button is-small is-success btn-verifikasi"
-                    data-id="{{ b.laporan.pk }}" data-kode="{{ b.p.kode }}" data-pegawai="{{ b.p.pegawai.profile.nama }}"
-                    data-url="{% url 'pakln:verifikasi_laporan' kode=b.p.kode %}">✓ Verifikasi</button>
-                  <button type="button" class="button is-small is-warning btn-revisi"
-                    data-id="{{ b.laporan.pk }}" data-kode="{{ b.p.kode }}" data-pegawai="{{ b.p.pegawai.profile.nama }}"
-                    data-url="{% url 'pakln:verifikasi_laporan' kode=b.p.kode %}">↩ Request Perbaikan</button>
-                {% endif %}
-              </div>
-            </td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="8" class="cell-muted">Belum ada PDLN berstatus selesai.</td></tr>
-        {% endfor %}{% endif %}
+        {# Baris dimuat server-side oleh DataTables (Admin PAKLN: pelaporan_data; Admin Unor: pelaporan_data unor). #}
       </tbody>
     </table>
   </div>
-  {% if serverside_url %}<p class="helptext">Pencarian mencakup nama pegawai, NIP, kode pengajuan, unor, dan negara tujuan.</p>{% endif %}
+  <p class="helptext">Pencarian mencakup nama pegawai, NIP, kode pengajuan, unor, dan negara tujuan.</p>
 </div>
 
 {% if dapat_verifikasi %}
@@ -128,7 +96,6 @@
 {% endblock %}
 
 {% block extra_js %}
-{% if serverside_url %}
 <script src="{% static 'vendors/datatables/js/dataTables.min.js' %}"></script>
 <script>
   $(function () {
@@ -173,7 +140,6 @@
     });
   });
 </script>
-{% endif %}
 {% if dapat_verifikasi %}
 <script>
   $(function () {
